@@ -923,3 +923,14 @@ Poisson(Sref[c] * exp(county effect + season + 7 lags of log1p(100 * claims per 
 - Claims under the deductible are not in the file (left truncation); tiers are insured, self-selected populations; no causal reading.
 - Take-up denominators are all ACS housing units (including multifamily), numerators are single-family policies; 21% of Texas policy block groups (older vintage) have no ACS match; the
   `X→SFHA` map-revision sample is not a clean quasi-experiment (only 8% mandatory). Whether owner-type mixtures exist inside a block group cannot be tested with this data.
+
+## Addendum: exposure dynamics in the Texas pilot table (`scripts/38_exposure_dynamics_features.py`, `scripts/26 --only L5 L6`)
+
+- Features per (episode, block group), ex ante (day before the episode starts): share of in-force policies in their first 12 months (`new12_share`) and 12-36 months (`mid_share`) of NFIP coverage. `mand_share` was **not** used:
+  it drifts from 0.7% (2010) to 11.6% (2021), a reporting change that would teach the model the year.
+- Test 2017-2023 (within-episode AUC, 1015 episodes): L5 (wavelet scales) 0.7839 -> L6 (+ exposure dynamics) 0.7829; AUC 0.9298 -> 0.9301; AP 0.1139 -> 0.1120; BSS 0.0296 -> 0.0283. Blocked CV over year pairs (within-episode AUC mean / min / max):
+  L5 0.7893 / 0.7576 / 0.824; L6 0.7905 / 0.7567 / 0.823, a +0.0012 difference against a fold spread of 0.07.
+- **No gain.** The composition of the insured stock (new vs old buyers) adds nothing to sub-county skill beyond rain, exposure counts, location, terrain and wavelet scale features. Null result: it does not say these features are uninformative about who files claims, only that
+  this table and this learner do not benefit.
+- Also: with the economic covariates (stage 10 stock-flow model) this closes the "human factors" candidates for the pilot table: season, event pulse, lapse, economic cycle and exposure composition were tested; none improves the forecasts.
+- Side note: `scripts/26` writes `flood_pilot_test_preds.npz` on every run (an `--only` run overwrote it with two groups; a full rerun restored it, now with the L6 predictions).

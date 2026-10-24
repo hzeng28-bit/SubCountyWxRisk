@@ -122,6 +122,12 @@ def main() -> None:
         w = pd.read_parquet(wav)
         t = t.merge(w, on=["ep", "bg"], how="left")
         extra["L5 + wavelet scales"] = [c for c in w.columns if c not in ("ep", "bg")]
+    edy = fp.PILOT / "flood_pilot_expodyn.parquet"
+    if edy.exists():
+        # mand_share drifts with the year (0.7% in 2010 to 12% in 2021, a reporting change) and would teach the model the year
+        e = pd.read_parquet(edy, columns=["ep", "bg", "new12_share", "mid_share"])
+        t = t.merge(e, on=["ep", "bg"], how="left")
+        extra["L6 + exposure dynamics"] = ["new12_share", "mid_share"]
     G = groups(extra)
     if a.only:
         G = {k: v for k, v in G.items() if any(o in k for o in a.only)}
