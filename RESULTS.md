@@ -806,3 +806,68 @@ and the data has no reliable field for them, so they can only be treated as prio
 - State-month fixed effects are only a rough proxy for events; `floodEvent` covers only about 81% of records and 72 events, and is unusable.
 - The Texas and national ratios are computed on claims whose foundation is known; whether they hold for the unknown part is not known.
 - These features were not attached to `flood_pilot_table`, so **it is not yet known whether they add anything to prediction**.
+
+# Stage 10: compliance ladder and NFIP take-up selection (candidate features only) (2026-10-23)
+
+Scripts: `scripts/33_compliance_ladder.py`, `scripts/34_takeup_rate.py`. Background: ASCE 24 (editions 98 / 05 / 14 / 24) is referenced by the IBC;
+Texas has no statewide building code, flood standards are local ordinances above the NFIP floor (44 CFR 60.3), and no NFIP field records the adopted edition.
+So code compliance is a **latent variable**; only coarse proxies are observable.
+
+## Method
+
+- Four ordered tiers from observable fields: T0 post-FIRM + elevated + SFHA (closest to compliant); T1 post-FIRM, not elevated, SFHA (NFIP minimum);
+  T2 pre-FIRM SFHA; T3 non-SFHA (owner unaware, often insured at sale). Not observable: flood-damage-resistant materials, equipment elevation, flood openings, freeboard.
+- Loss side: single-family claims 2010+, exterior depth > 0, damage ratio by exterior-depth bin and tier; event (state-month) clustered bootstrap.
+- Frequency side (Texas): claims per 1000 policy-years, tier from policies without elevation.
+- Take-up: in-force single-family policies in X/B/C/D zones on 2022-12-31 / ACS housing units, per 2020 block group, block groups with SFHA policy share < 5%.
+
+## Results
+
+- **T0 is far below T2**: median damage ratio 0.05–0.13× (Texas), 0.09–0.24× (national) at the same exterior depth; bootstrap intervals exclude 1.
+- **The rest of the ladder is not resolved**: T1/T2 intervals include 1 in most bins; T3 is below T2 at 1–6 in and equal deeper, so T3 is not "least protected".
+  Monotone T0 <= T1 <= T2 in 5/5 depth bins in Texas but only 2/5 nationally.
+- **Residual-loss floor**: T0 q10 building damage about $650–4,600 (Texas), close to deductible level, so it is mostly a deductible floor, not a design residual.
+- **Frequency (Texas, 2015+)**: post-FIRM SFHA rate is 0.14–0.75× pre-FIRM SFHA, non-SFHA 0.20–0.58×. 2010–2014 are empty (policy exposure denominator problem, cause not investigated).
+- **Take-up is bimodal across block groups** (7,180 kept; modes near 0.2% and 6%; GMM BIC prefers 3 components over 1). But the high mode is concentrated in Gulf coast counties
+  (Harris 1,270 of 2,408 high block groups; Fort Bend, Jefferson, Montgomery, Galveston, Brazoria next), and the median mandatory-purchase share there is 0, so it is voluntary.
+- Texas policies whose rated zone differs from the current zone: X→SFHA 1.3%, SFHA→X 9.3% of rows; only 8% of X→SFHA rows are flagged mandatory purchase.
+
+
+## Addendum: take-up after an incident (Hurricane Harvey event study, `scripts/35_takeup_after_flood.py`)
+
+- 5,161 Texas block groups binned by Harvey claims per in-force policy; stock of in-force single-family non-SFHA voluntary policies, indexed to 2017-07-31.
+- Pre-trend is parallel across bins (all about 1.04 a year earlier, stock drifting down 4%/yr). After Harvey the **no-claim control still grew 30-35%** by 2020, so most of the regional
+  rise is spillover (news, neighbours, lenders) or direct experience; the control cannot separate them.
+- Block groups with > 10% claims grew 45-53% (2018-07 to 2020-07), 12-20 points more than the control; the excess peaked at +19.5% (2018-06) and fell to +11.7% by 2020-12 (half-life about 2.5 years, memory fades).
+  The 2-10% bin: +11.6% peak, +7.0% by 2020-12; the 0-2% bin: +8.4% peak, +3.0%.
+- Reading: directly experienced take-up is 7-12% of the current stock (lower bound; the control may itself be Harvey-driven). The total event-driven share is between that and most of the post-event growth.
+- Caveats: `mandatoryPurchaseFlag == False` only approximates voluntary purchase; policy rows are terms, not households, so no per-household probability (the uninsured flooded households are not in the data);
+  one event, one region; claim-rate bins correlate with urban growth.
+
+
+## Addendum: event-known loss and post-event buyers (`scripts/36_event_features.py`)
+
+- Event definition: FEMA declarations for Texas (flood, hurricane, severe/coastal/tropical storm; DR and EM) by county and incident period, not the NFIP `floodEvent` field.
+  `scripts/24` now also extracts `originalNBDate`, `rolloverTransferCode`, `propertyPurchaseDate`, `nfipRatedCommunityNumber` (Texas policy file re-extracted, 11,612,805 rows).
+- **Feature A (loss inside a declared event, ex-post)**: 88% of Texas single-family claims 2010+ fall inside a declared window (2017: 99%). Inside: mean building damage $74 k, median $58 k, 56% above $50 k;
+  outside: mean $22 k, median $11 k, 12% above $50 k. Heavy-tail difference is large, but dominated by Harvey. It uses the loss's own date, so it is a label/stratifier only, never a forecast input.
+- **Feature B (post-event buyer, ex-ante)**: policy NB date within 24 months after the county's last declared event that ended before it (no look-ahead). Among 342,995 voluntary non-SFHA single-family policies in force at Harvey,
+  60% qualify (block-group 10-90%: 0.43-0.78), because county-wide declarations cover almost every county in 2015-2017, so the flag mostly encodes "bought in 2015-2017".
+  Within-county Poisson of Harvey claim rate on the block-group share: coefficient -0.37 [-3.07, +0.51] (rate ratio 0.69x for 100% vs 0%): **no detectable effect**. The post-FIRM share coefficient is negative and clear (-0.90 [-1.13, -0.14]).
+- The null does not mean post-event buyers behave the same: the feature has little variation and the interval is wide.
+
+Next refinement: define "post-event" with local intensity (block-group or neighbour-tract claims in the previous event) instead of county-wide declarations.
+
+## Conclusions
+
+- Elevation (a proxy for the engineered tier) has a large, robust effect; the finer steps of the ladder are not identified.
+- Selection of who insures is a real feature of the data, but the observed bimodality is mostly geography and flood experience, not evidence of owner types.
+- Everything here goes to the **candidate pool**: tier, take-up rate, and uptake-based weights may be tried later in the ablation; none is promoted without beating the year-grouped bootstrap interval.
+
+## Caveats
+
+- Exterior depth is above ground, so elevated buildings need more water to flood: part of the T0 gap is geometry, not a design effect. Depth relative to the floor is not in claims.
+- Professional owners likely also maintain better, so the T0/T2 ratio mixes design and owner type; read it as an upper bound on the design effect.
+- Claims under the deductible are not in the file (left truncation); tiers are insured, self-selected populations; no causal reading.
+- Take-up denominators are all ACS housing units (including multifamily), numerators are single-family policies; 21% of Texas policy block groups (older vintage) have no ACS match; the
+  `X→SFHA` map-revision sample is not a clean quasi-experiment (only 8% mandatory). Whether owner-type mixtures exist inside a block group cannot be tested with this data.

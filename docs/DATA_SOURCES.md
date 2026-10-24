@@ -102,6 +102,8 @@ parquet/NetCDF files above 1 GB record only the byte hash and row count (a conte
 | MRMS MultiSensor QPE | 24 h rainfall, 2021–2023 | `scripts/19` | `labels_extra/qpe/` | 1.9 GB | None |
 | USGS NWIS | Daily river discharge (CO/NM/AZ) | `fetch_raw.py nwis` | `labels_extra/flood/nwis/` | Small | None |
 | Census | 2020 county boundaries, 2010/2020 block groups | `fetch_raw.py census`, `scripts/22` | `labels_extra/census/`, `labels_extra/flood/pilot/` | Small | None |
+| ACS 5-year 2022 B25001 | Housing units per block group (take-up denominator), keyless bulk table-based summary file | `scripts/34` (downloads via `fetch.https`) | `labels_extra/census/acs5_2022_b25001.dat` | 18 MB | None; 2020 block groups, so 21% of Texas policy block groups (older vintage) do not match |
+| FEMA disaster declarations, Texas | One row per declaration x county, all incident types, 2000+ (event definition for scripts 36) | `scripts/fetch/fetch_fema_declarations.py` | `labels_extra/flood/fema_declarations_tx.parquet` | Small (4,001 rows) | None (OpenFEMA v2 API) |
 | **NFIP claims (OpenFEMA v3)** | National claims 2000–2023, with block group, water depth, loss, foundation | `scripts/20` | `labels_extra/flood/nfip_national/` | 1.56 M records | None (API, paged) |
 | **NFIP policies (OpenFEMA v3)** | 74.74 M policies: effective/termination dates, block group, building attributes | Download the bulk parquet by hand and save it as `labels_extra/flood/nfip_policies_v3.parquet` (3.7 GB), then extract Texas with `scripts/24` | Same as left; Texas: `labels_extra/flood/pilot/policies_tx.parquet` | 3.7 GB | None |
 | FEMA flood disaster declarations, CO/NM/AZ claims | Older small tables | `scripts/fetch/fetch_fema_conmaz.py` | `labels_extra/flood/` | Small | None |

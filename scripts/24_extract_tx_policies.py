@@ -1,7 +1,8 @@
 """Extract Texas rows of the OpenFEMA NFIP policy bulk file (74.7M rows) into a small parquet.
 
-Kept: block-group code, ZIP, policy term dates, count, flood zone and a few building and coverage
-fields. Output: $WXRISK_DATA/labels_extra/flood/pilot/policies_tx.parquet
+Kept: block-group code, ZIP, policy term dates, count, flood zone, a few building and coverage
+fields, and the new-business fields (originalNBDate, rolloverTransferCode, propertyPurchaseDate).
+Output: $WXRISK_DATA/labels_extra/flood/pilot/policies_tx.parquet
 
     python scripts/24_extract_tx_policies.py
 """
@@ -25,7 +26,9 @@ COLS = ["propertyState", "censusGeoid", "reportedZipCode", "policyEffectiveDate"
         "cancellationDateOfFloodPolicy", "policyCount", "ratedFloodZone", "floodZoneCurrent", "occupancyType",
         "totalBuildingInsuranceCoverage", "buildingReplacementCost", "elevationDifference",
         "postFIRMConstructionIndicator", "primaryResidenceIndicator", "originalConstructionDate",
-        "mandatoryPurchaseFlag", "policyTermIndicator", "foundationType", "numberOfFloorsInInsuredBuilding"]
+        "mandatoryPurchaseFlag", "policyTermIndicator", "foundationType", "numberOfFloorsInInsuredBuilding",
+        # new-business history (scripts 35-36): first NFIP policy date, new/renewal/transfer code, sale date
+        "originalNBDate", "rolloverTransferCode", "propertyPurchaseDate", "nfipRatedCommunityNumber"]
 
 
 def check_bulk_file() -> None:

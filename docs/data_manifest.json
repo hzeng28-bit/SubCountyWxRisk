@@ -157,6 +157,9 @@
   "label_comparison_warn.csv": {
    "bytes": 1966
   },
+  "labels_extra/census/acs5_2022_b25001.dat": {
+   "bytes": 17865235
+  },
   "labels_extra/census/cb_2020_us_county_20m.zip": {
    "bytes": 893148
   },
@@ -183,6 +186,41 @@
   },
   "labels_extra/flood/dl_policies.log": {
    "bytes": 0
+  },
+  "labels_extra/flood/fema_declarations_tx.parquet": {
+   "bytes": 368453,
+   "columns": {
+    "declarationDate": "BYTE_ARRAY",
+    "declarationRequestDate": "BYTE_ARRAY",
+    "declarationRequestNumber": "BYTE_ARRAY",
+    "declarationTitle": "BYTE_ARRAY",
+    "declarationType": "BYTE_ARRAY",
+    "designatedArea": "BYTE_ARRAY",
+    "designatedIncidentTypes": "BYTE_ARRAY",
+    "disasterCloseoutDate": "BYTE_ARRAY",
+    "disasterNumber": "INT64",
+    "femaDeclarationString": "BYTE_ARRAY",
+    "fipsCountyCode": "BYTE_ARRAY",
+    "fipsStateCode": "BYTE_ARRAY",
+    "fyDeclared": "INT64",
+    "hash": "BYTE_ARRAY",
+    "hmProgramDeclared": "BOOLEAN",
+    "iaProgramDeclared": "BOOLEAN",
+    "id": "BYTE_ARRAY",
+    "ihProgramDeclared": "BOOLEAN",
+    "incidentBeginDate": "BYTE_ARRAY",
+    "incidentEndDate": "BYTE_ARRAY",
+    "incidentId": "BYTE_ARRAY",
+    "incidentType": "BYTE_ARRAY",
+    "lastIAFilingDate": "BYTE_ARRAY",
+    "lastRefresh": "BYTE_ARRAY",
+    "paProgramDeclared": "BOOLEAN",
+    "placeCode": "BYTE_ARRAY",
+    "region": "INT64",
+    "state": "BYTE_ARRAY",
+    "tribalRequest": "BOOLEAN"
+   },
+   "rows": 4001
   },
   "labels_extra/flood/fema_flood_declarations.parquet": {
    "bytes": 55479,
@@ -629,7 +667,7 @@
    "bytes": 4087516
   },
   "labels_extra/flood/pilot/policies_tx.parquet": {
-   "bytes": 189256624,
+   "bytes": 258316484,
    "columns": {
     "buildingReplacementCost": "INT64",
     "cancellationDateOfFloodPolicy": "INT32",
@@ -638,18 +676,22 @@
     "floodZoneCurrent": "BYTE_ARRAY",
     "foundationType": "BYTE_ARRAY",
     "mandatoryPurchaseFlag": "BOOLEAN",
+    "nfipRatedCommunityNumber": "BYTE_ARRAY",
     "numberOfFloorsInInsuredBuilding": "INT32",
     "occupancyType": "INT32",
     "originalConstructionDate": "INT32",
+    "originalNBDate": "INT32",
     "policyCount": "INT32",
     "policyEffectiveDate": "INT32",
     "policyTermIndicator": "INT32",
     "policyTerminationDate": "INT32",
     "postFIRMConstructionIndicator": "BOOLEAN",
     "primaryResidenceIndicator": "BOOLEAN",
+    "propertyPurchaseDate": "INT32",
     "propertyState": "BYTE_ARRAY",
     "ratedFloodZone": "BYTE_ARRAY",
     "reportedZipCode": "BYTE_ARRAY",
+    "rolloverTransferCode": "BYTE_ARRAY",
     "totalBuildingInsuranceCoverage": "INT32"
    },
    "rows": 11612805
@@ -1173,6 +1215,6 @@
    "rows": 25902
   }
  },
- "n_entries": 126,
+ "n_entries": 128,
  "root": "$WXRISK_DATA"
 }

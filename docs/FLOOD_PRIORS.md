@@ -74,3 +74,18 @@ USGS flood inundation maps (FIM) cover only a few gaged river reaches and are no
    with and without the features (year-blocked cross-validation, test 2017–2023).
 3. Download NFHL and HAND and add the flood-zone features.
 4. Verify the `foundationType` codes and the anomalous shares in NC/KY.
+
+## Candidate features (unproven selection and compliance proxies; stage 10)
+
+These come from reasoning plus weak statistics, not from a proof. They live in the candidate pool and enter a model only through an ablation that beats the year-grouped bootstrap interval.
+
+| Candidate | Source | Why it might help | Why it is only a candidate |
+|---|---|---|---|
+| Compliance tier T0–T3 (post-FIRM x elevated x SFHA) | claims / policies | T0 loses 0.05–0.24× of T2 at equal depth | elevation is geometry too; materials, equipment, openings unobserved |
+| Block-group take-up rate (policies / ACS housing units) | policies + `scripts/34` | encodes who selects into NFIP; bimodal across block groups | bimodality is mostly Gulf-coast geography, not owner type |
+| Inverse-probability weight from a take-up model | policies | push the insured sample toward the whole housing stock | no instrument; selection model is not identified |
+| Zone-change flag (`ratedFloodZone` vs `floodZoneCurrent`) | policies | newly mapped owners did not choose to insure | only 8% flagged mandatory; not clean |
+| Latent-class mixture (professional / frightened / mandated owners) | model | explains the bimodal take-up | classes cannot be identified without anchors |
+| Post-incident take-up (local claim intensity of the last big event, years since) | claims + policies, `scripts/35` | Harvey: hit block groups bought 12-20 points more than the control, decaying with half-life ~2.5 yr | one event; control also moved; not per-household |
+| Loss inside a declared (known) event | claims + FEMA declarations, `scripts/36` | known-event losses are heavy-tailed (mean $74k vs $22k) | ex-post: label/stratifier only, leakage if used as input |
+| Post-event buyer share (NB within 24 months after last declared county event) | policies + declarations, `scripts/36` | exposure composition and selection signal, ex-ante | county-wide declarations too coarse; Harvey test was null |

@@ -527,6 +527,13 @@
    "content_sha256": "3ec9b1f6ffd065777cfe3f369270f0f4c58a8b4f0db94bb2c4415e55e7e95fc4",
    "sha256": "3ec9b1f6ffd065777cfe3f369270f0f4c58a8b4f0db94bb2c4415e55e7e95fc4"
   },
+  "labels_extra/census/acs5_2022_b25001.dat": {
+   "bytes": 17865235,
+   "category": "raw",
+   "content_kind": "bytes",
+   "content_sha256": "5bc8c5cf2bb5d4db9417537394f5b2af2399197e853d3efb0d056b8a4c557512",
+   "sha256": "5bc8c5cf2bb5d4db9417537394f5b2af2399197e853d3efb0d056b8a4c557512"
+  },
   "labels_extra/census/cb_2020_us_county_20m.zip": {
    "bytes": 893148,
    "category": "raw",
@@ -540,6 +547,15 @@
    "content_kind": "bytes",
    "content_sha256": "58bf2215b395dcac74c009aa98701854e43cbe54a1cd3a95fee6a647ca9910d4",
    "sha256": "58bf2215b395dcac74c009aa98701854e43cbe54a1cd3a95fee6a647ca9910d4"
+  },
+  "labels_extra/flood/fema_declarations_tx.parquet": {
+   "bytes": 368453,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "5d6ec86ccea2a9c7e328430219fe9dd6e440c331ff14b62fa09ab42a1d760edb",
+   "mutable": true,
+   "rows": 4001,
+   "sha256": "5dc13fcb3426d6d6cd67fafad804102fd04adab54d7f78410b59e798813fea7d"
   },
   "labels_extra/flood/fema_flood_declarations.parquet": {
    "bytes": 55479,
@@ -1671,12 +1687,12 @@
    "sha256": "caece626f7038db64a803a73f5985b563693f0130f3ff16b4b0a0a93c7aa0507"
   },
   "labels_extra/flood/pilot/policies_tx.parquet": {
-   "bytes": 189256624,
+   "bytes": 258316484,
    "category": "derived",
    "content_kind": "parquet-rows",
-   "content_sha256": "74a0a0f914f432da34256712f498a330f3c4ec0bd6b9d048a5a3678ca159f9f4",
+   "content_sha256": "e29129c3ab48c26f6e9e62f98c8a9722317e1e7052fc240f64271d55868e2a89",
    "rows": 11612805,
-   "sha256": "7a9cf11566305d67ef67b418f1f891767518ee9938738ae39fd0de60b21c4fbb"
+   "sha256": "74735da544ec26dab3efb2143415a847de16fca575d8fc77ebb7336a097baf59"
   },
   "labels_extra/flood/pilot/pr_tx_2000_2023.npy": {
    "bytes": 2917324928,
