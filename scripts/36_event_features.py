@@ -107,13 +107,13 @@ def poisson_fe(y, x, expo, grp, boot_groups=None):
     return minimize(nll, np.zeros(x.shape[1]), method="BFGS").x
 
 
-def sec_cohort(nboot: int) -> None:
-    ev = events().sort_values("end")
+def harvey_policies(d0: pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.Timestamp]:
+    """Voluntary non-SFHA single-family policies in force on d0 (default: the day before Harvey), with NB date, sorted by NB."""
     cols = ["censusGeoid", "ratedFloodZone", "occupancyType", "policyEffectiveDate", "policyTerminationDate",
             "policyCount", "mandatoryPurchaseFlag", "originalNBDate", "postFIRMConstructionIndicator"]
     p = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
     p["occ"] = pd.to_numeric(p.occupancyType, errors="coerce")
-    d0 = HARVEY[0] - pd.Timedelta(days=1)
+    d0 = d0 if d0 is not None else HARVEY[0] - pd.Timedelta(days=1)
     eff, term = pd.to_datetime(p.policyEffectiveDate), pd.to_datetime(p.policyTerminationDate)
     z = p.ratedFloodZone.astype(str).str.upper().str[:1]
     keep = (p.occ.isin([1, 11]) & (eff <= d0) & (term.isna() | (term > d0)) & ~z.isin(["A", "V"])
@@ -121,14 +121,39 @@ def sec_cohort(nboot: int) -> None:
     p = p[keep].copy()
     p["geoid"] = p.censusGeoid.astype(str).str.zfill(12)
     p["county"] = p.geoid.str[:5]
+    p["tract"] = p.geoid.str[:11]
     p["nb"] = pd.to_datetime(p.originalNBDate, errors="coerce").dt.normalize()
-    p = p[p.nb.notna() & (p.nb <= d0)].sort_values("nb")
+    p["postfirm"] = p.postFIRMConstructionIndicator.astype(bool).astype(float)
+    return p[p.nb.notna() & (p.nb <= d0)].sort_values("nb"), d0
+
+
+def boot_fe(g: pd.DataFrame, cov: list[str], nboot: int, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """Poisson (county FE) coefficients for `cov` plus a county-clustered bootstrap."""
+    beta = poisson_fe(g.y.values, g[cov].values, g.n.values, g.county.values)
+    rng = np.random.default_rng(seed)
+    cts = g.county.unique()
+    parts = {k: v for k, v in g.groupby("county")}
+    bs = []
+    for _ in range(nboot):
+        gb = pd.concat([parts[k].assign(county=f"{k}_{i}") for i, k in enumerate(rng.choice(cts, len(cts)))])
+        bs.append(poisson_fe(gb.y.values, gb[cov].values, gb.n.values, gb.county.values))
+    return beta, np.array(bs)
+
+
+def print_coefs(cov: list[str], beta: np.ndarray, bs: np.ndarray) -> None:
+    for j, name in enumerate(cov):
+        lo, hi = np.percentile(bs[:, j], [2.5, 97.5])
+        print(f"  {name:>14}: log-rate coef {beta[j]:+.3f} [{lo:+.3f}, {hi:+.3f}]")
+
+
+def sec_cohort(nboot: int) -> None:
+    ev = events().sort_values("end")
+    p, d0 = harvey_policies()
     # most recent declared event of the county that ENDED before the NB date (no look-ahead)
     last = pd.merge_asof(p[["nb", "county"]].reset_index(), ev[["county", "end"]].rename(columns={"end": "ev_end"}),
                          left_on="nb", right_on="ev_end", by="county", direction="backward").set_index("index")
     gap = (p.nb - last.ev_end.reindex(p.index)).dt.days
     p["post"] = (gap.notna() & (gap <= 30.44 * WINDOW_MONTHS)).astype(float)
-    p["postfirm"] = p.postFIRMConstructionIndicator.astype(bool).astype(float)
     w = p.policyCount.astype(float)
     print(f"\n## cohort: voluntary non-SFHA single-family policies in force on {d0.date()}: {len(p):,} rows, "
           f"post-event buyer share {np.average(p.post, weights=w):.3f}")
@@ -148,33 +173,131 @@ def sec_cohort(nboot: int) -> None:
     cs = g.groupby("county").y.sum()
     g = g[g.county.isin(cs[cs >= 50].index)]
     print(f"counties with >= 50 Harvey claims: {g.county.nunique()}, block groups {len(g):,}")
-    x = g[["share_post", "share_pf"]].values
-    beta = poisson_fe(g.y.values, x, g.n.values, g.county.values)
-    rng = np.random.default_rng(0)
-    cts = g.county.unique()
-    parts = {k: v for k, v in g.groupby("county")}
-    bs = []
-    for _ in range(nboot):
-        pick = rng.choice(cts, len(cts))
-        gb = pd.concat([parts[k].assign(county=f"{k}_{i}") for i, k in enumerate(pick)])
-        bs.append(poisson_fe(gb.y.values, gb[["share_post", "share_pf"]].values, gb.n.values, gb.county.values))
-    bs = np.array(bs)
-    for j, name in enumerate(["share_post", "share_pf"]):
-        lo, hi = np.percentile(bs[:, j], [2.5, 97.5])
-        print(f"  {name}: log-rate coef {beta[j]:+.3f} [{lo:+.3f}, {hi:+.3f}]  "
-              f"(rate ratio, 100% vs 0%: {np.exp(beta[j]):.2f}x)")
+    cov = ["share_post", "share_pf"]
+    beta, bs = boot_fe(g, cov, nboot)
+    print_coefs(cov, beta, bs)
     print("  coefficient is the within-county association of the Harvey claim rate with the post-event-buyer share")
+
+
+def tract_hits(ev: pd.DataFrame, d_ref: pd.Timestamp, cutoff: pd.Timestamp) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Locally hit (tract, event) pairs before Harvey and tract-level prior intensity.
+
+    hit = >= 3 single-family claims inside the declared window of the county AND claims / in-force policies
+    (all zones, on d_ref) >= 2%. Returns (hits[tract, county, end], tracts[prior_rate, ever_hit])."""
+    cols = ["censusGeoid", "policyEffectiveDate", "policyTerminationDate", "policyCount", "occupancyType"]
+    q = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
+    q = q[pd.to_numeric(q.occupancyType, errors="coerce").isin([1, 11])]
+    eff, term = pd.to_datetime(q.policyEffectiveDate), pd.to_datetime(q.policyTerminationDate)
+    q = q[(eff <= d_ref) & (term.isna() | (term > d_ref))]
+    pol = q.policyCount.astype(float).groupby(q.censusGeoid.astype(str).str.zfill(12).str[:11]).sum()
+    c = load_claims()
+    c = c[c.occ.isin([1, 11]) & (c.date < cutoff)].reset_index(drop=True)
+    c["tract"] = c.geoid.str[:11]
+    e = ev[(ev.end < cutoff) & (ev.begin >= d_ref - pd.Timedelta(days=365 * 3))]
+    m = c[["county", "tract", "date"]].reset_index().merge(e, on="county")
+    m = m[(m.date >= m.begin) & (m.date <= m.end + pd.Timedelta(days=7))]
+    h = m.groupby(["disasterNumber", "tract", "county", "end"]).size().rename("n").reset_index()
+    h["rate"] = h.n / h.tract.map(pol)
+    hits = h[(h.n >= 3) & (h.rate >= 0.02)][["tract", "county", "end"]].sort_values("end")
+    prior = (h.groupby("tract").n.sum() / pol).dropna().rename("prior_rate")
+    tr = pd.DataFrame({"prior_rate": prior})
+    tr["ever_hit"] = tr.index.isin(hits.tract).astype(float)
+    print(f"declared events since {e.begin.min().date()}: {e.disasterNumber.nunique()}, "
+          f"(tract, event) hits: {len(hits):,} in {hits.tract.nunique():,} tracts")
+    return hits, tr
+
+
+def post_hit_flag(p: pd.DataFrame, hits: pd.DataFrame) -> pd.Series:
+    """1 if the policy's NB date is within WINDOW_MONTHS after the end of the latest hit of its own tract (no look-ahead)."""
+    h = hits.rename(columns={"end": "hit_end"}).sort_values("hit_end")
+    last = pd.merge_asof(p[["nb", "tract"]].reset_index(), h[["tract", "hit_end"]], left_on="nb",
+                         right_on="hit_end", by="tract", direction="backward").set_index("index")
+    gap = (p.nb - last.hit_end.reindex(p.index)).dt.days
+    return (gap.notna() & (gap <= 30.44 * WINDOW_MONTHS)).astype(float)
+
+
+def bg_table(p: pd.DataFrame, post: pd.Series, tr: pd.DataFrame, y_bg: pd.Series) -> pd.DataFrame:
+    w = p.policyCount.astype(float)
+    pr = p.tract.map(tr.prior_rate).fillna(0.0)
+    eh = p.tract.map(tr.ever_hit).fillna(0.0)
+    g = pd.DataFrame({"n": w.groupby(p.geoid).sum(), "n_post": (w * post).groupby(p.geoid).sum(),
+                      "n_pf": (w * p.postfirm).groupby(p.geoid).sum(), "n_pr": (w * np.log1p(100 * pr)).groupby(p.geoid).sum(),
+                      "n_eh": (w * eh).groupby(p.geoid).sum()})
+    g = g[g.n >= 20].copy()
+    g["y"] = y_bg.reindex(g.index).fillna(0)
+    g["county"] = g.index.str[:5]
+    g["share_hitbuy"], g["share_pf"] = g.n_post / g.n, g.n_pf / g.n
+    g["prior_int"], g["ever_hit"] = g.n_pr / g.n, g.n_eh / g.n
+    cs = g.groupby("county").y.sum()
+    return g[g.county.isin(cs[cs >= 50].index)]
+
+
+def sec_local(nboot: int, nperm: int, disaster: int | None) -> None:
+    ev = events()
+    if disaster is None:  # Harvey as originally run: statewide window, all counties
+        t0, t1, counties, label = HARVEY[0], HARVEY[1], None, "Harvey"
+    else:
+        o = ev[ev.disasterNumber == disaster]
+        t0, t1, counties, label = o.begin.min(), o.end.max() + pd.Timedelta(days=7), set(o.county), f"DR-{disaster}"
+    d0 = t0 - pd.Timedelta(days=1)
+    p, d0 = harvey_policies(d0)
+    if counties is not None:
+        p = p[p.county.isin(counties)]
+    hits, tr = tract_hits(ev, d0 - pd.Timedelta(days=600), t0)
+    c = load_claims()
+    c = c[c.occ.isin([1, 11]) & c.date.between(t0, t1)]
+    if counties is not None:
+        c = c[c.county.isin(counties)]
+    y_bg = c.groupby("geoid").size()
+    post = post_hit_flag(p, hits)
+    g = bg_table(p, post, tr, y_bg)
+    w = p.policyCount.astype(float)
+    print(f"\n## local [{label}]: window {t0.date()}..{t1.date()}, in force {d0.date()}: post-hit buyer share "
+          f"{np.average(post, weights=w):.3f} of {len(p):,} policy rows; block groups {len(g):,}, counties {g.county.nunique()}, "
+          f"claims {int(g.y.sum()):,}")
+    if g.county.nunique() < 3:
+        print("  too few counties for a clustered bootstrap; skipped")
+        return
+    print("share_hitbuy quantiles (10/50/90/99):", g.share_hitbuy.quantile([.1, .5, .9, .99]).round(3).to_dict())
+    for name, cov in [("no hazard control", ["share_hitbuy", "share_pf"]),
+                      ("+ tract prior intensity and ever-hit", ["share_hitbuy", "share_pf", "prior_int", "ever_hit"])]:
+        beta, bs = boot_fe(g, cov, nboot)
+        print(f"model: {name}")
+        print_coefs(cov, beta, bs)
+        if len(cov) == 4:
+            real = beta[0]
+    # placebo: reassign hit events to random tracts of the same county, keep the true hazard controls
+    rng = np.random.default_rng(1)
+    tracts_by_county = p.groupby("county").tract.unique()
+    null = []
+    for _ in range(nperm):
+        sh = hits.copy()
+        sh["tract"] = [rng.choice(tracts_by_county[k]) if k in tracts_by_county.index else t
+                       for k, t in zip(sh.county, sh.tract)]
+        gp = bg_table(p, post_hit_flag(p, sh), tr, y_bg)
+        gp = gp[gp.county.isin(g.county.unique())]
+        null.append(poisson_fe(gp.y.values, gp[["share_hitbuy", "share_pf", "prior_int", "ever_hit"]].values,
+                               gp.n.values, gp.county.values)[0])
+    null = np.array(null)
+    print(f"placebo ({nperm} within-county reshuffles of which tracts were hit): coef 2.5/50/97.5% = "
+          f"{np.percentile(null, 2.5):+.3f} / {np.median(null):+.3f} / {np.percentile(null, 97.5):+.3f}; "
+          f"real {real:+.3f}, share of placebo draws >= real: {(null >= real).mean():.2f}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sections", nargs="+", default=["known", "cohort"])
+    ap.add_argument("--sections", nargs="+", default=["known", "cohort", "local"])
     ap.add_argument("--boot", type=int, default=200)
+    ap.add_argument("--perm", type=int, default=40)
+    ap.add_argument("--disaster", type=int, nargs="*", default=[None], help="outcome FEMA disaster numbers (default: Harvey)")
     a = ap.parse_args()
     if "known" in a.sections:
         sec_known()
     if "cohort" in a.sections:
         sec_cohort(a.boot)
+    if "local" in a.sections:
+        for d in a.disaster:
+            sec_local(a.boot, a.perm, d)
 
 
 if __name__ == "__main__":

@@ -856,7 +856,56 @@ So code compliance is a **latent variable**; only coarse proxies are observable.
   Within-county Poisson of Harvey claim rate on the block-group share: coefficient -0.37 [-3.07, +0.51] (rate ratio 0.69x for 100% vs 0%): **no detectable effect**. The post-FIRM share coefficient is negative and clear (-0.90 [-1.13, -0.14]).
 - The null does not mean post-event buyers behave the same: the feature has little variation and the interval is wide.
 
-Next refinement: define "post-event" with local intensity (block-group or neighbour-tract claims in the previous event) instead of county-wide declarations.
+### Local-intensity version (`scripts/36_event_features.py --sections local`)
+
+- Hit = tract with >= 3 single-family claims inside a county's declared window and claims / in-force policies >= 2% (seven declared events 2013-10 to 2017-08: 917 hit (tract, event) pairs in 727 tracts).
+  Post-hit buyer = NB date within 24 months after the latest hit of the policy's own tract, no look-ahead. It is far more selective than the county flag: 9.1% of policy rows (block-group 90th percentile 0.37).
+- Harvey claim rate on block-group post-hit buyer share, Poisson, county fixed effects, 18 counties with >= 50 Harvey claims, 3,356 block groups, county-clustered bootstrap (100 draws):
+  - no hazard control: +1.80 [+1.26, +2.81] (a strong association, the same direction as "bought after being hit");
+  - plus tract prior claim intensity and ever-hit: **+0.10 [-0.49, +2.80]**, i.e. the association is gone once hazard is controlled.
+  - placebo (40 within-county reshuffles of which tracts were hit, true hazard controls kept): coefficient 2.5/50/97.5% = -0.66 / -0.22 / +0.26; real +0.10 sits inside it (share of placebo draws >= real: 0.10).
+### Replication on other outcome events (`--disaster 4332 4269 4272 4466`; outcome = claims in the declared counties and window, policies of those counties only)
+
+| Outcome event | Counties | Post-hit buyer share | Coef with hazard controls [95% CI] | Placebo 2.5-97.5% |
+|---|---|---|---|---|
+| Harvey 2017 (4332) | 18 | 9.5% | +0.14 [-0.45, +2.85] | [-0.77, +0.25] |
+| Tax Day 2016 (4269) | 4 | 2.3% | unusable (CI [-4.7, +6.9]) | too few counties |
+| Memorial/June 2016 (4272) | 4 | 3.2% | unusable (CI [-9.9, +3.6]) | too few counties |
+| Imelda 2019 (4466) | 6 | 39.2% | **+1.72 [+0.10, +3.72]** | [-0.59, +0.78] |
+
+- Imelda (2019) is the only replicate with enough exposure and a post-hit share that varies: after controlling for tract prior intensity and ever-hit, the post-hit buyer share is associated with a higher claim rate, above the placebo range, but the bootstrap
+  lower bound is barely above 0 and rests on six counties. Harvey does not show it. So the evidence is mixed, not a replication.
+- Geoid vintage check: 99% of 2019 claim block groups match the 2010-vintage policy block groups (96-98% in 2015-2017), so no crosswalk was needed up to 2019.
+- **There was no 2019 surge in NFIP new business.** First-term purchases (policy effective date within 45 days of `originalNBDate`; only about 12% of policy rows are first-term, counted by `policyCount`), Texas single-family non-SFHA, by quarter:
+  2016Q2/Q3 24.9k/28.3k voluntary; 2017Q4 60.5k (Harvey); 2018Q2/Q3 42.1k/39.6k; 2019Q2/Q3 23.7k/23.6k; 2020Q2/Q3 22.8k/31.5k; Q1 and Q4 are always 3-4x lower (seasonal). 2019 is back at the 2016 and 2020 level.
+  The 39% post-hit share for Imelda is a **stock effect**: on 2019-09-16, 50% of the voluntary non-SFHA stock in the six Imelda counties (plus Harris, all Harvey counties) had its first term inside the previous 24 months, 27.6% in the 12 months after Harvey,
+  against 35.5% before Harvey itself. The 24-month window simply still contained the Harvey wave. Pulse of new sales after an event lasts about four quarters; the stock excess decays slower through lapses.
+- Consequence for the Imelda coefficient (+1.72): the "post-hit buyer" is mostly a Harvey-wave buyer in tracts Harvey flooded, and those tracts can flood again for hazard reasons the tract-level controls miss. It does not show a 2019 shock.
+### Stock-flow model of take-up inertia (`scripts/37_stock_flow_inertia.py`, helper `src/wxrisk/panel.py`)
+
+Texas single-family non-SFHA voluntary policies, county x quarter 2010Q1-2023Q4, 47 counties with mean stock >= 300. New purchases (first-term rows) follow
+Poisson(Sref[c] * exp(county effect + season + 7 lags of log1p(100 * claims per in-force policy))); stock is rebuilt from purchase cohorts with a pooled survival curve. The model gives exposure *given* the realised local hazard.
+
+- **Cohort survival is the same for every cohort**: pooled share still in force at age 1 / 2 / 3 years about 0.75 / 0.62 / 0.51 (train to 2019Q4). The Harvey cohort (2017Q4: 0.75, 0.63, 0.48) is not special: an event raises the stock through inflow, not through lower churn.
+- **Pulse kernel** (train to 2019Q4, per unit of the transformed intensity): lag 0 +0.0, lag 1 +0.5, lags 2-4 +0.2 to +0.3, lag 5-6 about 0: a pulse of about four to five quarters on top of a strong season (Q2/Q3/Q4 vs Q1: +0.95 / +1.12 / +0.46 in log rate).
+- **Held out, origin 2019Q4 (test 2020Q1-2023Q4)**: one-step skill of the event model over season-only +0.18 [+0.13, +0.25] (log1p N, county-quarter, county-clustered bootstrap); state-total absolute error 0.28 vs 0.47 (season-only) and 0.36 (last-year scaled).
+  Stock: event model beats persistence only at h = 12 quarters (county wAPE 0.083 vs 0.156); at h = 4 and 8 persistence is better (0.050 / 0.028 vs 0.108 / 0.097) because the stock was nearly flat.
+- **Held out, origin 2016Q4 (test 2017-2023, Harvey out of sample)**: event model skill over season-only +0.02 [-0.01, +0.05], no better than the interval: the pulse could not be learned from the small events before 2017, and the model missed the size of the 2017Q4 peak (12.8k predicted vs 63.4k observed).
+  Stock with the event model still beats persistence at h = 8 / 12 (county wAPE 0.156 / 0.197 vs 0.246 / 0.271), partly because cohort decay is modelled.
+- Overprediction in 2021Q4-2022Q1 (12.8k vs 5.0k, 8.0k vs 3.7k) coincides with the start of Risk Rating 2.0 (October 2021); not tested.
+- **Economic covariates (new data: Freddie Mac mortgage rate, Zillow home values, Census building permits, NFIP premium; lagged one quarter, standardised on the training quarters).**
+  All four together raise the county-quarter log1p skill (event+econ vs event, origin 2019Q4: +0.37 [+0.26, +0.45]) but make the state totals worse (absolute error 0.41 vs 0.28 for the event model; level underpredicted by 40-50% in 2020-2022, the covariates extrapolate far outside the training range: 2021-22 home-value boom, premium rise around Risk Rating 2.0).
+  One feature at a time (origin 2019Q4, skill over the event model / state-total error): mortgage-rate change -0.11 [-0.13, -0.09] / 0.36; home-value change +0.11 [+0.02, +0.20] / 0.37; **previous-year permits +0.15 [+0.10, +0.22] / 0.25**; premium +0.06 [-0.18, +0.26] / 0.51.
+  Permits is the only one that helps both metrics, **but its sign flips with the training window**: coefficient +0.60 per s.d. (train to 2019Q4) and -1.19 (train to 2016Q4, skill +0.03 [-0.25, +0.24]). Permits plus home value together: +0.005 [-0.10, +0.12].
+  Reading: with annual or smooth county series, 40-ish quarters and two different regimes, the economic covariates do not give a stable gain; the 2019Q4 result is not a finding. What would help is a variable with real transaction content (county monthly home sales, mortgage originations).
+- Caveats: realised hazard is conditioned on, so this is not a forecast of events; unconstrained lags are noisy when training events are small; survival pools counties; no housing-market, rate or premium covariates; statewide counties with stock >= 300 only.
+  A first version without the saturating intensity transform and with stock-proportional flow predicted 160k purchases in 2017Q3 and diverged: the exponential link must not be extrapolated.
+- Candidate explanation (the user's, **untested**): word of mouth along a small-world-like social network with random links, from flooded owners to uninsured neighbours. This data has no social network, so it cannot be told apart from
+  (a) finer hazard that tract-level controls miss, (b) community outreach (CRS, officials, lenders, insurers), (c) housing growth in new subdivisions. Not a conclusion.
+
+- Reading: the raw association is mostly "places that flooded before flood again". No human-factor effect is detectable here; with 18 counties and one outcome event the interval is too wide to rule one out.
+- Caveats: Harvey claim rate mixes hazard and insured-composition; tract-level hit and prior intensity are crude hazard controls; claims and policies of 2015-2017 share 2010 block-group codes, later years do not.
+  A second outcome event (Imelda 2019, Beryl 2024) would need the 2020 block-group crosswalk (`wxrisk.bg_crosswalk`).
 
 ## Conclusions
 

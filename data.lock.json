@@ -541,6 +541,104 @@
    "content_sha256": "61919664f4c23bd3b07202d2f3fb0195bea21ef75c0e9565366849f178687e7a",
    "sha256": "9394913edbd6f72791b06b84509e59ea2d275d10b73ae27ef87df3bdb061890c"
   },
+  "labels_extra/econ/bps_county_2010.txt": {
+   "bytes": 362128,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "f2b077da9ffadb3ddd9ffca58218aa893c56a1c326b726ece00b13e3ccdab65f",
+   "sha256": "f2b077da9ffadb3ddd9ffca58218aa893c56a1c326b726ece00b13e3ccdab65f"
+  },
+  "labels_extra/econ/bps_county_2011.txt": {
+   "bytes": 360828,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "2f812845ca47edc0a008f70acc901209f18a7c73519be0e55a75f01a2b94af50",
+   "sha256": "2f812845ca47edc0a008f70acc901209f18a7c73519be0e55a75f01a2b94af50"
+  },
+  "labels_extra/econ/bps_county_2012.txt": {
+   "bytes": 364006,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "c0421dfa5c55e8ab3fe3ece81d4bb4c2b0390275697ce118e3d2ce5dc4a9c28d",
+   "sha256": "c0421dfa5c55e8ab3fe3ece81d4bb4c2b0390275697ce118e3d2ce5dc4a9c28d"
+  },
+  "labels_extra/econ/bps_county_2013.txt": {
+   "bytes": 365615,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "a0d11a159354d31fbe3c3b35adfd192b9ec5cb19e5927fb92f4a2ef20edafa29",
+   "sha256": "a0d11a159354d31fbe3c3b35adfd192b9ec5cb19e5927fb92f4a2ef20edafa29"
+  },
+  "labels_extra/econ/bps_county_2014.txt": {
+   "bytes": 367713,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "70076b975483d22a3834b0e54886308d5182a5112c39d0a57d98bd6cde691b76",
+   "sha256": "70076b975483d22a3834b0e54886308d5182a5112c39d0a57d98bd6cde691b76"
+  },
+  "labels_extra/econ/bps_county_2015.txt": {
+   "bytes": 368984,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "5f85e614b90f6a3b53e3f9425415221e014107567d8c23ec974dba5c50a0774e",
+   "sha256": "5f85e614b90f6a3b53e3f9425415221e014107567d8c23ec974dba5c50a0774e"
+  },
+  "labels_extra/econ/bps_county_2016.txt": {
+   "bytes": 369295,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "6ff9421bd21ce5f0a3d4c986b20ef07118325871570e0aa3f97983ee7e1a5613",
+   "sha256": "6ff9421bd21ce5f0a3d4c986b20ef07118325871570e0aa3f97983ee7e1a5613"
+  },
+  "labels_extra/econ/bps_county_2017.txt": {
+   "bytes": 366973,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "1e0d55f4706598f8971eba452a2fd2855a2d7b0ec1262c3dd246194968654456",
+   "sha256": "1e0d55f4706598f8971eba452a2fd2855a2d7b0ec1262c3dd246194968654456"
+  },
+  "labels_extra/econ/bps_county_2018.txt": {
+   "bytes": 366773,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "7804746d2fd77346b6d981a607c12897051025741f1d17c29653bb5dde032e04",
+   "sha256": "7804746d2fd77346b6d981a607c12897051025741f1d17c29653bb5dde032e04"
+  },
+  "labels_extra/econ/bps_county_2019.txt": {
+   "bytes": 368766,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "4ea529befaa1d93f8a20fe79c2aa4430456e91766e5ecf07ad4840457703b25b",
+   "sha256": "4ea529befaa1d93f8a20fe79c2aa4430456e91766e5ecf07ad4840457703b25b"
+  },
+  "labels_extra/econ/bps_county_2020.txt": {
+   "bytes": 369908,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "04efba6d3ffecd19340dece9d76d01343f8b97647617c79422c04e227e2d7293",
+   "sha256": "04efba6d3ffecd19340dece9d76d01343f8b97647617c79422c04e227e2d7293"
+  },
+  "labels_extra/econ/bps_county_2021.txt": {
+   "bytes": 372012,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "ce2c9aa7b7c036ddbc99d6dc398ddf71e4a0ad0fc2782db883b559ca264f14b6",
+   "sha256": "ce2c9aa7b7c036ddbc99d6dc398ddf71e4a0ad0fc2782db883b559ca264f14b6"
+  },
+  "labels_extra/econ/bps_county_2022.txt": {
+   "bytes": 374937,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "0a88c16861ede81b04f8785e1c626e772510f33f1de9452f7592d86d308e2b5c",
+   "sha256": "0a88c16861ede81b04f8785e1c626e772510f33f1de9452f7592d86d308e2b5c"
+  },
+  "labels_extra/econ/bps_county_2023.txt": {
+   "bytes": 374707,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "fab11d759e905ff61838b8dfa41c0f2082e150cad07a20c65ddd620a007aa158",
+   "sha256": "fab11d759e905ff61838b8dfa41c0f2082e150cad07a20c65ddd620a007aa158"
+  },
   "labels_extra/fig.json": {
    "bytes": 118,
    "category": "derived",
@@ -1687,12 +1785,12 @@
    "sha256": "caece626f7038db64a803a73f5985b563693f0130f3ff16b4b0a0a93c7aa0507"
   },
   "labels_extra/flood/pilot/policies_tx.parquet": {
-   "bytes": 258316484,
+   "bytes": 279177540,
    "category": "derived",
    "content_kind": "parquet-rows",
-   "content_sha256": "e29129c3ab48c26f6e9e62f98c8a9722317e1e7052fc240f64271d55868e2a89",
+   "content_sha256": "5205d3f9d206ae5c7faa63ee866830a822897a4fffcec20a3a2f19b336b6814c",
    "rows": 11612805,
-   "sha256": "74735da544ec26dab3efb2143415a847de16fca575d8fc77ebb7336a097baf59"
+   "sha256": "ad5880da043a1afa96124e476f43b31c540fa977ff9284e76e8dac990361d50f"
   },
   "labels_extra/flood/pilot/pr_tx_2000_2023.npy": {
    "bytes": 2917324928,

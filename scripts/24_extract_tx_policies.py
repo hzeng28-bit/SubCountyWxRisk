@@ -28,7 +28,9 @@ COLS = ["propertyState", "censusGeoid", "reportedZipCode", "policyEffectiveDate"
         "postFIRMConstructionIndicator", "primaryResidenceIndicator", "originalConstructionDate",
         "mandatoryPurchaseFlag", "policyTermIndicator", "foundationType", "numberOfFloorsInInsuredBuilding",
         # new-business history (scripts 35-36): first NFIP policy date, new/renewal/transfer code, sale date
-        "originalNBDate", "rolloverTransferCode", "propertyPurchaseDate", "nfipRatedCommunityNumber"]
+        "originalNBDate", "rolloverTransferCode", "propertyPurchaseDate", "nfipRatedCommunityNumber",
+        # price (script 37): total annual premium of the policy term
+        "totalInsurancePremiumOfThePolicy"]
 
 
 def check_bulk_file() -> None:
