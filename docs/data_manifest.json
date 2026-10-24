@@ -1,0 +1,1178 @@
+{
+ "entries": {
+  ".lock_cache.json": {
+   "bytes": 397559
+  },
+  "audit/building_attrs.txt": {
+   "bytes": 3959
+  },
+  "audit/flood_definition_diag.txt": {
+   "bytes": 2871
+  },
+  "audit/flood_pilot_diag.txt": {
+   "bytes": 3919
+  },
+  "audit/flood_pilot_v1.txt": {
+   "bytes": 1682
+  },
+  "audit/flood_pilot_v2.txt": {
+   "bytes": 2851
+  },
+  "audit/flood_sources.txt": {
+   "bytes": 3292
+  },
+  "audit/label_comparison.err": {
+   "bytes": 388
+  },
+  "audit/label_comparison.txt": {
+   "bytes": 4376
+  },
+  "audit/label_comparison_flood.err": {
+   "bytes": 648
+  },
+  "audit/label_comparison_flood.txt": {
+   "bytes": 3235
+  },
+  "audit/label_comparison_warn.err": {
+   "bytes": 388
+  },
+  "audit/label_comparison_warn.txt": {
+   "bytes": 2408
+  },
+  "audit/mesh_vs_reports.txt": {
+   "bytes": 1134
+  },
+  "audit/nfip_granularity.txt": {
+   "bytes": 6121
+  },
+  "audit/qpe_vs_flood.err": {
+   "bytes": 0
+  },
+  "audit/qpe_vs_flood.txt": {
+   "bytes": 1682
+  },
+  "audit/report.txt": {
+   "bytes": 7174
+  },
+  "audit/source_agreement.txt": {
+   "bytes": 1506
+  },
+  "audit/stderr.txt": {
+   "bytes": 388
+  },
+  "cds/manifest.json": {
+   "bytes": 1164
+  },
+  "cds/plev_#.nc": {
+   "bytes": 886580188,
+   "collapsed": true,
+   "example": "plev_2000.nc",
+   "files": 23
+  },
+  "cds/precip_#.nc": {
+   "bytes": 86202261,
+   "collapsed": true,
+   "example": "precip_2000.nc",
+   "files": 23
+  },
+  "cds/single_#.nc": {
+   "bytes": 589502157,
+   "collapsed": true,
+   "example": "single_2000.nc",
+   "files": 23
+  },
+  "ens_tp24_2018_lead72h_00z.npz": {
+   "bytes": 140003913
+  },
+  "ens_tp24_2021_lead72h_00z.npz": {
+   "bytes": 139864593
+  },
+  "era5_tp24_clim_1990_2017_00z.npz": {
+   "bytes": 77085814
+  },
+  "fetch_2017.log": {
+   "bytes": 3346
+  },
+  "fetch_a.log": {
+   "bytes": 6810
+  },
+  "fetch_all.log": {
+   "bytes": 3594
+  },
+  "fetch_all2.log": {
+   "bytes": 674
+  },
+  "fetch_b.log": {
+   "bytes": 7923
+  },
+  "flood_labels_county_day.parquet": {
+   "bytes": 580177,
+   "columns": {
+    "cty": "BYTE_ARRAY",
+    "date": "INT64",
+    "f_100k": "INT32",
+    "f_10k": "INT32",
+    "f_any": "INT32",
+    "f_ff": "INT32",
+    "f_fl": "INT32",
+    "g_rise": "INT32",
+    "h_decl": "INT32",
+    "has_gauge": "BOOLEAN",
+    "n_claims": "DOUBLE",
+    "n_ff": "DOUBLE",
+    "nfip": "INT32",
+    "paid": "DOUBLE",
+    "w_ff": "INT32",
+    "year": "INT32"
+   },
+   "rows": 394128
+  },
+  "idx/monthly.ao.index.b50.current.ascii.table": {
+   "bytes": 6919
+  },
+  "idx/nino34.long.anom.data": {
+   "bytes": 29073
+  },
+  "kmeans_full.log": {
+   "bytes": 6286
+  },
+  "kmeans_k_sweep.csv": {
+   "bytes": 520
+  },
+  "kmeans_refactor.log": {
+   "bytes": 6188
+  },
+  "kmeans_results.csv": {
+   "bytes": 5414
+  },
+  "kmeans_results_refactor.csv": {
+   "bytes": 5433
+  },
+  "label_comparison.csv": {
+   "bytes": 3702
+  },
+  "label_comparison_flood.csv": {
+   "bytes": 2693
+  },
+  "label_comparison_warn.csv": {
+   "bytes": 1966
+  },
+  "labels_extra/census/cb_2020_us_county_20m.zip": {
+   "bytes": 893148
+  },
+  "labels_extra/dl.log": {
+   "bytes": 896
+  },
+  "labels_extra/dl.sh": {
+   "bytes": 773
+  },
+  "labels_extra/doi.html": {
+   "bytes": 24701
+  },
+  "labels_extra/eagle.html": {
+   "bytes": 4546
+  },
+  "labels_extra/fig.json": {
+   "bytes": 118
+  },
+  "labels_extra/flood/dl_nwis.log": {
+   "bytes": 1335
+  },
+  "labels_extra/flood/dl_nwis.sh": {
+   "bytes": 704
+  },
+  "labels_extra/flood/dl_policies.log": {
+   "bytes": 0
+  },
+  "labels_extra/flood/fema_flood_declarations.parquet": {
+   "bytes": 55479,
+   "columns": {
+    "declarationDate": "BYTE_ARRAY",
+    "declarationRequestDate": "BYTE_ARRAY",
+    "declarationRequestNumber": "BYTE_ARRAY",
+    "declarationTitle": "BYTE_ARRAY",
+    "declarationType": "BYTE_ARRAY",
+    "designatedArea": "BYTE_ARRAY",
+    "designatedIncidentTypes": "BYTE_ARRAY",
+    "disasterCloseoutDate": "BYTE_ARRAY",
+    "disasterNumber": "INT64",
+    "femaDeclarationString": "BYTE_ARRAY",
+    "fipsCountyCode": "BYTE_ARRAY",
+    "fipsStateCode": "BYTE_ARRAY",
+    "fyDeclared": "INT64",
+    "hash": "BYTE_ARRAY",
+    "hmProgramDeclared": "BOOLEAN",
+    "iaProgramDeclared": "BOOLEAN",
+    "id": "BYTE_ARRAY",
+    "ihProgramDeclared": "BOOLEAN",
+    "incidentBeginDate": "BYTE_ARRAY",
+    "incidentEndDate": "BYTE_ARRAY",
+    "incidentId": "BYTE_ARRAY",
+    "incidentType": "BYTE_ARRAY",
+    "lastIAFilingDate": "BYTE_ARRAY",
+    "lastRefresh": "BYTE_ARRAY",
+    "paProgramDeclared": "BOOLEAN",
+    "placeCode": "BYTE_ARRAY",
+    "region": "INT64",
+    "state": "BYTE_ARRAY",
+    "tribalRequest": "BOOLEAN"
+   },
+   "rows": 349
+  },
+  "labels_extra/flood/fetch_fema.py": {
+   "bytes": 1188
+  },
+  "labels_extra/flood/fetch_nfip.log": {
+   "bytes": 483
+  },
+  "labels_extra/flood/nfip_claims_conmaz.parquet": {
+   "bytes": 1099562,
+   "columns": {
+    "__index_level_0__": "INT64",
+    "agricultureStructureIndicator": "BOOLEAN",
+    "amountPaidOnBuildingClaim": "DOUBLE",
+    "amountPaidOnContentsClaim": "DOUBLE",
+    "amountPaidOnIncreasedCostOfComplianceClaim": "DOUBLE",
+    "asOfDate": "BYTE_ARRAY",
+    "baseFloodElevation": "DOUBLE",
+    "basementEnclosureCrawlspaceType": "DOUBLE",
+    "buildingDamageAmount": "DOUBLE",
+    "buildingDeductibleCode": "BYTE_ARRAY",
+    "buildingDescriptionCode": "DOUBLE",
+    "buildingPropertyValue": "DOUBLE",
+    "buildingReplacementCost": "DOUBLE",
+    "causeOfDamage": "BYTE_ARRAY",
+    "censusGeoid": "BYTE_ARRAY",
+    "condominiumCoverageTypeCode": "BYTE_ARRAY",
+    "contentsDamageAmount": "DOUBLE",
+    "contentsDeductibleCode": "BYTE_ARRAY",
+    "contentsPropertyValue": "DOUBLE",
+    "contentsReplacementCost": "DOUBLE",
+    "countyCode": "BYTE_ARRAY",
+    "crsClassCode": "DOUBLE",
+    "dateOfLoss": "BYTE_ARRAY",
+    "disasterAssistanceCoverageRequired": "DOUBLE",
+    "elevatedBuildingIndicator": "BOOLEAN",
+    "elevationCertificateIndicator": "BYTE_ARRAY",
+    "elevationDifference": "DOUBLE",
+    "eventDesignationNumber": "INT32",
+    "exteriorWaterDepth": "DOUBLE",
+    "ficoNumber": "DOUBLE",
+    "floodCharacteristicsIndicator": "DOUBLE",
+    "floodEvent": "BYTE_ARRAY",
+    "floodWaterDuration": "DOUBLE",
+    "floodZoneCurrent": "BYTE_ARRAY",
+    "floodproofedIndicator": "BOOLEAN",
+    "foundationType": "BYTE_ARRAY",
+    "houseWorship": "BOOLEAN",
+    "iccCoverage": "DOUBLE",
+    "id": "INT64",
+    "interiorWaterDepth": "DOUBLE",
+    "latitude": "DOUBLE",
+    "locationOfContents": "DOUBLE",
+    "longitude": "DOUBLE",
+    "lowestAdjacentGrade": "DOUBLE",
+    "lowestFloorElevation": "DOUBLE",
+    "mostRecentPaymentDate": "BYTE_ARRAY",
+    "mostRecentRecoveryDate": "BYTE_ARRAY",
+    "netBuildingPaymentAmount": "DOUBLE",
+    "netContentsPaymentAmount": "DOUBLE",
+    "netIccPaymentAmount": "DOUBLE",
+    "nfipCommunityName": "BYTE_ARRAY",
+    "nfipCommunityNumberCurrent": "BYTE_ARRAY",
+    "nfipRatedCommunityNumber": "BYTE_ARRAY",
+    "nonPaymentReasonBuilding": "BYTE_ARRAY",
+    "nonPaymentReasonContents": "BYTE_ARRAY",
+    "nonProfitIndicator": "BOOLEAN",
+    "numberOfFloorsInTheInsuredBuilding": "DOUBLE",
+    "numberOfUnits": "DOUBLE",
+    "obstructionType": "DOUBLE",
+    "occupancyType": "DOUBLE",
+    "openDate": "BYTE_ARRAY",
+    "originalConstructionDate": "BYTE_ARRAY",
+    "originalNBDate": "BYTE_ARRAY",
+    "policyCount": "INT64",
+    "postFIRMConstructionIndicator": "BOOLEAN",
+    "preFirmIndicator": "BOOLEAN",
+    "primaryResidenceIndicator": "BOOLEAN",
+    "rateMethod": "BYTE_ARRAY",
+    "ratedFloodZone": "BYTE_ARRAY",
+    "rentalPropertyIndicator": "BOOLEAN",
+    "replacementCostBasis": "BYTE_ARRAY",
+    "reportedCity": "BYTE_ARRAY",
+    "reportedZipCode": "BYTE_ARRAY",
+    "smallBusinessIndicatorBuilding": "BOOLEAN",
+    "state": "BYTE_ARRAY",
+    "stateOwnedIndicator": "BOOLEAN",
+    "totalBldgClaimPmtRecovery": "DOUBLE",
+    "totalBuildingInsuranceCoverage": "INT64",
+    "totalContentsClaimPmtRecovery": "DOUBLE",
+    "totalContentsInsuranceCoverage": "INT64",
+    "totalIccClaimPmtRecovery": "DOUBLE",
+    "totalSalvageRecovery": "DOUBLE",
+    "totalSubrogationRecovery": "DOUBLE",
+    "waterDepth": "DOUBLE",
+    "yearOfLoss": "INT64"
+   },
+   "rows": 13076
+  },
+  "labels_extra/flood/nfip_national/nfip_#.parquet": {
+   "bytes": 69303883,
+   "collapsed": true,
+   "example": "nfip_2000.parquet",
+   "example_schema": {
+    "columns": {
+     "amountPaidOnBuildingClaim": "DOUBLE",
+     "amountPaidOnContentsClaim": "DOUBLE",
+     "buildingDamageAmount": "DOUBLE",
+     "causeOfDamage": "BYTE_ARRAY",
+     "censusGeoid": "BYTE_ARRAY",
+     "contentsDamageAmount": "DOUBLE",
+     "countyCode": "BYTE_ARRAY",
+     "dateOfLoss": "BYTE_ARRAY",
+     "elevatedBuildingIndicator": "BOOLEAN",
+     "exteriorWaterDepth": "DOUBLE",
+     "floodCharacteristicsIndicator": "DOUBLE",
+     "floodEvent": "BYTE_ARRAY",
+     "floodWaterDuration": "INT64",
+     "foundationType": "BYTE_ARRAY",
+     "id": "INT64",
+     "interiorWaterDepth": "DOUBLE",
+     "netBuildingPaymentAmount": "DOUBLE",
+     "netContentsPaymentAmount": "DOUBLE",
+     "nfipRatedCommunityNumber": "BYTE_ARRAY",
+     "occupancyType": "DOUBLE",
+     "policyCount": "INT64",
+     "postFIRMConstructionIndicator": "BOOLEAN",
+     "ratedFloodZone": "BYTE_ARRAY",
+     "reportedZipCode": "BYTE_ARRAY",
+     "state": "BYTE_ARRAY",
+     "totalBuildingInsuranceCoverage": "INT64",
+     "waterDepth": "DOUBLE",
+     "yearOfLoss": "INT64"
+    },
+    "rows": 23247
+   },
+   "files": 24
+  },
+  "labels_extra/flood/nfip_penetration.parquet": {
+   "bytes": 225380,
+   "columns": {
+    "asOfDate": "BYTE_ARRAY",
+    "county": "BYTE_ARRAY",
+    "fipsCode": "BYTE_ARRAY",
+    "id": "BYTE_ARRAY",
+    "resContractsInForce": "DOUBLE",
+    "resContractsInForceSfha": "DOUBLE",
+    "resPenetrationRate": "DOUBLE",
+    "resPenetrationRateSfha": "DOUBLE",
+    "state": "BYTE_ARRAY",
+    "totalResStructures": "DOUBLE",
+    "totalResStructuresSfha": "DOUBLE"
+   },
+   "rows": 3159
+  },
+  "labels_extra/flood/nfip_policies_v3.parquet": {
+   "bytes": 3713009365,
+   "columns": {
+    "additionalBuildingRate": "INT32",
+    "additionalContentsRate": "INT32",
+    "agricultureStructureIndicator": "BOOLEAN",
+    "asOfDate": "INT64",
+    "baseFloodElevation": "INT32",
+    "basementEnclosureCrawlspaceType": "INT32",
+    "basicBuildingRate": "INT32",
+    "basicContentsRate": "INT32",
+    "buildingDeductibleCode": "BYTE_ARRAY",
+    "buildingDescriptionCode": "INT32",
+    "buildingOnFederalLand": "BOOLEAN",
+    "buildingOverWaterType": "INT32",
+    "buildingPurpose": "BYTE_ARRAY",
+    "buildingReplacementCost": "INT64",
+    "cancellationDateOfFloodPolicy": "INT32",
+    "cancellationVoidanceReasonCode": "BYTE_ARRAY",
+    "censusGeoid": "BYTE_ARRAY",
+    "communityProbationSurcharge": "INT32",
+    "condominiumCoverageTypeCode": "BYTE_ARRAY",
+    "construction": "BOOLEAN",
+    "contentsDeductibleCode": "BYTE_ARRAY",
+    "crsClassCode": "INT32",
+    "disasterAssistanceCoverageRequiredCode": "INT32",
+    "elevatedBuildingIndicator": "BOOLEAN",
+    "elevationCertificateIndicator": "BYTE_ARRAY",
+    "elevationDifference": "INT32",
+    "enclosureTypeCode": "BYTE_ARRAY",
+    "endorsementEffectiveDate": "INT32",
+    "federalPolicyFee": "INT32",
+    "femaRegion": "INT32",
+    "floodZoneCurrent": "BYTE_ARRAY",
+    "floodproofedIndicator": "BOOLEAN",
+    "foundationType": "BYTE_ARRAY",
+    "fullRiskPremium": "INT32",
+    "grandfatheringTypeCode": "INT32",
+    "hfiaaSurcharge": "INT32",
+    "houseOfWorshipIndicator": "BOOLEAN",
+    "iccPremium": "INT32",
+    "id": "INT64",
+    "insuranceToValueCode": "INT32",
+    "latitude": "INT32",
+    "locationOfContents": "INT32",
+    "longitude": "INT32",
+    "lowestAdjacentGrade": "INT32",
+    "lowestFloorElevation": "INT32",
+    "mandatoryPurchaseFlag": "BOOLEAN",
+    "mapPanelNumber": "BYTE_ARRAY",
+    "mapPanelSuffix": "BYTE_ARRAY",
+    "nfipCommunityName": "BYTE_ARRAY",
+    "nfipCommunityNumberCurrent": "BYTE_ARRAY",
+    "nfipRatedCommunityNumber": "BYTE_ARRAY",
+    "nonProfitIndicator": "BOOLEAN",
+    "numberOfFloorsInInsuredBuilding": "INT32",
+    "obstructionType": "INT32",
+    "occupancyType": "INT32",
+    "originalConstructionDate": "INT32",
+    "originalNBDate": "INT32",
+    "policyCost": "INT32",
+    "policyCount": "INT32",
+    "policyEffectiveDate": "INT32",
+    "policyTermIndicator": "INT32",
+    "policyTerminationDate": "INT32",
+    "postFIRMConstructionIndicator": "BOOLEAN",
+    "postFirmVzoneIndicator": "BOOLEAN",
+    "preFIRMConstructionIndicator": "BOOLEAN",
+    "premiumPaymentIndicator": "INT32",
+    "primaryResidenceIndicator": "BOOLEAN",
+    "programTypeIndicator": "BOOLEAN",
+    "propertyPurchaseDate": "INT32",
+    "propertyState": "BYTE_ARRAY",
+    "rateMethod": "BYTE_ARRAY",
+    "ratedFloodZone": "BYTE_ARRAY",
+    "regularEmergencyProgramIndicator": "BYTE_ARRAY",
+    "rentalPropertyIndicator": "BOOLEAN",
+    "reportedCity": "BYTE_ARRAY",
+    "reportedZipCode": "BYTE_ARRAY",
+    "reserveFundAssessment": "INT32",
+    "rolloverTransferCode": "BYTE_ARRAY",
+    "seasonallyOccupied": "BOOLEAN",
+    "smallBusinessIndicatorBuilding": "BOOLEAN",
+    "stateOwnedIndicator": "BOOLEAN",
+    "subsidizedRateType": "BYTE_ARRAY",
+    "tenantIndicator": "BOOLEAN",
+    "totalBuildingInsuranceCoverage": "INT32",
+    "totalContentsInsuranceCoverage": "INT32",
+    "totalInsurancePremiumOfThePolicy": "INT32",
+    "waitingPeriodType": "BYTE_ARRAY"
+   },
+   "rows": 74739461
+  },
+  "labels_extra/flood/nwis/dv_az_#.rdb": {
+   "bytes": 23086379,
+   "collapsed": true,
+   "example": "dv_az_2000.rdb",
+   "files": 23
+  },
+  "labels_extra/flood/nwis/dv_co_#.rdb": {
+   "bytes": 40421110,
+   "collapsed": true,
+   "example": "dv_co_2000.rdb",
+   "files": 23
+  },
+  "labels_extra/flood/nwis/dv_nm_#.rdb": {
+   "bytes": 20668560,
+   "collapsed": true,
+   "example": "dv_nm_2000.rdb",
+   "files": 23
+  },
+  "labels_extra/flood/nwis/sites_az.rdb": {
+   "bytes": 55742
+  },
+  "labels_extra/flood/nwis/sites_co.rdb": {
+   "bytes": 148407
+  },
+  "labels_extra/flood/nwis/sites_nm.rdb": {
+   "bytes": 56196
+  },
+  "labels_extra/flood/nwis_co_2018.rdb": {
+   "bytes": 1783525
+  },
+  "labels_extra/flood/pilot/abl_base.csv": {
+   "bytes": 563
+  },
+  "labels_extra/flood/pilot/abl_nosfha.csv": {
+   "bytes": 564
+  },
+  "labels_extra/flood/pilot/bg2010_tx.zip": {
+   "bytes": 5146382
+  },
+  "labels_extra/flood/pilot/bg2020_tx.zip": {
+   "bytes": 7588326
+  },
+  "labels_extra/flood/pilot/bg_crosswalk_tx.parquet": {
+   "bytes": 319787,
+   "columns": {
+    "bg10": "BYTE_ARRAY",
+    "code": "BYTE_ARRAY",
+    "how": "BYTE_ARRAY",
+    "share": "DOUBLE"
+   },
+   "rows": 24204
+  },
+  "labels_extra/flood/pilot/bg_terrain.parquet": {
+   "bytes": 358981,
+   "columns": {
+    "bg10": "BYTE_ARRAY",
+    "elev": "FLOAT",
+    "pos3": "FLOAT",
+    "rel1": "FLOAT",
+    "rel10": "FLOAT",
+    "rel3": "FLOAT",
+    "slope": "DOUBLE"
+   },
+   "rows": 15805
+  },
+  "labels_extra/flood/pilot/claims_cum.npy": {
+   "bytes": 323307208
+  },
+  "labels_extra/flood/pilot/county_daily.npz": {
+   "bytes": 4648142
+  },
+  "labels_extra/flood/pilot/expo_2010_2023.npz": {
+   "bytes": 1293735318
+  },
+  "labels_extra/flood/pilot/fetch_inputs.log": {
+   "bytes": 724
+  },
+  "labels_extra/flood/pilot/flood_pilot_cv.csv": {
+   "bytes": 788
+  },
+  "labels_extra/flood/pilot/flood_pilot_results.csv": {
+   "bytes": 1727
+  },
+  "labels_extra/flood/pilot/flood_pilot_table.parquet": {
+   "bytes": 91703881,
+   "columns": {
+    "area_km2": "DOUBLE",
+    "bg": "INT64",
+    "bg10": "BYTE_ARRAY",
+    "bg_a14": "FLOAT",
+    "bg_f1": "FLOAT",
+    "bg_f3": "FLOAT",
+    "bg_s": "FLOAT",
+    "cty": "BYTE_ARRAY",
+    "cty_a14_mean": "DOUBLE",
+    "cty_f1_max": "DOUBLE",
+    "cty_f1_mean": "DOUBLE",
+    "cty_nbg": "INT64",
+    "cty_s_mean": "DOUBLE",
+    "dur": "INT64",
+    "end": "INT64",
+    "ep": "INT64",
+    "f1_vs_cty": "DOUBLE",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "mean_cov": "FLOAT",
+    "month": "INT32",
+    "n_claims": "INT32",
+    "n_pol": "FLOAT",
+    "nb15_max": "FLOAT",
+    "nb15_mean": "FLOAT",
+    "nb3_mean": "FLOAT",
+    "nb7_max": "FLOAT",
+    "nb7_mean": "FLOAT",
+    "nep15_25": "FLOAT",
+    "nep15_50": "FLOAT",
+    "nep7_25": "FLOAT",
+    "nep7_50": "FLOAT",
+    "sfha_share": "FLOAT",
+    "single_share": "FLOAT",
+    "start": "INT64",
+    "y": "INT32",
+    "year": "INT32"
+   },
+   "rows": 2996576
+  },
+  "labels_extra/flood/pilot/flood_pilot_test_preds.npz": {
+   "bytes": 25968066
+  },
+  "labels_extra/flood/pilot/flood_pilot_wavelet.parquet": {
+   "bytes": 103136223,
+   "columns": {
+    "bg": "INT64",
+    "ep": "INT64",
+    "w_b16": "FLOAT",
+    "w_b32": "FLOAT",
+    "w_b4": "FLOAT",
+    "w_b64": "FLOAT",
+    "w_b8": "FLOAT",
+    "w_e16": "FLOAT",
+    "w_e32": "FLOAT",
+    "w_e4": "FLOAT",
+    "w_e64": "FLOAT",
+    "w_e8": "FLOAT",
+    "w_lp": "FLOAT"
+   },
+   "rows": 2996576
+  },
+  "labels_extra/flood/pilot/gm_test.nc": {
+   "bytes": 507060
+  },
+  "labels_extra/flood/pilot/gridmet/pr_tx_#.nc": {
+   "bytes": 1458920592,
+   "collapsed": true,
+   "example": "pr_tx_2000.nc",
+   "files": 24
+  },
+  "labels_extra/flood/pilot/hurdat2.txt": {
+   "bytes": 7071568
+  },
+  "labels_extra/flood/pilot/hurdat2_nepac.txt": {
+   "bytes": 4087516
+  },
+  "labels_extra/flood/pilot/policies_tx.parquet": {
+   "bytes": 189256624,
+   "columns": {
+    "buildingReplacementCost": "INT64",
+    "cancellationDateOfFloodPolicy": "INT32",
+    "censusGeoid": "BYTE_ARRAY",
+    "elevationDifference": "INT32",
+    "floodZoneCurrent": "BYTE_ARRAY",
+    "foundationType": "BYTE_ARRAY",
+    "mandatoryPurchaseFlag": "BOOLEAN",
+    "numberOfFloorsInInsuredBuilding": "INT32",
+    "occupancyType": "INT32",
+    "originalConstructionDate": "INT32",
+    "policyCount": "INT32",
+    "policyEffectiveDate": "INT32",
+    "policyTermIndicator": "INT32",
+    "policyTerminationDate": "INT32",
+    "postFIRMConstructionIndicator": "BOOLEAN",
+    "primaryResidenceIndicator": "BOOLEAN",
+    "propertyState": "BYTE_ARRAY",
+    "ratedFloodZone": "BYTE_ARRAY",
+    "reportedZipCode": "BYTE_ARRAY",
+    "totalBuildingInsuranceCoverage": "INT32"
+   },
+   "rows": 11612805
+  },
+  "labels_extra/flood/pilot/pr_tx_2000_2023.npy": {
+   "bytes": 2917324928
+  },
+  "labels_extra/flood/pilot/pr_tx_meta.npz": {
+   "bytes": 75506
+  },
+  "labels_extra/flood/pilot/rel_bg20_bg10_st48.txt": {
+   "bytes": 3443384
+  },
+  "labels_extra/flood/pilot/sens_T50.csv": {
+   "bytes": 559
+  },
+  "labels_extra/flood/pilot/sens_conf.csv": {
+   "bytes": 435
+  },
+  "labels_extra/flood/pilot/sens_tc1200.csv": {
+   "bytes": 432
+  },
+  "labels_extra/flood/pilot/table_T50.parquet": {
+   "bytes": 52299845,
+   "columns": {
+    "area_km2": "DOUBLE",
+    "bg": "INT64",
+    "bg10": "BYTE_ARRAY",
+    "bg_a14": "FLOAT",
+    "bg_f1": "FLOAT",
+    "bg_f3": "FLOAT",
+    "bg_s": "FLOAT",
+    "cty": "BYTE_ARRAY",
+    "cty_a14_mean": "DOUBLE",
+    "cty_f1_max": "DOUBLE",
+    "cty_f1_mean": "DOUBLE",
+    "cty_nbg": "INT64",
+    "cty_s_mean": "DOUBLE",
+    "dur": "INT64",
+    "end": "INT64",
+    "ep": "INT64",
+    "f1_vs_cty": "DOUBLE",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "mean_cov": "FLOAT",
+    "month": "INT32",
+    "n_claims": "INT32",
+    "n_pol": "FLOAT",
+    "nb15_max": "FLOAT",
+    "nb15_mean": "FLOAT",
+    "nb3_mean": "FLOAT",
+    "nb7_max": "FLOAT",
+    "nb7_mean": "FLOAT",
+    "nep15_25": "FLOAT",
+    "nep15_50": "FLOAT",
+    "nep7_25": "FLOAT",
+    "nep7_50": "FLOAT",
+    "sfha_share": "FLOAT",
+    "single_share": "FLOAT",
+    "start": "INT64",
+    "y": "INT32",
+    "year": "INT32"
+   },
+   "rows": 1620555
+  },
+  "labels_extra/flood/pilot/table_conf.parquet": {
+   "bytes": 91702963,
+   "columns": {
+    "area_km2": "DOUBLE",
+    "bg": "INT64",
+    "bg10": "BYTE_ARRAY",
+    "bg_a14": "FLOAT",
+    "bg_f1": "FLOAT",
+    "bg_f3": "FLOAT",
+    "bg_s": "FLOAT",
+    "cty": "BYTE_ARRAY",
+    "cty_a14_mean": "DOUBLE",
+    "cty_f1_max": "DOUBLE",
+    "cty_f1_mean": "DOUBLE",
+    "cty_nbg": "INT64",
+    "cty_s_mean": "DOUBLE",
+    "dur": "INT64",
+    "end": "INT64",
+    "ep": "INT64",
+    "f1_vs_cty": "DOUBLE",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "mean_cov": "FLOAT",
+    "month": "INT32",
+    "n_claims": "INT32",
+    "n_pol": "FLOAT",
+    "nb15_max": "FLOAT",
+    "nb15_mean": "FLOAT",
+    "nb3_mean": "FLOAT",
+    "nb7_max": "FLOAT",
+    "nb7_mean": "FLOAT",
+    "nep15_25": "FLOAT",
+    "nep15_50": "FLOAT",
+    "nep7_25": "FLOAT",
+    "nep7_50": "FLOAT",
+    "sfha_share": "FLOAT",
+    "single_share": "FLOAT",
+    "start": "INT64",
+    "y": "INT32",
+    "year": "INT32"
+   },
+   "rows": 2996576
+  },
+  "labels_extra/flood/pilot/table_tc1200.parquet": {
+   "bytes": 77934403,
+   "columns": {
+    "area_km2": "DOUBLE",
+    "bg": "INT64",
+    "bg10": "BYTE_ARRAY",
+    "bg_a14": "FLOAT",
+    "bg_f1": "FLOAT",
+    "bg_f3": "FLOAT",
+    "bg_s": "FLOAT",
+    "cty": "BYTE_ARRAY",
+    "cty_a14_mean": "DOUBLE",
+    "cty_f1_max": "DOUBLE",
+    "cty_f1_mean": "DOUBLE",
+    "cty_nbg": "INT64",
+    "cty_s_mean": "DOUBLE",
+    "dur": "INT64",
+    "end": "INT64",
+    "ep": "INT64",
+    "f1_vs_cty": "DOUBLE",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "mean_cov": "FLOAT",
+    "month": "INT32",
+    "n_claims": "INT32",
+    "n_pol": "FLOAT",
+    "nb15_max": "FLOAT",
+    "nb15_mean": "FLOAT",
+    "nb3_mean": "FLOAT",
+    "nb7_max": "FLOAT",
+    "nb7_mean": "FLOAT",
+    "nep15_25": "FLOAT",
+    "nep15_50": "FLOAT",
+    "nep7_25": "FLOAT",
+    "nep7_50": "FLOAT",
+    "sfha_share": "FLOAT",
+    "single_share": "FLOAT",
+    "start": "INT64",
+    "y": "INT32",
+    "year": "INT32"
+   },
+   "rows": 2626735
+  },
+  "labels_extra/flood/pilot/tc_flag_1200_4.npy": {
+   "bytes": 2226692
+  },
+  "labels_extra/flood/pilot/tc_flag_800_2.npy": {
+   "bytes": 2226692
+  },
+  "labels_extra/flood/pilot/terrain_tiles/#_#_#.npy": {
+   "bytes": 378458496,
+   "collapsed": true,
+   "example": "10_208_400.npy",
+   "files": 1443
+  },
+  "labels_extra/flood/pilot/tile_test.png": {
+   "bytes": 40549
+  },
+  "labels_extra/iem/#_tsmf_sbw.zip": {
+   "bytes": 116490895,
+   "collapsed": true,
+   "example": "2002_tsmf_sbw.zip",
+   "files": 22
+  },
+  "labels_extra/mesh/#.grib#": {
+   "bytes": 402979807,
+   "collapsed": true,
+   "example": "20210501.grib2",
+   "files": 456
+  },
+  "labels_extra/mesh_test/m.grib2": {
+   "bytes": 1028010
+  },
+  "labels_extra/qpe/#.grib#": {
+   "bytes": 1913627777,
+   "collapsed": true,
+   "example": "20210501.grib2",
+   "files": 456
+  },
+  "labels_extra/rma/colsom_#.zip": {
+   "bytes": 115025065,
+   "collapsed": true,
+   "example": "colsom_2000.zip",
+   "files": 24
+  },
+  "labels_extra/spc/1950-2025_torn.csv.zip": {
+   "bytes": 2028149
+  },
+  "labels_extra/spc/1955-2025_hail.csv.zip": {
+   "bytes": 8266856
+  },
+  "labels_extra/spc/1955-2025_wind.csv.zip": {
+   "bytes": 11875052
+  },
+  "labels_scs3_conm_az.parquet": {
+   "bytes": 469256,
+   "columns": {
+    "cty": "BYTE_ARRAY",
+    "date": "INT64",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "y0": "INT32",
+    "y100k": "INT32",
+    "y10k": "INT32",
+    "y1m": "INT32"
+   },
+   "rows": 394128
+  },
+  "mesh_county_day.parquet": {
+   "bytes": 98830,
+   "columns": {
+    "cty": "BYTE_ARRAY",
+    "date": "INT64",
+    "frac_ge_25": "DOUBLE",
+    "mesh_max_mm": "DOUBLE"
+   },
+   "rows": 51072
+  },
+  "mvflow_seq240_mean_2018_n12_lead120_n8.npy": {
+   "bytes": 37171328
+  },
+  "nfip_inland_nontropical.parquet": {
+   "bytes": 28753054,
+   "columns": {
+    "__index_level_0__": "INT64",
+    "amountPaidOnBuildingClaim": "DOUBLE",
+    "amountPaidOnContentsClaim": "DOUBLE",
+    "bg": "BYTE_ARRAY",
+    "buildingDamageAmount": "DOUBLE",
+    "cause": "BYTE_ARRAY",
+    "causeOfDamage": "BYTE_ARRAY",
+    "censusGeoid": "BYTE_ARRAY",
+    "contentsDamageAmount": "DOUBLE",
+    "countyCode": "BYTE_ARRAY",
+    "cty": "BYTE_ARRAY",
+    "date": "INT64",
+    "dateOfLoss": "BYTE_ARRAY",
+    "elevatedBuildingIndicator": "BOOLEAN",
+    "exteriorWaterDepth": "DOUBLE",
+    "floodCharacteristicsIndicator": "DOUBLE",
+    "floodEvent": "BYTE_ARRAY",
+    "floodWaterDuration": "DOUBLE",
+    "foundationType": "BYTE_ARRAY",
+    "id": "INT64",
+    "interiorWaterDepth": "DOUBLE",
+    "named": "BOOLEAN",
+    "netBuildingPaymentAmount": "DOUBLE",
+    "netContentsPaymentAmount": "DOUBLE",
+    "nfipRatedCommunityNumber": "BYTE_ARRAY",
+    "occupancyType": "DOUBLE",
+    "paid": "DOUBLE",
+    "policyCount": "INT64",
+    "postFIRMConstructionIndicator": "BOOLEAN",
+    "ratedFloodZone": "BYTE_ARRAY",
+    "reportedZipCode": "BYTE_ARRAY",
+    "state": "BYTE_ARRAY",
+    "tc": "BOOLEAN",
+    "totalBuildingInsuranceCoverage": "INT64",
+    "tract": "BYTE_ARRAY",
+    "waterDepth": "DOUBLE",
+    "yearOfLoss": "INT64"
+   },
+   "rows": 462684
+  },
+  "qpe_county_day.parquet": {
+   "bytes": 78336,
+   "columns": {
+    "cty": "BYTE_ARRAY",
+    "date": "INT64",
+    "max_mm": "DOUBLE"
+   },
+   "rows": 51072
+  },
+  "scale_encoder_full.log": {
+   "bytes": 11720
+  },
+  "scale_encoder_full2.log": {
+   "bytes": 21615
+  },
+  "scale_encoder_results.csv": {
+   "bytes": 30632
+  },
+  "scale_encoder_results_pairs.csv": {
+   "bytes": 8837
+  },
+  "scalefeat_#.parquet": {
+   "bytes": 407546831,
+   "collapsed": true,
+   "example": "scalefeat_2000.parquet",
+   "example_schema": {
+    "columns": {
+     "cape_12_b16": "FLOAT",
+     "cape_12_b32": "FLOAT",
+     "cape_12_b5": "FLOAT",
+     "cape_12_b8": "FLOAT",
+     "cape_12_e16": "FLOAT",
+     "cape_12_e32": "FLOAT",
+     "cape_12_e5": "FLOAT",
+     "cape_12_e8": "FLOAT",
+     "cape_12_lp": "FLOAT",
+     "cape_18_b16": "FLOAT",
+     "cape_18_b32": "FLOAT",
+     "cape_18_b5": "FLOAT",
+     "cape_18_b8": "FLOAT",
+     "cape_18_e16": "FLOAT",
+     "cape_18_e32": "FLOAT",
+     "cape_18_e5": "FLOAT",
+     "cape_18_e8": "FLOAT",
+     "cape_18_lp": "FLOAT",
+     "cin_12_b16": "FLOAT",
+     "cin_12_b32": "FLOAT",
+     "cin_12_b5": "FLOAT",
+     "cin_12_b8": "FLOAT",
+     "cin_12_e16": "FLOAT",
+     "cin_12_e32": "FLOAT",
+     "cin_12_e5": "FLOAT",
+     "cin_12_e8": "FLOAT",
+     "cin_12_lp": "FLOAT",
+     "cin_18_b16": "FLOAT",
+     "cin_18_b32": "FLOAT",
+     "cin_18_b5": "FLOAT",
+     "cin_18_b8": "FLOAT",
+     "cin_18_e16": "FLOAT",
+     "cin_18_e32": "FLOAT",
+     "cin_18_e5": "FLOAT",
+     "cin_18_e8": "FLOAT",
+     "cin_18_lp": "FLOAT",
+     "cty": "BYTE_ARRAY",
+     "date": "INT64",
+     "dd_12_b16": "FLOAT",
+     "dd_12_b32": "FLOAT",
+     "dd_12_b5": "FLOAT",
+     "dd_12_b8": "FLOAT",
+     "dd_12_e16": "FLOAT",
+     "dd_12_e32": "FLOAT",
+     "dd_12_e5": "FLOAT",
+     "dd_12_e8": "FLOAT",
+     "dd_12_lp": "FLOAT",
+     "dd_18_b16": "FLOAT",
+     "dd_18_b32": "FLOAT",
+     "dd_18_b5": "FLOAT",
+     "dd_18_b8": "FLOAT",
+     "dd_18_e16": "FLOAT",
+     "dd_18_e32": "FLOAT",
+     "dd_18_e5": "FLOAT",
+     "dd_18_e8": "FLOAT",
+     "dd_18_lp": "FLOAT",
+     "lapse75_12_b16": "FLOAT",
+     "lapse75_12_b32": "FLOAT",
+     "lapse75_12_b5": "FLOAT",
+     "lapse75_12_b8": "FLOAT",
+     "lapse75_12_e16": "FLOAT",
+     "lapse75_12_e32": "FLOAT",
+     "lapse75_12_e5": "FLOAT",
+     "lapse75_12_e8": "FLOAT",
+     "lapse75_12_lp": "FLOAT",
+     "lapse75_18_b16": "FLOAT",
+     "lapse75_18_b32": "FLOAT",
+     "lapse75_18_b5": "FLOAT",
+     "lapse75_18_b8": "FLOAT",
+     "lapse75_18_e16": "FLOAT",
+     "lapse75_18_e32": "FLOAT",
+     "lapse75_18_e5": "FLOAT",
+     "lapse75_18_e8": "FLOAT",
+     "lapse75_18_lp": "FLOAT",
+     "msl_12_b16": "FLOAT",
+     "msl_12_b32": "FLOAT",
+     "msl_12_b5": "FLOAT",
+     "msl_12_b8": "FLOAT",
+     "msl_12_e16": "FLOAT",
+     "msl_12_e32": "FLOAT",
+     "msl_12_e5": "FLOAT",
+     "msl_12_e8": "FLOAT",
+     "msl_12_lp": "FLOAT",
+     "msl_18_b16": "FLOAT",
+     "msl_18_b32": "FLOAT",
+     "msl_18_b5": "FLOAT",
+     "msl_18_b8": "FLOAT",
+     "msl_18_e16": "FLOAT",
+     "msl_18_e32": "FLOAT",
+     "msl_18_e5": "FLOAT",
+     "msl_18_e8": "FLOAT",
+     "msl_18_lp": "FLOAT",
+     "mv_msl_16_dx": "FLOAT",
+     "mv_msl_16_dy": "FLOAT",
+     "mv_msl_32_dx": "FLOAT",
+     "mv_msl_32_dy": "FLOAT",
+     "mv_msl_5_dx": "FLOAT",
+     "mv_msl_5_dy": "FLOAT",
+     "mv_msl_8_dx": "FLOAT",
+     "mv_msl_8_dy": "FLOAT",
+     "mv_pw_16_dx": "FLOAT",
+     "mv_pw_16_dy": "FLOAT",
+     "mv_pw_32_dx": "FLOAT",
+     "mv_pw_32_dy": "FLOAT",
+     "mv_pw_5_dx": "FLOAT",
+     "mv_pw_5_dy": "FLOAT",
+     "mv_pw_8_dx": "FLOAT",
+     "mv_pw_8_dy": "FLOAT",
+     "pw_12_b16": "FLOAT",
+     "pw_12_b32": "FLOAT",
+     "pw_12_b5": "FLOAT",
+     "pw_12_b8": "FLOAT",
+     "pw_12_e16": "FLOAT",
+     "pw_12_e32": "FLOAT",
+     "pw_12_e5": "FLOAT",
+     "pw_12_e8": "FLOAT",
+     "pw_12_lp": "FLOAT",
+     "pw_18_b16": "FLOAT",
+     "pw_18_b32": "FLOAT",
+     "pw_18_b5": "FLOAT",
+     "pw_18_b8": "FLOAT",
+     "pw_18_e16": "FLOAT",
+     "pw_18_e32": "FLOAT",
+     "pw_18_e5": "FLOAT",
+     "pw_18_e8": "FLOAT",
+     "pw_18_lp": "FLOAT",
+     "q850_12_b16": "FLOAT",
+     "q850_12_b32": "FLOAT",
+     "q850_12_b5": "FLOAT",
+     "q850_12_b8": "FLOAT",
+     "q850_12_e16": "FLOAT",
+     "q850_12_e32": "FLOAT",
+     "q850_12_e5": "FLOAT",
+     "q850_12_e8": "FLOAT",
+     "q850_12_lp": "FLOAT",
+     "q850_18_b16": "FLOAT",
+     "q850_18_b32": "FLOAT",
+     "q850_18_b5": "FLOAT",
+     "q850_18_b8": "FLOAT",
+     "q850_18_e16": "FLOAT",
+     "q850_18_e32": "FLOAT",
+     "q850_18_e5": "FLOAT",
+     "q850_18_e8": "FLOAT",
+     "q850_18_lp": "FLOAT",
+     "shear_12_b16": "FLOAT",
+     "shear_12_b32": "FLOAT",
+     "shear_12_b5": "FLOAT",
+     "shear_12_b8": "FLOAT",
+     "shear_12_e16": "FLOAT",
+     "shear_12_e32": "FLOAT",
+     "shear_12_e5": "FLOAT",
+     "shear_12_e8": "FLOAT",
+     "shear_12_lp": "FLOAT",
+     "shear_18_b16": "FLOAT",
+     "shear_18_b32": "FLOAT",
+     "shear_18_b5": "FLOAT",
+     "shear_18_b8": "FLOAT",
+     "shear_18_e16": "FLOAT",
+     "shear_18_e32": "FLOAT",
+     "shear_18_e5": "FLOAT",
+     "shear_18_e8": "FLOAT",
+     "shear_18_lp": "FLOAT",
+     "w700_12_b16": "FLOAT",
+     "w700_12_b32": "FLOAT",
+     "w700_12_b5": "FLOAT",
+     "w700_12_b8": "FLOAT",
+     "w700_12_e16": "FLOAT",
+     "w700_12_e32": "FLOAT",
+     "w700_12_e5": "FLOAT",
+     "w700_12_e8": "FLOAT",
+     "w700_12_lp": "FLOAT",
+     "w700_18_b16": "FLOAT",
+     "w700_18_b32": "FLOAT",
+     "w700_18_b5": "FLOAT",
+     "w700_18_b8": "FLOAT",
+     "w700_18_e16": "FLOAT",
+     "w700_18_e32": "FLOAT",
+     "w700_18_e5": "FLOAT",
+     "w700_18_e8": "FLOAT",
+     "w700_18_lp": "FLOAT"
+    },
+    "rows": 17136
+   },
+   "files": 23
+  },
+  "seq240_mean_2018_n12_lead120.npz": {
+   "bytes": 99726351
+  },
+  "seq64_members_2018_n12_lead120.npz": {
+   "bytes": 79776391
+  },
+  "smoke_labels.csv": {
+   "bytes": 1995
+  },
+  "smoke_refactor.csv": {
+   "bytes": 5744
+  },
+  "smoke_refactor_pairs.csv": {
+   "bytes": 1438
+  },
+  "smoke_results.csv": {
+   "bytes": 5352
+  },
+  "smoke_scale.csv": {
+   "bytes": 7648
+  },
+  "storm_events/StormEvents_details-ftp_v1.0_d#_c#.csv.gz": {
+   "bytes": 241686956,
+   "collapsed": true,
+   "example": "StormEvents_details-ftp_v1.0_d2000_c20260323.csv.gz",
+   "files": 24
+  },
+  "warnings_county_day.parquet": {
+   "bytes": 93504,
+   "columns": {
+    "cty": "BYTE_ARRAY",
+    "date": "INT64",
+    "n_ff": "INT64",
+    "n_sv": "INT64",
+    "n_to": "INT64"
+   },
+   "rows": 25902
+  }
+ },
+ "n_entries": 126,
+ "root": "$WXRISK_DATA"
+}

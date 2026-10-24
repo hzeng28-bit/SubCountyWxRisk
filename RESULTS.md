@@ -1,153 +1,152 @@
-# 结果日志
+# Results log
 
-## 阶段 0：等权投票有多强（2026-10-08）
+## Stage 0: how strong is the equal-weight vote (2026-10-08)
 
-**设置**（`scripts/02_baseline_vote.py --train 2018 --test 2021 --quantile 0.99`）
-- 灾害：24h 累计降水 > 格点×季节 ERA5(1990–2017) p99，且 ≥10 mm（阈值中位数 11.8 mm）
-- 预报：IFS ENS 50 成员，lead = 72h，每日 00Z init，64×32 全球网格
-- 训练 2018（365 init），测试 2021（365 init），事件基率 0.76% / 0.80%
-- 阈值、气候率、校准曲线全部只在训练期/气候期拟合
+**Setup** (`scripts/02_baseline_vote.py --train 2018 --test 2021 --quantile 0.99`)
+- Hazard: 24 h accumulated precipitation > grid point × season ERA5 (1990–2017) p99, and ≥10 mm (median threshold 11.8 mm)
+- Forecast: IFS ENS, 50 members, lead = 72 h, daily 00Z init, 64×32 global grid
+- Train 2018 (365 inits), test 2021 (365 inits), event base rates 0.76% / 0.80%
+- Thresholds, climatological rates and calibration curves are all fitted on the training / climatology period only
 
-| 方法 | BS | BSS/B0 | reliability | resolution | AUC-PR | AUC-ROC |
+| Method | BS | BSS/B0 | reliability | resolution | AUC-PR | AUC-ROC |
 | --- | --- | --- | --- | --- | --- | --- |
-| B0 气候态 | 8.059e-3 | 0.0000 | 1.11e-5 | 4.8e-8 | 0.0111 | 0.5950 |
-| B1 等权投票 | 4.576e-3 | **0.4322** | 1.03e-5 | 3.334e-3 | 0.6072 | 0.9627 |
-| B2 投票+全局 isotonic | 4.573e-3 | 0.4326 | 6.29e-6 | 3.333e-3 | 0.6022 | 0.9627 |
-| B3 投票+分纬度带 isotonic | 4.571e-3 | 0.4329 | 6.69e-6 | 3.349e-3 | 0.6148 | 0.9781 |
-| B4 全局 logistic（投票+离散度特征）| 4.687e-3 | 0.4184 | 4.94e-5 | 3.252e-3 | 0.6030 | **0.9902** |
+| B0 climatology | 8.059e-3 | 0.0000 | 1.11e-5 | 4.8e-8 | 0.0111 | 0.5950 |
+| B1 equal-weight vote | 4.576e-3 | **0.4322** | 1.03e-5 | 3.334e-3 | 0.6072 | 0.9627 |
+| B2 vote + global isotonic | 4.573e-3 | 0.4326 | 6.29e-6 | 3.333e-3 | 0.6022 | 0.9627 |
+| B3 vote + per-latitude-band isotonic | 4.571e-3 | 0.4329 | 6.69e-6 | 3.349e-3 | 0.6148 | 0.9781 |
+| B4 global logistic (vote + spread features) | 4.687e-3 | 0.4184 | 4.94e-5 | 3.252e-3 | 0.6030 | **0.9902** |
 
-按 init 日配对 bootstrap（2000 次，重采样整个 init 而不是格点）相对 B1 的 BS 差：
+BS difference relative to B1, from a paired bootstrap by init day (2000 draws, resampling whole inits rather than grid points):
 
-| 对比 | ΔBS | 95% CI | 判定 |
+| Comparison | ΔBS | 95% CI | Verdict |
 | --- | --- | --- | --- |
-| B2 − B1 | −3.3e-6 | [−1.24e-5, +5.1e-6] | **打平** |
-| B3 − B1 | −5.2e-6 | [−2.01e-5, +1.01e-5] | **打平** |
-| B4 − B1 | +1.11e-4 | [+8.7e-5, +1.38e-4] | **更差** |
-| B0 − B1 | +3.48e-3 | [+3.30e-3, +3.66e-3] | 更差 |
+| B2 − B1 | −3.3e-6 | [−1.24e-5, +5.1e-6] | **tie** |
+| B3 − B1 | −5.2e-6 | [−2.01e-5, +1.01e-5] | **tie** |
+| B4 − B1 | +1.11e-4 | [+8.7e-5, +1.38e-4] | **worse** |
+| B0 − B1 | +3.48e-3 | [+3.30e-3, +3.66e-3] | worse |
 
-### 结论
+### Conclusions
 
-1. **等权投票已经很强，而且几乎已经校准好了**。B1 的 reliability 项（1.03e-5）比
-   resolution（3.33e-3）小两个半数量级 —— 50 个成员的民主投票在 p99 降水这个尺度上
-   基本不需要校准。B2/B3 把 reliability 砍掉 40%，但在 BS 上是**统计打平**，不是赢。
-   任何后续方法要是只做"重新校准投票"，天花板就在 ΔBS ≈ 1e-5 这个量级，不值得做。
-2. **离散度特征里确实有额外信息，但全局线性组合器拿不出来**。B4 的 AUC-ROC 从 0.9627
-   跳到 **0.9902**（排序能力明显变强），但 BS 变差、reliability 恶化 5 倍。这是上条研究线
-   "全局共享线性混合权重在异质群体上反而更差"的教训在这里的精确复现 —— 不是特征没用，
-   是**池化的全局权重**没用。→ 这正是"逐块模式决策"的入口。
-3. **热带是头号靶区**。分纬度带看 B1 的 BSS：南北中纬 0.51–0.63，赤道两侧两个带只有
-   **0.281 / 0.287**。对流性降水可预报性最低，headroom 最大，也是真实灾害最集中的地方。
+1. **The equal-weight vote is already strong, and almost already calibrated.** B1's reliability term (1.03e-5) is two and a half orders of
+   magnitude smaller than its resolution term (3.33e-3): a democratic vote of 50 members basically needs no calibration at the p99 precipitation scale.
+   B2/B3 cut the reliability term by 40%, but on BS this is a **statistical tie**, not a win. Any later method that only "recalibrates the vote"
+   has a ceiling of about ΔBS ≈ 1e-5 and is not worth doing.
+2. **The spread features do carry extra information, but a global linear combiner cannot extract it.** B4's AUC-ROC jumps from 0.9627
+   to **0.9902** (ranking ability clearly improves), but BS gets worse and reliability degrades 5×. This is an exact reproduction of the lesson of the previous line of research,
+   "a globally shared linear mixing weight does worse on a heterogeneous population": it is not that the features are useless, it is that the
+   **pooled global weights** are useless. → This is exactly the entry point for "per-block mode decision".
+3. **The tropics are the top target.** B1's BSS by latitude band: 0.51–0.63 in the northern and southern mid-latitudes, but only
+   **0.281 / 0.287** in the two bands on either side of the equator. Convective precipitation has the lowest predictability and the most headroom, and it is also where real hazards concentrate.
 
-### 必须记住的保留意见
+### Caveats to remember
 
-- 单训练年 / 单测试年、单一 lead=72h，没做跨年稳健性检验（下载只要 10 秒/年，便宜，该补）
-- 阈值用 ERA5 气候 p99 去卡 ENS 的降水，存在跨数据集模式偏差；需要补"用 ENS 自身气候 p99"
-  的对照版本
-- 2022 测试年**还没看过**，留给方法冻结后的最终确认
+- One training year / one test year and a single lead of 72 h; no cross-year robustness check was done (a download takes only 10 s per year, which is cheap, so this should be added)
+- Thresholding ENS precipitation with the ERA5 climatological p99 introduces a cross-dataset model bias; a control version using the "ENS's own climatological p99" is still needed
+- The 2022 test year **has not been looked at yet**, and is reserved for final confirmation once the method is frozen
 
-### 下一步（按优先级）
+### Next steps (by priority)
 
-1. 把训练扩到 2018–2020、验证 2021，补 lead = 24/72/120/240h 的 BSS 曲线（成本极低）
-2. 阶段 1 的纯几何检验：成员场之间的位移（运动矢量）能不能把 50 个成员对齐到同一个
-   特征上 —— 如果对齐后成员间残差显著下降，"流对齐投票"才有物理基础
-3. 阶段 2：块级 RD 模式决策，只在"AUC 高但 BS 差"这个缺口上做功 —— 保留 B1 的校准，
-   只用离散度特征逐块调整权重（而不是全局重拟合一个概率）
+1. Extend training to 2018–2020 and validation to 2021, and add the BSS curve for lead = 24/72/120/240 h (very cheap)
+2. The purely geometric test of stage 1: can displacements between member fields (motion vectors) align the 50 members onto the same
+   feature? If the inter-member residual drops significantly after alignment, then "flow-aligned voting" has a physical basis
+3. Stage 2: block-level RD mode decision, working only on the gap of "high AUC but poor BS": keep B1's calibration and
+   adjust weights per block using only the spread features (rather than refitting one probability globally)
 
-## 阶段 1：运动矢量是真的吗（2026-10-08）
+## Stage 1: are motion vectors real (2026-10-08)
 
-用户直觉：物理过程连续 → 运动矢量应携带时间演化信息 → 如果成立，nanoTSFM 那条
-频率特征线可以引回来。另外：FFT 固定窗口不一定挖得到，小波没这个限制。
+The user's intuition: physical processes are continuous → motion vectors should carry time-evolution information → if so, the nanoTSFM
+frequency-feature line can be brought back. Also: a fixed FFT window may not be able to dig it out, and wavelets do not have that limitation.
 
-### 1.0 两个在实现中抓到的真 bug（都会"跑得通但结果错"）
+### 1.0 Two real bugs caught during implementation (both "run fine but give wrong results")
 
-1. **Hann 固定窗口杀死相位相关**。带限合成场真实位移 +3.00 格，window=True 估成
-   **0.23**，window=False 估成 **3.00**。固定窗口在空间上不动而内容在动，低模态场的
-   窗口自身频谱会主导交叉谱，峰塌到零延迟。→ `estimate_shift` 默认关窗，并把这件事
-   写进 docstring。这是"固定窗口"代价的直接实测。
-2. **纯相位归一化放大空频率 bin**。完全归一化（振幅盲）的相位相关在带限场上把数值为零的
-   频率 bin 也提到单位权重，真值 (0,+2) 估成 **(+6.16, …)**。→ 加联合振幅显著性掩膜。
-3. 亚像素精度：抛物线峰插值只到 ~0.4 格（2.5→2.08）；改成**交叉谱相位斜率加权最小二乘**后
-   误差 ≤0.11 格，SNR=1 仍稳（2.48, -1.43）。
-4. **小波相位 LSQ 符号写反**：b(x)=a(x−d) ⇒ Δφ=−k·d，右端项漏了负号。症状是
-   λ=32 估出 **(−3.04, −0.36)** 而真值 (+3.00, 0.00) —— 幅度对、方向整体翻转，
-   纯看数字完全像是"能用"。
+1. **A fixed Hann window kills phase correlation.** On a band-limited synthetic field with a true displacement of +3.00 cells, window=True estimates
+   **0.23** and window=False estimates **3.00**. The fixed window is stationary in space while the content moves, and for a low-mode field the
+   window's own spectrum dominates the cross-spectrum, collapsing the peak to zero lag. → `estimate_shift` now defaults to no window, and this is
+   written into the docstring. This is a direct measurement of the cost of a "fixed window".
+2. **Pure-phase normalization amplifies empty frequency bins.** Fully normalized (amplitude-blind) phase correlation on a band-limited field also lifts bins whose value is zero
+   to unit weight, and a true (0,+2) is estimated as **(+6.16, …)**. → Added a joint amplitude-significance mask.
+3. Sub-pixel accuracy: parabolic peak interpolation only reaches ~0.4 cells (2.5→2.08); after switching to a **weighted least squares on the cross-spectrum phase slope**,
+   the error is ≤0.11 cells, and still stable at SNR=1 (2.48, -1.43).
+4. **Wrong sign in the wavelet-phase LSQ**: b(x)=a(x−d) ⇒ Δφ=−k·d, and the right-hand side dropped the minus sign. The symptom was
+   λ=32 estimating **(−3.04, −0.36)** against a true (+3.00, 0.00): the magnitude is right but the direction is flipped overall, and
+   judging by the numbers alone it looks completely "usable".
 
-### 1.1 合成场公平对照（同场、同指标 median EPE，只换估计器）
+### 1.1 Fair synthetic comparison (same fields, same metric, median EPE, only the estimator changes)
 
-| 情形 | FFT 整场 | FFT 块=32 | 小波相位流 |
+| Case | FFT whole field | FFT block=32 | Wavelet phase flow |
 | --- | --- | --- | --- |
-| S1 全局刚性平移（宽带幂律谱）| **0.019** | 2.132 | 0.474 |
-| S1b 同上但窄带场（孔径问题）| **0.000** | 1.850 | 0.057 |
-| S2 平移 + 振幅×0.7 + SNR5 | — | 2.289 | **0.507** |
-| S3 空间变化流场（切变 amp3）| — | 2.247（块=12 最好）| **0.826** |
+| S1 global rigid translation (broadband power-law spectrum) | **0.019** | 2.132 | 0.474 |
+| S1b same but narrow-band field (aperture problem) | **0.000** | 1.850 | 0.057 |
+| S2 translation + amplitude ×0.7 + SNR5 | — | 2.289 | **0.507** |
+| S3 spatially varying flow (shear amp3) | — | 2.247 (block=12 best) | **0.826** |
 
-S4 两个尺度朝不同方向动（粗尺度 (+3,0) + 0.8×细尺度 (0,+2.5)）：
+S4: two scales moving in different directions (coarse scale (+3,0) + 0.8 × fine scale (0,+2.5)):
 
-| 估计器 | 估计值 | EPE vs 粗 | EPE vs 细 |
+| Estimator | Estimate | EPE vs coarse | EPE vs fine |
 | --- | --- | --- | --- |
-| FFT 块=32 | (+0.12, +1.39) | 3.210 | 1.112 |
-| 小波 λ=32 | (+2.14, −0.10) | **0.889** | 3.358 |
-| 小波 λ=8 | (+0.14, +1.19) | 3.109 | **1.329** |
+| FFT block=32 | (+0.12, +1.39) | 3.210 | 1.112 |
+| Wavelet λ=32 | (+2.14, −0.10) | **0.889** | 3.358 |
+| Wavelet λ=8 | (+0.14, +1.19) | 3.109 | **1.329** |
 
-**结论**：FFT 在"全局刚性平移"这个匹配情形下仍最准（0.019），不能说它没用；但一旦
-流场空间变化（S3，小波好 2.7 倍）或**不同尺度不同方向**（S4，FFT 只能给一个混合向量，
-两个真值都不匹配），固定窗口就挖不到 —— 用户的判断成立。小波幅度系统性偏小
-（2.14 vs 3.0），来自 ridge 收缩 + 空间池化 + 尺度间泄漏，需要标定。
+**Conclusion**: in the matched case of "global rigid translation", FFT is still the most accurate (0.019), so it cannot be called useless; but once the
+flow varies in space (S3, wavelet 2.7× better) or **different scales move in different directions** (S4, FFT can only give one blended vector,
+which matches neither truth), the fixed window cannot dig it out. The user's judgement holds. The wavelet magnitude is systematically low
+(2.14 vs 3.0), coming from ridge shrinkage + spatial pooling + inter-scale leakage, and needs calibration.
 
-### 1.2 真实 IFS ENS 场（Z500，1.5°，dt=6h，6 init × 3 lead pair）
+### 1.2 Real IFS ENS fields (Z500, 1.5°, dt=6h, 6 inits × 3 lead pairs)
 
-**先踩到一个物理陷阱**：不去背景时所有估计器都近乎失效（小波回归斜率 0.022，即估出的
-速度比风场小 50 倍）。原因是 Z500 振幅被**准静止的极地-赤道位势梯度**主导，而它不平流；
-振幅加权的相位估计被一个不动的特征拽向零。去掉 zonal mean + 高通后：
+**A physical trap first**: without removing the background, all estimators nearly fail (wavelet regression slope 0.022, i.e. the estimated
+speed is 50 times smaller than the wind). The reason is that the Z500 amplitude is dominated by the **quasi-stationary pole-to-equator geopotential gradient**, which does not advect;
+the amplitude-weighted phase estimate is pulled toward zero by a feature that does not move. After removing the zonal mean + high-pass filtering:
 
-| 模式 | 残差 MAE | vs 零运动 |
+| Mode | Residual MAE | vs zero motion |
 | --- | --- | --- |
-| 零运动（persistence）| 122.95 | 1.000 |
-| **用真实 500hPa 风平流 warp** | 153.72 | **1.250（比不动还差）** |
-| 0.5×真实风 | 109.18 | 0.888 |
-| 整场一个向量 | 108.69 | 0.884 |
-| FFT 块=32 | 108.96 | 0.886 |
-| 小波相位流 | **77.13** | **0.627**（18/18 全胜）|
+| Zero motion (persistence) | 122.95 | 1.000 |
+| **Warp by true 500 hPa wind advection** | 153.72 | **1.250 (worse than not moving)** |
+| 0.5 × true wind | 109.18 | 0.888 |
+| One vector for the whole field | 108.69 | 0.884 |
+| FFT block=32 | 108.96 | 0.886 |
+| Wavelet phase flow | **77.13** | **0.627** (wins 18/18) |
 
-**这条是整阶段最有信息量的结果**：按真实风场做纯平流比什么都不做更差。所以"估计的运动
-矢量和风场相关只有 r≈0.33、斜率 0.12"**不是失败而是预期** —— 它测的是特征相位传播速度
-（中纬中位 |dx|≈0.9 格 vs 风平流 2.4 格，约 1/3，Rossby 波相对气流西退，符号与量级都对）。
-用风场当 ground truth 来"验证"运动估计本身就是错的参照。
+**This is the most informative result of the whole stage**: pure advection by the true wind field is worse than doing nothing. So "the estimated motion
+vectors correlate with the wind field at only r≈0.33, slope 0.12" is **not a failure but expected**: what it measures is the phase propagation speed of the features
+(mid-latitude median |dx|≈0.9 cells vs 2.4 cells of wind advection, about 1/3; Rossby waves retreat westward relative to the flow, with both sign and magnitude right).
+Using the wind field as ground truth to "validate" the motion estimate itself is the wrong reference.
 
-### 1.3 留出外推：运动矢量携带时间演化信息（8 init × 5 triple = 40 案例）
+### 1.3 Held-out extrapolation: motion vectors carry time-evolution information (8 inits × 5 triples = 40 cases)
 
-流在 (l−1, l) 上估计，用来预测**没见过的** l+1，自由度公平：
+The flow is estimated on (l−1, l) and used to predict the **unseen** l+1, with fair degrees of freedom:
 
-| 模式 | MAE | vs persistence | 胜率 |
+| Mode | MAE | vs persistence | Win rate |
 | --- | --- | --- | --- |
-| persistence（零运动）| 171.52 | 1.000 | 0% |
-| 线性场外推（只用振幅，无运动）| 139.39 | 0.813 | 100% |
-| 0.5 × 留出流 | 125.90 | 0.734 | 100% |
-| **留出流（从 l−1,l 估）** | **100.64** | **0.587** | **100%** |
-| oracle 流（从 l,l+1 估，非留出）| 79.61 | 0.464 | 100% |
+| persistence (zero motion) | 171.52 | 1.000 | 0% |
+| Linear field extrapolation (amplitude only, no motion) | 139.39 | 0.813 | 100% |
+| 0.5 × held-out flow | 125.90 | 0.734 | 100% |
+| **Held-out flow (estimated from l−1, l)** | **100.64** | **0.587** | **100%** |
+| Oracle flow (estimated from l, l+1, not held out) | 79.61 | 0.464 | 100% |
 
-- 留出外推拿到 oracle 增益的 **77%**，40/40 全胜
-- 纯振幅外推只到 0.813 → 6h 演化的主导模式是**运动**，不是强度增减
-- **运动场自身的时间自相关 r(dx)=0.867±0.046, r(dy)=0.739±0.062**
-  → 直接证实用户的直觉：运动矢量不是逐帧噪声，它沿 lead 是光滑、低维、可预测的
+- Held-out extrapolation gets **77%** of the oracle's gain, winning 40/40
+- Pure amplitude extrapolation only reaches 0.813 → the dominant mode of 6 h evolution is **motion**, not intensification or decay
+- **The motion field's own temporal autocorrelation is r(dx)=0.867±0.046, r(dy)=0.739±0.062**
+  → this directly confirms the user's intuition: motion vectors are not frame-by-frame noise, and along lead they are smooth, low-dimensional and predictable
 
-### 1.4 保留意见
+### 1.4 Caveats
 
-- 残差自拟合陷阱：script 05 里流在被打分的那一对上拟合，所以调小 `smooth` 残差必然下降
-  （0.627→0.486），那不是方法变好。只有 script 06 的留出外推数字可以引用
-- 样本仍小（≤12 init，全在 2018），且只有 ENS **集合均值**场；成员级对齐还没做
-- 小波幅度偏小未标定；孔径问题的置信度指标（`condition`）还没当作门控用过
-- FFT 的 coherence 指标判别力很弱（纯噪声 4.48 vs 真平移 5.56），不能当置信度用
+- The residual self-fit trap: in script 05 the flow is fitted on the very pair being scored, so lowering `smooth` necessarily lowers the residual
+  (0.627→0.486), which does not mean the method got better. Only the held-out extrapolation numbers of script 06 may be cited
+- The sample is still small (≤12 inits, all in 2018), and only the ENS **ensemble-mean** field is used; member-level alignment has not been done
+- The wavelet magnitude is low and uncalibrated; the confidence metric for the aperture problem (`condition`) has never been used as a gate
+- The FFT coherence metric discriminates weakly (pure noise 4.48 vs true translation 5.56) and cannot be used as a confidence measure
 
-### 1.5 频率表示是否真的买到东西（57600 条轨迹 × 20 个区间）
+### 1.5 Does the frequency representation actually buy anything (57600 trajectories × 20 intervals)
 
-对每个像素-分量的 MV(τ) 轨迹做 FFT，统计前 k 个非 DC 系数的累计能量占比。
-**对照是匹配了同一方差、同一 lag-1 自相关的 AR(1) 代理序列**（8 个实现）——
-否则"光滑序列能用几个低频系数表示"是平凡真理，说明不了任何事。
+For each pixel-component MV(τ) trajectory take the FFT and compute the cumulative energy share of the first k non-DC coefficients.
+**The control is AR(1) surrogate series matched in variance and lag-1 autocorrelation** (8 realizations);
+otherwise "a smooth series can be represented by a few low-frequency coefficients" is a triviality and shows nothing.
 
-轨迹实测 lag-1 自相关：中位 0.726，IQR [0.572, 0.827]
+Measured lag-1 autocorrelation of the trajectories: median 0.726, IQR [0.572, 0.827]
 
-| k | 真实轨迹 | AR(1) 代理 | 差 |
+| k | Real trajectories | AR(1) surrogate | Difference |
 | --- | --- | --- | --- |
 | 1 | 0.412 | 0.328 | +0.084 |
 | 2 | 0.699 | 0.566 | **+0.133** |
@@ -156,11 +155,654 @@ S4 两个尺度朝不同方向动（粗尺度 (+3,0) + 0.8×细尺度 (0,+2.5)�
 | 5 | 0.926 | 0.834 | +0.092 |
 | 6 | 0.948 | 0.880 | +0.068 |
 
-**结论**：差值全程为正且在 k=2–3 处最大（+0.13），即 MV 轨迹的能量集中程度**超过**
-其自身自相关所蕴含的程度 —— 存在超出"单纯光滑"的频率结构。**3 个系数覆盖 82% 的
-轨迹能量**，所以 nanoTSFM 那套频率头确实可以引回来：不是用来编码气象场本身，而是用来
-编码**运动场沿 lead 的轨迹**。
+**Conclusion**: the difference is positive throughout and largest at k=2–3 (+0.13), i.e. the energy concentration of the MV trajectories **exceeds** what
+their own autocorrelation implies: there is frequency structure beyond "mere smoothness". **3 coefficients cover 82% of the trajectory
+energy**, so the nanoTSFM frequency head can indeed be brought back: not to encode the meteorological field itself, but to
+encode the **trajectory of the motion field along lead**.
 
-**保留意见**：AR(1) 只能作为"纯光滑"的零模型；低频超额也可能来自 lead 方向的单调漂移
-（趋势）而非振荡结构，这两者当前无法区分。要分清需要再加一个"去趋势后重算"的对照，
-以及检查超额能量是否集中在特定周期（而不是全部堆在 k=1）。
+**Caveats**: AR(1) can serve only as a null model for "pure smoothness"; the low-frequency excess might also come from a monotonic drift along the lead direction
+(a trend) rather than oscillatory structure, and the two cannot currently be told apart. Telling them apart needs an additional "recompute after detrending" control,
+and a check of whether the excess energy is concentrated at particular periods (rather than all piled up at k=1).
+
+---
+
+# Stage 2: classical K-means baseline on discretised targets (CO/NM/AZ county-day, SCS3)
+
+Scripts `08_build_labels.py` → `09_fetch_era5_county_env.py` → `10_kmeans_baseline.py`.
+Target: wind + hail + tornado county-days, 4 nested heads (occurrence / ≥$10k / ≥$100k / ≥$1M, nominal dollars), May–Sep,
+112 counties × 2000–2022. Train 2000–2016, K chosen on 2014–2016 (previously fitted on 2000–2013 only),
+finally refitted on 2000–2016, test 2017–2022. Baseline **p0 = county rate × month rate / overall rate** (training period only).
+
+## Three nested feature tiers
+
+| Tier | Meaning | Features |
+| --- | --- | --- |
+| A | Beyond T-3D | Calendar sin/cos(doy) + county lat/lon |
+| B | T-3D to T-3h | A + same-day 12Z ERA5 environment (CAPE, CIN, dewpoint depression, PW, 850q, 700-500 lapse rate, 500 hPa to 10 m shear, 700 wind speed, MSLP) |
+| C | Below T-3h | B + the same set at 18Z + 12→18Z tendencies (CAPE/T2m/Td2m/PW) + two 6 h precipitation windows |
+
+ERA5 0.25° nearest grid point; **observations stand in for the forecast (perfect-prog), so B/C are upper bounds**. Apart from calendar/location,
+features first have the training-period "county × month" mean subtracted and are then standardised. ENSO/AO/MJO indices are **not included**, so tier A is only a refined climatology.
+
+## Results (test 2017–2022, BSS relative to p0, year-resampled 95% CI in parentheses)
+
+Read-out `lift`: p = p0 × cluster lift factor (shrunk with 20 pseudo-counts).
+
+| Tier | K | Occurrence | ≥$10k | ≥$100k | ≥$1M |
+| --- | --- | --- | --- | --- | --- |
+| A | 128 | +0.0069 (0.0044, 0.0099) | +0.0041 (0.0018, 0.0064) | +0.0022 (0.0010, 0.0031) | +0.0002 |
+| B | 32 | **+0.0265** (0.0202, 0.0338) | **+0.0176** (0.0127, 0.0222) | +0.0069 (0.0029, 0.0098) | +0.0004 |
+| C | 64 | **+0.0431** (0.0362, 0.0518) | **+0.0188** (0.0137, 0.0233) | +0.0053 (0.0020, 0.0075) | +0.0003 |
+
+Occurrence-head AUC-PR: p0 0.070 → A 0.083 → B 0.113 → C 0.139. Number of test positives: 2442 / 288 / 97 / 16.
+
+- **Using the within-cluster occurrence rate directly (`rate`) loses to p0**: −0.013 for tier B ≥$10k, with a CI that excludes 0. K-means alone cannot serve as a probability;
+  it must sit on top of climatology, with clusters only making a correction
+- **The gain is mainly in the occurrence head and ≥$10k**; ≥$100k is small, and ≥$1M has only 16 positives in the test set, so it is unreadable
+- **The +0.007 of tier A is not predictive skill**: calendar + location clustering with K=128 is equivalent to a climatology finer than "county × month"
+  (on the order of county × week); this is a granularity issue of p0, not lead-time information
+- **By state**: AZ gains the most (occurrence head tier C +0.063, ≥$10k +0.029), CO and NM about +0.04 (occurrence);
+  CO/NM are basically 0 above ≥$10k
+- The B→C gain (occurrence head +0.017) comes from the 18Z state, tendencies and the preceding 6 h precipitation, which within T-3h are **observed quantities**,
+  not forecasts, so tier C is closer to "nowcasting" than to "forecasting"
+
+## Caveats
+
+- B/C use ERA5 observations; a real forecast would have errors and the actual gain would be smaller; this is a perfect-prog upper bound
+- The day boundary uses the Storm Events local date while features are taken at UTC 12Z/18Z, so there is a small misalignment at the boundary
+- The K selection curve is very flat (tier B differs by only 0.005 between K=16 and 128), so the chosen K is unstable; do not interpret K itself
+- CIN is undefined when CAPE=0 and was filled with 0; the K index was not returned by ERA5 and was not used
+- The 2017–2022 test period was used only once, and no parameter was tuned on the test results
+- Features take the 0.25° nearest grid point to the county centroid (about 25 km), which has limited representativeness for within-county variation in large western counties
+
+---
+
+# Stage 3: how much can a wavelet scale encoder add on the existing data (2026-10-19)
+
+Scripts `11_build_scale_features.py` (features), `12_scale_encoder.py` (experiment). Data, split and p0 are the same as stage 2:
+train 2000–2016, test 2017–2022 (the test period is used only to produce numbers, with no tuning on it), **K fixed at 32, not tuned**.
+
+## Encoder
+
+12Z/18Z fields over a 0.25° box around the county (about 21°×14°), 9 environment channels. Each channel is split with `wavelet_motion.morlet_bank`
+into 4 scales (wavelengths 32/16/8/5 cells, about 800/400/200/125 km); at each scale the county's **band-pass value** and **local amplitude** are taken,
+plus a **low-pass term** with σ=16 cells. From 12Z→18Z, `scale_resolved_flow` gives **per-scale motion vectors** for PW and MSLP.
+
+Three nested tiers: A3 = the state at 12Z of D-3 (truly using only information from 3 days earlier); B = 12Z of day D; C = 12Z+18Z+motion+tendency+6 h precipitation.
+`Cnm` = C with the motion channels removed (ablation). B and C still use ERA5 observations and are upper bounds.
+
+Methods (all report BSS vs p0; "paired" differences use a year-grouped bootstrap):
+
+| Method | Meaning |
+| --- | --- |
+| KM-point | K-means on point features (stage 2 baseline) |
+| KM-pooled | K-means on all scale features concatenated |
+| Vote-LR | One K-means expert per scale (+ low-pass context), fused with learned weights |
+| RandVote-LR | **Control**: the same columns randomly split into 5 groups, then voted |
+| ChanVote-LR | **Control**: the same columns split into 10 groups by variable, then voted |
+| HGB-point / HGB-scale | Gradient boosting, point features vs scale features, learner held fixed |
+
+## Results: occurrence head y0, BSS vs p0
+
+| Method | A3 | B | C | Cnm |
+| --- | --- | --- | --- | --- |
+| KM-point | 0.004 | 0.029 | 0.038 | 0.038 |
+| KM-pooled | 0.002 | 0.034 | 0.051 | 0.050 |
+| Vote-LR (per scale) | 0.005 | 0.040 | 0.060 | 0.061 |
+| RandVote-LR (control) | 0.005 | 0.042 | 0.059 | 0.063 |
+| ChanVote-LR (control) | 0.007 | **0.050** | **0.075** | 0.075 |
+| HGB-point | 0.010 | 0.055 | 0.091 | 0.091 |
+| HGB-scale | 0.008 | **0.068** | **0.108** | 0.105 |
+
+Paired differences (ΔBSS, 95% CI), y0:
+
+| Comparison | B | C |
+| --- | --- | --- |
+| Vote-LR − KM-point | +0.012 (0.007, 0.016) | +0.023 (0.018, 0.028) |
+| Vote-LR − RandVote-LR | −0.002 (−0.006, 0.001) | +0.002 (−0.000, 0.004) |
+| Vote-LR − ChanVote-LR | **−0.011 (−0.018, −0.006)** | **−0.016 (−0.021, −0.012)** |
+| HGB-point − KM-point | +0.027 (0.021, 0.033) | +0.055 (0.046, 0.061) |
+| HGB-scale − HGB-point | **+0.014 (0.009, 0.019)** | **+0.018 (0.015, 0.022)** |
+
+## Conclusions
+
+1. **Scale voting beats point-feature K-means, but this is not thanks to "scale structure"**. Vote-LR **ties** the random-grouping control
+   (B: −0.002, CI contains 0), which shows the gain comes from "an ensemble of several K-means + learned weights". The control grouped by variable is actually significantly better
+   (B higher by +0.011, C by +0.016). **The hypothesis "vote by scale" is not supported on the existing data**
+2. **The learner matters more than the features**: with the same point features, GBM beats K-means by +0.027 (B) and +0.055 (C). The K-means
+   cluster read-out is a weak learner, and the +0.027/+0.043 of stage 2 cannot represent the information content of these features
+3. **Multi-scale features are indeed useful with a fixed learner (GBM)**: HGB-scale beats HGB-point by +0.014 (B) and +0.018 (C),
+   with CIs that exclude 0. This is the only evidence in this stage that "scale decomposition has value"
+4. **But the ≥$10k head does not show this advantage**: HGB-scale − HGB-point is B +0.006 (−0.003, 0.014) and
+   C −0.008 (−0.017, 0.003), not significant. For the ≥$100k head all methods have CIs containing 0, so it is unreadable
+5. **Motion features have no demonstrable contribution**: for C vs Cnm on y0, HGB-scale is 0.108 vs 0.105 (a difference of about 0.003, within noise),
+   the voting methods are slightly lower at C than at Cnm, and on y10k removing motion is better. **The motion structure of stage 1 did not translate into skill on this target**
+6. **A3 (beyond T-3D, using only the state of D-3) is close to 0 for all methods** (highest 0.010). The 3-day persistence of the large-scale state carries almost
+   no information; this tier needs forecasts or climate signals (ENSO/MJO), not a better encoding
+
+## Caveats
+
+- **A key control is missing**: the gain of HGB-scale may come from "neighbourhood information around the county" rather than from the "wavelet scale decomposition" itself.
+  There is not yet a "fixed-radius neighbourhood mean/variance" control to tell the two apart, so conclusion 3 can only say that "neighbourhood + multi-scale features are useful"
+- The box is only about 21°×14° with a maximum scale of about 800 km, which cannot cover planetary waves or upstream troughs and ridges, so **large-scale conclusions cannot be drawn from this data**
+- The motion estimate's magnitude is low by about half (synthetic test: truth 2 cells, estimate about 1 cell), with correct direction and sign; channels other than PW and MSLP were not tried
+- B and C are perfect-prog upper bounds; A3 is the true beyond-T-3D tier and also the weakest
+- The number of GBM iterations was chosen on 2014–2016; the hyperparameters of K-means, voting and HGB were not tuned on the test period
+- The test-period data was read repeatedly in the smoke test and two full runs, but no method setting was modified based on it; the second run
+  only added the paired comparisons and the Cnm ablation
+
+---
+
+# Stage 4: data audit: is the weak lift a normalisation problem, a label ceiling, or a learner problem (2026-10-19)
+
+Script `13_data_audit.py`, with full output in `~/wxrisk_data/audit/report.txt`. Tier B (target day 12Z), train 2000–2016,
+test 2017–2022, BSS vs p0. Several impressions from the small-sample smoke test (blank rate of early damage fields, first-half vs second-half ratio of y0) were **corrected** on the full data;
+only full-data numbers are quoted below.
+
+## 1. Normalisation: not a problem, but absolutely necessary
+
+- The standard deviations of the raw features span **8×10⁵** (0.0006 to 509). K-means with **no normalisation at all** has a BSS of **0.0003 / 0.0012**
+  (point/scale), i.e. it learned nothing
+- Under four reasonable normalisations (county × month anomaly z, global z, anomaly + quantile → normal, anomaly z clipped at ±3) the K-means BSS values differ from one another by
+  ≤0.003 (point 0.024–0.029, scale 0.033–0.034). **Changing the normalisation does not change the conclusion**
+- Skew / heavy tails are concentrated in CIN amplitude, precipitation windows and motion vectors (kurtosis 8–44); 12 columns in total have kurtosis >20; clipping at ±3 brought no improvement
+- Train→test drift is small: the median drift of the mean of anomaly features is 0.04σ, the maximum 0.23σ (cape_12_lp)
+- Collinearity: of 20301 pairs, 103 have |r|>0.95 and 24 have >0.99, which is not a problem
+- **Anomalising is not a pure win**: with GBM on scale features, y0 using "global z (keeping absolute level)" is **0.0771**, higher than "county × month anomaly"
+  at 0.0676 (+0.010); for y10k it is the other way round (0.0418 vs 0.0439). Absolute level carries extra information for the occurrence head, so both are worth providing
+
+## 2. Pipeline leakage: none
+
+After shuffling features within "county × month", the test BSS is +0.0047 (scale) and +0.0056 (point), not 0. This **~0.005 is recalibration of static information**
+(the combination of lat/lon/month/logit p0 is better than p0's "county rate × month rate" product form), showing that **p0 itself is not the optimal static baseline**:
+all earlier BSS values contain about 0.005 of this, and the gain truly coming from the environment fields must have it subtracted
+
+## 3. Learner: capacity is not the bottleneck
+
+Scale features, y0, test BSS:
+
+| Learner | Test BSS | Train BSS |
+| --- | --- | --- |
+| LogReg (C=0.01…1) | 0.064 | 0.053 |
+| HGB depth 2 / 3 / 4 / 6 / 8 | 0.065 / 0.066 / 0.068 / 0.066 / 0.067 | 0.066 / 0.091 / 0.131 / 0.134 / 0.163 |
+| MLP 128-64 | 0.060 | 0.067 |
+
+- The linear model already gets 95% of HGB; going from depth 2 to 8, train BSS rises 2.5× while test does not move, so **the extra capacity is only overfitting**
+- On point features it is different: LogReg 0.044, HGB 0.052–0.054, MLP 0.055. **The multi-scale representation "linearises" the problem**:
+  with LogReg, scale features are higher than point features by +0.020, while with HGB only by +0.014
+- K-means (0.034) is half the linear model (0.064); **K-means is the genuinely weak learner in this batch of experiments**
+
+## 4. Data volume: limited
+
+Learning curve (the training set is a random subset of years from 2000–2013, 3 repeats):
+
+| Training years | 2 | 4 | 7 | 14 |
+| --- | --- | --- | --- | --- |
+| Point feature BSS | 0.038 | 0.041 | 0.045 | 0.054 |
+| Scale feature BSS | 0.045 | 0.053 | 0.061 | 0.068 |
+
+At 14 years it is **still rising** (7→14 years +0.007~0.009), and train BSS falls as the number of years grows (overfitting converging). The advantage of scale features over point features
+widens with data volume (+0.007 → +0.014), and the 2-year scale-feature model (0.045) is already higher than the 4-year point-feature model (0.041)
+
+## 5. Label ceiling: county-day randomness accounts for most of it
+
+**oracle**: use "actual same-day reports in neighbouring counties" as a feature (not forecastable, only a reference for regional coherence), test BSS:
+
+| Neighbourhood | y0 | y10k |
+| --- | --- | --- |
+| Same state | 0.104 | 0.033 |
+| Within 150 km | **0.138** | 0.036 |
+| Within 300 km | 0.121 | 0.035 |
+| Whole box | 0.043 | 0.017 |
+
+- y0: tier C HGB-scale (0.108) is already at **78%** of the 150 km oracle
+- y10k: our 0.042–0.049 is **already higher than** the neighbouring-county oracle (0.036): county-day outcomes at damage magnitude are mostly individual randomness
+- This is not a strict upper bound (the oracle and the environment fields are different information), but it shows that **the county-day variance a regional daily factor can explain is limited**
+
+State of the labels themselves (full data):
+- The y0 annual rate is 156–295 per 10,000 county-days, and the ratio of the second half to the first half (2000–2010 vs 2012–2022) is 1.04; for y10k it is 0.90. **Large year-to-year fluctuation, very small trend**
+- The blank rate of damage fields falls from 85% up to 2005 to 27–38% later, but the actual effect on y10k is only a ratio of 0.90,
+  smaller than feared in the small sample
+- SCS3 records in CO/NM/AZ are **all county-level records** (no loss from regional records)
+- The median time of the first report is 23Z, 25–75% within 21Z–24Z, and 38% fall on the next UTC day; only 1.8% are before 12Z and 3.5% before 18Z, so
+  **the feature frames of tiers B/C are almost all before the event**, and contamination is negligible
+
+## Attribution
+
+1. **Not a normalisation problem**: no normalisation fails completely (0.0003), but all reasonable normalisations are equivalent to each other; there is no pipeline leakage
+2. **Not a learner-capacity problem**: from the linear model through depth-8 GBM to MLP, all land at 0.060–0.068 on scale features;
+   more capacity only adds overfitting. **K-means is the exception; it really is too weak**
+3. **It is information / label limited**: (a) county-day Bernoulli randomness is large, and the neighbouring-county oracle only reaches 0.138; (b) the learning curve is still rising,
+   showing that data volume is also a constraint; (c) y0 fluctuates strongly year to year across the 23 years 2000–2022
+4. So whether "reasonable feature engineering helps" must be read in layers: **the (multi-scale) features do help** (with both linear and GBM, and more clearly with small data),
+   but the reachable ceiling is capped by label randomness, and piling on complexity cannot break through it
+
+## Caveats
+
+- The audit was done on tier B, y0/y10k; the ≥$100k head has too few samples (97 test positives) and was not included
+- The test period was used repeatedly by these diagnostics, but no setting was tuned on test results; the number of GBM iterations is still chosen on 2014–2016
+- The oracle is a diagnostic quantity, not a forecast: same-day reports in neighbouring counties are not available at forecast time
+- The learning curve only sampled 2000–2013, with a maximum of 14 years, and was not extrapolated to more years
+
+---
+
+# Stage 5: exploring other label sources, and how big the problem with the labels themselves is (2026-10-19)
+
+Scripts: `15_source_agreement.py` (agreement of SPC/RMA with SE), `16_warning_labels.py` (IEM warning polygons → county-day),
+`17_mesh_vs_reports.py` (MESH radar hail vs hail reports), `14_label_comparison.py` (same features and learner, different labels).
+Data are in `~/wxrisk_data/labels_extra/` (SPC, RMA, IEM, Census county boundaries, single-day MESH files).
+
+## Source availability
+
+| Source | Status |
+| --- | --- |
+| SPC reports | Downloaded; 19,560 records with county codes for CO/NM/AZ May–Sep 2000–2022 |
+| RMA cause of loss | Downloaded for 2000–2023; the payout amount is in column 29 (cross-checked by back-computing from loss ratios) |
+| IEM warning polygons | Downloaded 2002–2023 storm-based (about 5 MB per year), mapped to 25,902 county-days |
+| MRMS MESH | AWS `noaa-mrms-pds` starts **2020-10-14**; May–Sep 2021–2023 fetched, 456/459 days (one ~1 MB file per day). A spot check of IEM MTArchive for 2018-06-01 found **no MESH** |
+| EAGLE-I | **Could not be obtained**: figshare and the ORNL page return 403 to the command line, and the DOI page only offers a Globus download. Needs a manual download |
+| SHELDUS | The subscription contains only aggregated data (no exact dates); county-day needs raw data bought per record (education tier $0.10 per record) |
+
+## Consistency checks (external corroboration of the labels)
+
+- **SPC and SE are the same batch of data**: exact county-day dates coincide for 99.0% (9,054 / 9,149), and within ±1 day for 99.7%. SPC provides no independent information,
+  only timeliness and magnitudes
+- **RMA crop insurance payouts** (county-month, May–Sep, agricultural counties only):
+
+| | Months with a payout that have an SE report | Months with an SE report that have a payout | Spearman (payout vs report count, all county-months) | Spearman (payout vs SE dollars, both >0) |
+| --- | --- | --- | --- | --- |
+| Hail | 58% | 43% | 0.40 | **0.07** |
+| Wind (Wind/Excess Wind) | 36% | 22% | 0.16 | 0.17 |
+
+  Among county-months with an actual insured hail payout, **42% have no hail report at all in SE**; and the dollar loss recorded in SE is almost uncorrelated with the actual payout
+- **Within SE, dollars are decoupled from intensity**: the Spearman correlation of hail/wind intensity with loss is only 0.15 / 0.11. The share of hail loss ≥$10k
+  by size is 0.2% (≤0.75 in), 0.5% (0.75–1), 2.5% (1–1.75), 7.2% (1.75–2.75), 18.9% (>2.75)
+- **MESH vs reports** (2021–2023, 51,072 county-days, MESH taken as the county maximum):
+
+| MESH threshold | County-days | Of which with ≥1 in report |
+| --- | --- | --- |
+| ≥10 mm | 11,630 | 4.8% |
+| ≥25.4 mm (1 in) | 3,281 | **15.7%** |
+| ≥38 mm | 1,337 | 30.3% |
+| ≥50 mm (2 in) | 614 | 44.0% |
+
+  In the other direction: among county-days with a ≥1 in report, 90–97% have MESH ≥25.4 mm. The share with MESH ≥1 in but no ≥1 in report:
+  AZ 93%, NM 87%, CO 78%. **Radar sees almost all the hail that is reported, but reports cover only a small fraction of what radar shows**
+- **Warnings and reports** (2017–2022): 80% of county-days with a report have an SVR/TOR warning; but of warned county-days only 31.5% have a report.
+  Warnings are 610 per 10,000 county-days, reports 239
+
+## Same features, different labels (test 2017–2022, GBM scale features)
+
+`AUC lift` = model AUC − AUC of p0 alone (independent of base rate, comparable across labels); BSS varies with the base rate and **cannot be compared directly across labels**.
+
+| Label | Per 10,000 county-days | BSS (tier B / C) | AUC lift (tier B / C) |
+| --- | --- | --- | --- |
+| Any report | 239 | 0.068 / 0.108 | 0.107 / 0.134 |
+| NWS severe (hail ≥1″, wind ≥50 kt or wind damage with no gust value, tornado) | 216 | 0.065 / 0.102 | 0.106 / 0.134 |
+| Significant severe (hail ≥2″, wind ≥65 kt, EF2+) | 31 | 0.016 / 0.027 | 0.079 / 0.104 |
+| Hail ≥1″ | 107 | 0.061 / 0.093 | 0.111 / 0.130 |
+| Wind ≥50 kt | 119 | 0.037 / 0.047 | 0.069 / 0.096 |
+| Tornado | 20 | 0.015 / 0.017 | 0.114 / 0.141 |
+| Loss ≥$10k | 28 | 0.043 / 0.042 | **0.064 / 0.075** |
+| Loss ≥$100k | 9.6 | 0.018 / 0.009 | **0.052 / 0.073** |
+| Any report within 150 km | 1,303 | 0.168 / 0.239 | 0.120 / 0.147 |
+| Any report in the same state | 3,541 | 0.207 / 0.246 | 0.149 / 0.166 |
+| Warning SVR/TOR (2002–2022 sample) | 610 | 0.149 / 0.222 | 0.129 / 0.157 |
+| Warning TOR | 43 | 0.033 / 0.053 | 0.086 / 0.106 |
+| Warning FF (flash flood) | 345 | 0.097 / 0.115 | 0.093 / 0.113 |
+
+In the same sample (2002–2022), any report is BSS 0.067 / 0.107 and AUC lift 0.108 / 0.133.
+
+## Conclusions
+
+1. **Dollar loss is the weakest label**: its AUC lift is only 55–60% of that of the occurrence labels (0.064/0.075 vs 0.107/0.134),
+   the neighbouring-county oracle is also below the model (no regional coherence), dollars are almost decoupled from intensity (Spearman 0.11–0.15), and almost uncorrelated with insurance payouts
+   (hail 0.07). As a prediction target, a loss threshold is much worse than the occurrence / intensity labels
+2. **The problem with the occurrence labels is that "what is measured is incomplete"**: of radar-indicated ≥1 in hail county-days, 84% have no report; of county-months
+   with an insured hail payout, 42% have no report. A report looks more like the product of "hail × an observer being present"; p0's county × month rate already absorbs the average observer density,
+   and what remains is the day-to-day variation
+3. **Changing the label is not a shortcut to more skill**: replacing "any report" with an intensity threshold (NWS severe, hail ≥1″) leaves AUC lift unchanged
+   (79% of reports are severe anyway); smoothing to 150 km or to state level more than doubles BSS, but AUC lift gains only 10–39% (150 km: +12%/+10%, state: +39%/+24%),
+   and most of the growth in BSS comes from the higher base rate; the warning label doubles BSS (0.149/0.222) and gains about 20% in AUC lift (0.129/0.157)
+4. So the answer to "is the label a big problem" is **layered**: for **loss** yes; for **occurrence**, it is mainly completeness (false negatives)
+   rather than large random noise, and switching to a more objective or smoother label can only raise "the discrimination the environment can explain" by 10% to 40%
+5. Consistent with the project slides' structure "hazard forecast q → impact model τ → county loss ψ": **the hazard layer should be trained with objective labels
+   (MESH, warnings, intensity), and loss should be left to the impact layer**. Predicting directly with a loss threshold, as is done now, puts the weakest link at the very front
+
+## Caveats
+
+- **MESH is not ground truth**: it overestimates, and here the county maximum is taken, so large counties more easily have a ≥1 in grid cell, so "84% unreported"
+  is an upper bound and not all of it is missing reports; only three seasons, 2021–2023
+- RMA covers only agricultural counties and is monthly rather than daily; matching payouts to hail by month risks a lag
+- Warnings are forecasters' judgements, reflecting hazards visible to radar/environment, which is not the same as occurrence; there are 2.6 times as many as reports
+- AUC lift is not a skill score, only a difference in discrimination; cross-label comparison is still affected by the number of positives (tornado and significant severe have fewer than 320 positives)
+- SE intensity thresholds: wind records with no gust value are treated as severe (the SPC convention); 99% of wind records in this region carry a gust value
+- The same test years were read many times in this stage, but no setting was tuned on them
+- **EAGLE-I was not explored** (it cannot be downloaded outside a browser), and remains the preferred candidate for the wind impact layer
+
+---
+
+# Stage 6: quality of flooding data sources (2026-10-19)
+
+Scope as for SCS: CO/NM/AZ, 112 counties, May–Sep, 2000–2022, local standard-time dates. Scripts: `18_flood_sources.py`
+(source agreement), `19_qpe_vs_flood.py` (objective rainfall), `14_label_comparison.py --labels f_ff …` (same features, different labels);
+modules `labels_flood.py`, `mrms.py`. Data are in `~/wxrisk_data/labels_extra/flood/`.
+
+## Source profile
+
+| Source | County-day positives | Status |
+| --- | --- | --- |
+| SE Flash Flood (county-level) | 3,601 | **100%** of Flash Flood records are county-level, 93% of Flood; 40% have a loss, 23.5% ≥$10k, 6.4% ≥$100k |
+| SE Flood (multi-day, expanded to begin..end) | 806 | Median duration 0 days, 90th percentile 4 days, 99th percentile 18 days |
+| NWS FF warnings (IEM, from 2002) | 8,877 | 127→666 per 10,000 county-days from 2002 to 2022 (about 5×); issuing habits are changing |
+| NFIP claims (OpenFEMA **v3**; v2 was retired on 2026-10-15) | 1,953 | Extremely low penetration, see below |
+| USGS daily-mean discharge surge (≥3× the previous day and reaching the site's 95th percentile) | 7,616 (only the 92 counties with gauges) | Daily means miss short flash floods; the threshold was set by me and is unvalidated |
+| FEMA county-level flood declarations | 1,558 | Event-level, covering only 4.9% of SE county-days |
+| RMA crop "Flood" | Only 69 county-months | Basically unusable |
+| NWM reanalysis (AWS) | — | Only confirmed to exist, **not explored** |
+
+## Agreement (county-day)
+
+| A → B | P(B\|A) | P(A\|B) | Notes |
+| --- | --- | --- | --- |
+| SE flash flood → FF warning | 0.81 (±1 day 0.86) | 0.32 (0.42) | Almost the same as SCS's 0.80 / 0.31 |
+| SE flood → NFIP claim | 0.15 (0.22) | 0.32 (0.46) | |
+| FF warning → NFIP claim | 0.07 (0.12) | 0.35 (0.51) | |
+| SE flood → USGS surge (counties with gauges) | 0.36 (0.51) | 0.18 (0.32) | The surge criterion is on the loose side |
+| SE flood → FEMA declaration | 0.05 | 0.14 | |
+
+## NFIP: independent loss data barely exists in this region
+
+- County residential penetration: median **0.48%**, with 65% of counties <1%; region-wide 40,100 policies / 5,448,744 residential structures = 0.74%
+- CO 0.57%, AZ 0.66%, NM 1.4%; against 2.9% nationally, Louisiana 22%, Florida 13.7%, South Carolina 6.1%, Texas 5.8%;
+  only 109 of 3,159 counties are ≥10%
+- May–Sep claims over 23 years total 1,953 county-days; 2013 (the Colorado flood) alone has 2,426 records, and the top 5 dates account for 39% of all claims
+- As with the loss labels of SCS, **NFIP is not a usable independent loss source in this region**
+
+## Objective rainfall (MRMS MultiSensor QPE 24 h, 2021–2023, 51,072 county-days)
+
+| QPE county maximum | County-days | SE flash flood | FF warning | NFIP claim | SE ≥$10k |
+| --- | --- | --- | --- | --- | --- |
+| ≥25 mm | 11,772 | 5.4% | 15.3% | 1.5% | 1.9% |
+| ≥50 mm | 4,813 | **11.1%** | 27.2% | 2.8% | 3.8% |
+| ≥75 mm | 1,614 | 19.7% | 38.8% | 4.1% | 7.2% |
+| All | 51,072 | 1.3% | 3.8% | 0.4% | 0.4% |
+
+- In the other direction: 98% of flash flood county-days have QPE ≥25 mm (90% ≥40 mm), with a median of 74 mm against 3 mm on other days; warnings 92% / 79%,
+  NFIP 87% / 75%
+- Ranking by QPE alone, AUC: flash flood **0.952**, warnings 0.928, ≥$10k 0.945, NFIP 0.867, stable across states (0.82–0.95)
+- **The coupling between flood occurrence and rainfall is tighter than the coupling between SCS reports and any existing variable**; but reports are just as incomplete: only 11% of county-days with ≥50 mm
+  have a flash flood report (SCS with MESH≥1″: 16%)
+
+## Same features, different labels (test 2017–2022; 2002–2022 sample; GBM scale features; the features are SCS-oriented, not flood-oriented)
+
+`AUC lift` = model AUC − AUC of p0 alone.
+
+| Label | Per 10,000 county-days | BSS (B / C) | AUC lift (B / C) | Compared with neighbouring-county oracle |
+| --- | --- | --- | --- | --- |
+| SCS any report (same sample) | 239 | 0.067 / 0.107 | 0.108 / 0.134 | 49% / 77% |
+| SE flash flood | 118 | 0.085 / 0.095 | 0.070 / 0.085 | **103% / 115%** |
+| SE flood or flash flood | 125 | 0.080 / 0.092 | 0.085 / 0.100 | 94% / 109% |
+| SE flood loss ≥$10k | 35 | 0.030 / 0.032 | 0.064 / 0.081 | oracle lower |
+| SE flood loss ≥$100k (118 positives) | 12 | 0.004 / 0.009 | 0.090 / 0.103 | — |
+| FF warning | 345 | 0.097 / 0.115 | 0.093 / 0.113 | 45% / 54% |
+| NFIP claim | 44 | 0.029 / 0.027 | 0.035 / 0.039 | oracle≈0 |
+
+- p0 (county × month) already has an AUC of 0.85 for floods (SCS 0.77); flood season and county location are highly predictable, so **the features can buy less extra discrimination**
+- Model BSS matches or even exceeds the neighbouring-county oracle: the regional coherence of flood reports is weak; they are **local events**
+- NFIP is the least learnable (AUC lift 0.035/0.039)
+
+## Flood dollar loss is likewise decoupled from intensity
+
+Among flash flood county-days, the Spearman correlation between the county maximum QPE and SE dollar loss is **0.034** (0.042 when loss >0); the share ≥$10k barely changes across QPE
+bins (≤25 mm 45%, 25–50 38%, 50–75 30%, 75–100 35%, >100 mm 37%). As with SCS (intensity–loss 0.11–0.15),
+**the dollar label does not vary with hazard intensity**.
+
+## Stability
+
+| | Ratio of later to earlier period, 2000–2010 / 2012–2022 | Largest single-year share |
+| --- | --- | --- |
+| SE flash flood county-days | 0.65 | 9% |
+| SE flood ≥$10k | 0.51 | 11% |
+| NFIP claims | 0.64 | 12% |
+| FF warnings (from 2002) | about 0.2 (5× growth) | — |
+
+SCS equivalents: any report 1.04, ≥$10k 0.90. **The reporting convention of flood labels drifts more severely**, and the many events of 2013, 2021 and 2022
+(the Colorado flood, the monsoon and burn scars) raise the later period.
+
+## Comparison with SCS
+
+| | SCS | Flooding |
+| --- | --- | --- |
+| Under-reporting of the occurrence label | 16% of MESH≥1″ have a report | 11% of QPE≥50 mm have a report |
+| Coupling of occurrence to objective driver | MESH: 90–97% of reported hail has MESH≥1″ | QPE: AUC 0.95, 98% of flash floods ≥25 mm |
+| Dollars vs intensity | Spearman 0.11–0.15 | **0.034** |
+| Independent loss data | EAGLE-I (wind, not obtained), RMA (sparse) | NFIP penetration 0.74%, RMA 69 county-months: **worse** |
+| County-day positives (any) | 9,149 | 4,310 |
+| Label stability | Fairly steady (1.04) | Marked drift (0.65) |
+| Warnings agree with reports | 80% / 31% | 81% / 32% |
+
+## Conclusions
+
+1. **The "hazard layer" of floods is better than that of SCS**: occurrence is tightly coupled to a measurable driver (24 h rainfall), AUC 0.95, whereas the radar quantity corresponding to SCS reports
+   is only MESH from 2020 onward and is looser
+2. **The "impact layer" of floods is not better**: dollars are almost unrelated to rainfall amount (0.034), there is almost no independent loss data in this region (NFIP penetration 0.74%,
+   RMA 69 county-months); labels are less stationary and positives fewer
+3. With the same (SCS-oriented) features, the learnability of floods is comparable to SCS (BSS 0.085 / 0.095 vs 0.067 / 0.107), and AUC lift is actually lower,
+   because p0 already explains a lot; this comparison is **unfair to floods**, since there are no flood-oriented features such as rainfall, soil moisture, terrain / burn scars
+4. **Switching to flooding does not escape the problem of "weak loss labels"; it only changes its form**. If a switch is considered, **region** matters more than hazard type:
+   NFIP has usable coverage only in Louisiana, Florida, South Carolina and Texas (10–40 times higher than CO/NM/AZ)
+
+## Caveats
+
+- QPE takes the county maximum, which is high for large counties; 2021–2023 gives only three seasons; Pass2 is radar plus gauges and mountains are still blocked, but the AUC of 0.95 here shows
+  it is sufficient for these labels
+- The USGS surge criterion (3×, 95th percentile) was set arbitrarily by me, with no sensitivity analysis and **no learnability test**
+- The NWM reanalysis was only confirmed to exist; its time range and quality were not explored
+- In the label comparison the flood features are SCS-oriented; the AUC-ceiling effect of p0 makes AUC lift low
+- The fields of NFIP v3 may differ slightly from v2; I used only the date, county code and payout amounts
+
+---
+
+# Stage 7: mentor feedback and the granularity of flood outcomes (2026-10-20)
+
+Mentor feedback (summary): the other three groups chose hurricanes, floods and wildfires, and the flood group moved to county-level analysis; if we choose floods we should work at **finer granularity**;
+SHELDUS aggregated data is usually free of charge, but county-level outcomes are too coarse; they suggested looking at NFIP claims or remote-sensing indicators; the flood scope must explicitly state what is included and excluded,
+but must not be so narrow that there is no data. Scripts: `20_fetch_nfip_claims.py`, `21_nfip_granularity.py`; data `~/wxrisk_data/labels_extra/flood/`.
+
+## NFIP v3 claims (2000–2023, national)
+
+1,564,325 claims, $69.5B paid, covering 2,855 counties, 95,652 block groups and 21,560 ZIP codes.
+
+| Dimension | Precision and completeness |
+| --- | --- |
+| Space | `censusGeoid` is a **12-digit census block group**, 96–99.7% complete; ZIP 100%; **latitude/longitude only to 1 decimal place (about 11 km), unusable as point locations** |
+| Time | `dateOfLoss` is exact to the day |
+| Intensity | Building-level water depth (`waterDepth`) is present for 80–95% (dropping to about 80% from 2019); **interior water depth only 14.5%** |
+| Duration | `floodWaterDuration` is almost always present before 2018, **52% in 2019 and 0.1–6% in 2020–2023**, unusable in recent years |
+| Damage | `buildingDamageAmount` present for 72–90%; Spearman 0.968 with the payout |
+| Event | The event name `floodEvent` is present for 75% overall, but varies greatly by year (17% in 2006, 94% in 2012); the EDN field is almost empty |
+| Cause | 4 rainfall/snowmelt ponding 44.1%, 2 river/lake overflow 22.2%, 1 tidal overflow 19.5% (25.7% of payouts), 0 other 10.7%, 3 alluvial fan 0.3% |
+
+## Defining the flood scope
+
+- **Named tropical events account for 62.4% of claims and 78.7% of payout dollars** (Katrina, Sandy, Harvey, Ike, Irene, Ian, etc.;
+  the corresponding figure in Storm Events is 55%)
+- Suggested scope: inland flooding (cause codes 2/3/4), excluding tidal overflow (1), landslide/erosion (7/8/9) and named tropical events
+  - Non-tropical inland scope: **462,684 claims, $12.7B**, covering 74,968 block groups, 2,792 counties, 55 states
+  - Top ten states: TX 64,417, LA 55,589, FL 43,158, NJ 27,706, NY 23,947, IL 18,345, PA 18,016, MO 13,567, OH 11,633, CA 10,961
+  - 246,902 block-days, an average of 1.87 claims each, 22% with ≥2 claims; median single payout $8,284, 90th percentile $74,558
+- Event naming is incomplete: 25% of claims have no event name, so the "non-tropical" judgement mixes in some unnamed tropical claims;
+  named non-tropical events include Nor'easter, "Mid-summer severe storms", "Torrential rain", etc.
+
+## How many block groups per event are studyable
+
+Clustered by gaps of ≤3 days between claims within a county (non-tropical inland scope): 70,663 event clusters, with a median of only 1 claim.
+
+| Threshold | Events | Train 2000–2016 / test 2017–2023 | Share of claims |
+| --- | --- | --- | --- |
+| ≥10 claims, ≥5 block groups | 4,998 | 3,905 / 1,093 | 72% |
+| ≥30 claims, ≥10 block groups | 1,775 | 1,442 / 333 | 59% |
+| ≥100 claims, ≥20 block groups | 506 | 431 / 75 | 42% |
+
+## Does the outcome track hazard intensity
+
+| Test | n | Spearman |
+| --- | --- | --- |
+| Any water-depth field vs payout (raw dollars) | 242,103 | 0.132 |
+| Interior water depth vs payout | 33,348 | 0.182 |
+| Single-family, interior water depth vs **payout / coverage** | 11,274 | **0.319** |
+| By cause: river/lake overflow / rainfall ponding (depth vs payout) | 108,808 / 132,599 | 0.101 / 0.134 |
+
+For single-family homes the median payout / coverage rises with interior water depth (inches): 13% for ≤6, 24% for 6–12, 31% for 12–24, 38% for 24–48, 42% for >48.
+**After normalising by coverage and controlling for confounders, the NFIP outcome tracks hazard intensity, whereas SHELDUS/SE dollars are almost uncorrelated with rainfall amount (0.034)**;
+raw dollars fail because of heterogeneity in coverage, deductibles and water-depth measurement.
+
+## Exposure denominator (policies)
+
+`NfipPolicies` v3 has 74.70 million records, with effective/termination dates and block groups. **An "in force during a window" filter returns 503**; filtering by state plus effective date is fast
+(LA: 1,121 records for a single day, 26,622 for a single month, about 0.3 s). So the policy denominator **can be fetched per event and region** (take policies effective in the year before the event,
+then filter by termination date locally); a national panel needs the bulk file.
+
+## Finer-granularity hazard-layer inputs (confirmed to exist, not downloaded)
+
+- Stage IV 4 km hourly precipitation: NCAR RDA d507005, since 2002-01-01
+- gridMET 4 km daily precipitation: 1979 to present, OPeNDAP/THREDDS
+- MRMS MultiSensor QPE (about 1 km): AWS since 2020-10, also archived by IEM
+- Sentinel-1 GFM flood extent: operational in 2021–2022, start not verified
+- Global Flood Database: 250 m, 2000–2018, 913 global events (the number of US events was not checked)
+
+## Caveats
+
+- NFIP covers only insured buildings and is concentrated in floodplains and mandatory-purchase zones, so it is a conditional sample of "insured exposure"
+- Tropical events are identified by name; 25% have no event name and were not cross-checked against HURDAT2
+- Only 14.5% of claims have interior water depth; the depth unit may mix inches and feet
+- Payouts are affected by coverage caps (building limit $250k, 0.7% hit the cap) and deductibles
+- Event clusters were defined by me using a 3-day gap within a county; they are not DFO/GFD events
+- The relationship between hazard-layer inputs and block-group outcomes has not been validated, and no modelling has been done
+
+---
+
+# Stage 8: Texas sub-county flood pilot (block group × rain episode, 2010–2023) (2026-10-20)
+
+Scripts: `22` (data fetch), `23` (definition diagnostics), `24` (extract Texas policies), `25` (build table), `26` (ladder experiment), `27` (terrain),
+`28` (wavelet scale features), `29` (diagnostics); modules `bg_crosswalk.py`, `flood_pilot.py`. Everything ran on a Mac CPU, with no GPU.
+
+## Design
+
+- **Unit**: 2010-vintage census block group × rain episode. An episode = consecutive days on which a county's daily maximum precipitation (gridMET 4 km) is ≥30 mm (gaps of ≤1 day merged),
+  with tropical-cyclone windows excluded (HURDAT2 Atlantic + Eastern Pacific, 800 km, ±2 days)
+- **Rows**: all block groups of the county with ≥1 NFIP policy in force on the episode's start day (policies from the OpenFEMA bulk file)
+- **Outcome**: whether the block group has an inland claim not named as tropical (cause codes 2/3/4) in the window [start, end + 2 days]
+- **Split**: train 2010–2016, test 2017–2023; plus a seven-fold cross-validation blocked by year (each of the 14 years held out once)
+- **Size**: 2,996,576 rows, 44,212 events, 11,264 positives (0.38%); test 3,711 positives, 1,015 events for which within-event AUC can be computed
+- **Main metric**: within-event AUC (pairwise comparisons of block groups within the same event; a county-level model is 0.5 by definition); overall AUC and AP are also reported
+
+## Results (test 2017–2023; within-event AUC, event-cluster bootstrap 95% interval in parentheses)
+
+| Scheme | Overall AUC | Within-event AUC | Seven-fold CV within-event (mean, worst–best) |
+| --- | --- | --- | --- |
+| County-level rainfall (L0) | 0.880 | 0.500 | 0.500 |
+| Point vote: the block group's own rainfall grid point | 0.902 | 0.740 | — |
+| Neighbourhood exceedance fraction (NEP) 7×7, ≥50 mm | 0.875 | 0.651 | — |
+| L1 + exposure (policy count, flood-zone share, coverage) | 0.894 | 0.647 (0.633, 0.663) | 0.670 (0.633–0.698) |
+| **L2 + block-group grid-point rainfall** | **0.926** | **0.786 (0.765, 0.805)** | **0.787 (0.751–0.814)** |
+| L3 + neighbourhood rainfall | 0.927 | 0.776 | 0.785 |
+| L4 + location, antecedent rainfall | 0.930 | 0.779 | 0.792 |
+| L4b + terrain (elevation, relative height, slope) | 0.930 | 0.781 | 0.794 (0.758–0.820) |
+| L5 + wavelet scale features (the earlier encoder) | 0.930 | 0.784 (0.761, 0.808) | 0.789 (0.758–0.824) |
+
+Paired bootstrap (within-event AUC difference): exposure **+0.147** (0.133, 0.163); grid-point rainfall **+0.139** (0.118, 0.157);
+neighbourhood −0.010 (−0.022, +0.001); location +0.003; terrain +0.002 (−0.001, +0.005); wavelet +0.003 (−0.000, +0.006).
+Adding terrain on L2 alone gives −0.002, wavelet −0.002, both −0.003, all with intervals spanning 0.
+
+## Diagnostics
+
+| Test | Result |
+| --- | --- |
+| Shuffling labels within events | 0.781 → **0.501**, not a pipeline artifact |
+| Learning curve (training 2/4/7 years) | 0.774 / 0.768 / 0.781, saturated |
+| Learner | Boosted trees depth 3/5/8: 0.782/0.786/0.786; **logistic regression 0.781** |
+| Dropping the flood-zone share | L2 0.783, L4b 0.781: terrain adding no gain is **not** because the flood zone already contains it |
+| Trigger ≥50 mm | L2 0.802, L4b 0.800 |
+| Tropical window 1200 km / ±4 days | L2 0.785, L4b 0.780 |
+| Keeping only claims with a high-confidence block-group mapping | L2 0.786, L4b 0.783 |
+| Strata | Block groups per county ≤20: 0.737; >150: 0.781. 1-day events 0.801; >4-day events 0.754 |
+
+**Within-event AUC is stable at 0.78–0.80 across the three "definition choices": trigger threshold, tropical window, and claim confidence.**
+
+## Dataset diagnostics (problems found and how they were handled)
+
+1. **NFIP block-group codes mix the 2010 and 2020 vintages**: Texas claims match 90.2% against the 2010 vintage alone and 70.1% against the 2020 vintage alone, and in recent years the 2010 match rate drops to 66–82%.
+   Mapping with the official Census 2020→2010 relationship file by largest overlap area gives **100% matched, 92–99% high-confidence (land area ≥80%)**
+2. **The policy bulk file only starts in 2009** (in-force count is 0 for 2005), so the exposure denominator and the pilot can only start in 2010
+3. Policy data: terms are almost all 365–366 days, and 99.65% map to 2010 block groups; statewide policies in force are 587,804 on 2017-08-24 and 774,767 in 2020-07,
+   which is plausible; **0% of claims occur in a block group with no policy that day**
+4. Single-family coding: it changed to `11` from 2021, so the original test `==1` would make the 2023 share 0; fixed to `{1, 11}`
+5. Event coverage: the event windows contain 31,057 claims, 88.8% of the 34,989 Texas claims in 2010–2023
+6. **Large label drift**: claims per million policy-events are 621 in 2015 and 710 in 2016, versus 17.5 in 2011, 15 in 2020 and 24 in 2022;
+   the positive rate is 0.58% in training against 0.22% in test, so the Brier skill is about 0. **Ranking metrics are stable, but absolute probabilities cannot be used directly across eras**
+7. The wavelet feature file corresponds only to the main table for T=30; the L5 row in the sensitivity table is invalid (all missing after the merge) and is no longer used
+8. Texas has 64,395 inland claims not named as tropical, but they are very uneven across years (about 10 k in 2015 and 2016, under 500 in 2011, 2022 and 2023),
+   and the test period holds only about 24% of the 2010–2023 claims
+
+## Conclusions
+
+1. **The sub-county skill is real and robust**: within-event AUC about 0.78–0.80, with even the worst of the seven CV folds ≥0.75, against 0.5 for the county-level scheme
+2. **All the skill comes from two items**: exposure (policy count, +0.147) and the block group's own rainfall grid point (+0.139). Removing the flood-zone share has almost no effect
+3. **Neighbourhood smoothing, terrain, location and the wavelet encoder have no significant gain**. Logistic regression is on par with boosted trees, and the learning curve is saturated:
+   **it is limited by feature information, not by the learner or the data volume**
+4. On "observed rainfall", taking the value at the point beats neighbourhood voting. **This cannot be extrapolated to forecasts**: NEP addresses position error in forecasts, and an observed field has no position error
+5. The earlier wavelet encoder **brings no demonstrable benefit** on this task
+
+## Caveats
+
+- Rainfall is the gridMET **daily** value (4 km) at the grid point of the block-group centroid, losing sub-daily intensity and position; terrain is sampled from 150 m tiles at the centroid,
+  not averaged over the block-group area, and carries no drainage or storm-sewer information
+- The sample is conditional on "block groups with policies", so it reflects the exposure of the insured population and not all buildings
+- A single state and a single region; events of 2015–2016 dominate the training set
+- This is an **observed-rainfall** experiment, not a forecast experiment; whether neighbourhood probabilities, ensemble members and the encoder are useful in forecast mode needs a separate test
+- Within-event AUC is weighted by the number of pairs, so large events carry more weight; the event-cluster bootstrap does not account for correlation across counties within the same weather system
+- Payout amounts and claim counts were not evaluated (only occurrence probability was)
+
+---
+
+# Stage 9: data audit of building-structure / foundation priors (2026-10-23)
+
+Scripts: `30` (audit, reproducible; the report is stored in `$WXRISK_DATA/audit/building_attrs.txt`), `31` (data manifest), `scripts/fetch/` (consolidated downloads).
+Documents: `docs/FLOOD_PRIORS.md` (detailed results and to-do), `docs/DATA_SOURCES.md` (all data sources), `AGENTS.md` (for AI agents / new members).
+This stage **trained no model**; it only tests the data and the interpretation hypotheses for "can building structure provide a prior".
+
+## Decision
+
+Building structure (foundation, elevation, basement) is used only as auxiliary labels / vulnerability priors, not as forecast inputs. Duration of inundation, seepage and equipment placement cannot be determined even by claims adjusters,
+and the data has no reliable field for them, so they can only be treated as priors.
+
+## Results (single-family claims, 2010 onward, loss ratio = building damage / coverage; records with exterior water depth 0 removed)
+
+- **Fields that exist**: `foundationType`, `elevatedBuildingIndicator` (both policies and claims); `basementEnclosureCrawlspaceType`,
+  `enclosureTypeCode`, `elevationDifference`, number of floors, `buildingDescriptionCode` (policies only).
+  **No** wood/brick construction field exists (`construction` is only an "under construction" boolean, 0.25% true); `floodWaterDuration` is almost all 0 and unusable.
+- **The unknown share of `foundationType` changes drastically by year** (Texas policies 86% in 2010, 58% in 2016, 32% in 2020, about 0% from 2022),
+  which is a change in reporting rules; and the unknown group has a higher loss ratio (2017–2021: 0.39 vs 0.32 for known slab), so the known subset is not a random sample.
+- **Elevated buildings lose less at the same water depth**: 0.27× slab after controlling for depth bin and year (Texas); 0.32 nationally with state-month fixed effects;
+  monotone across depth bins. This is the most robust structural signal.
+- **Basements are not more vulnerable (on this basis)**: only 62 Texas basement claims, untestable; nationally with state-month fixed effects they are 0.43× slab,
+  and state-by-state estimates in 14 states are all below 1 (0.26–0.79). Basement losses are nearly flat (about $10–20 k), while slab rises to about $100 k with interior water depth.
+  This is consistent with a threshold-type loss shape of "equipment sits in the basement, so it is flooded together as soon as water gets in", but it **cannot be distinguished** from "NFIP covers only limited basement items".
+- The annual median loss ratio of slab buildings is 0.04–0.35; year/event effects are no smaller than structure effects and must be controlled.
+- Flood-zone priors should come from FEMA NFHL (not USGS) and HAND; not yet downloaded.
+
+## Conclusions
+
+- Priors that can be built: elevated share, `elevationDifference`, number of floors, post-FIRM share; foundation-type shares may only use the known subset, together with an explicit unknown share.
+- Model basements as "threshold event + slow increase with depth"; flag the "basement × small residential" interaction separately; "basement × non-residential" has no data, so do not fill it from the former.
+
+## Caveats
+
+- The `foundationType` codes were inferred from cross-tabs and are not from an official dictionary; the share of "foundation type = 2" in NC and KY is only 2–18%, so its meaning is doubtful.
+- "Loss / coverage" is pushed down for basements by the scope of coverage, so "basements are lower" cannot be interpreted as "safer". The commercial vs residential comparison has no data (non-residential claims almost
+  never have a foundation type).
+- State-month fixed effects are only a rough proxy for events; `floodEvent` covers only about 81% of records and 72 events, and is unusable.
+- The Texas and national ratios are computed on claims whose foundation is known; whether they hold for the unknown part is not known.
+- These features were not attached to `flood_pilot_table`, so **it is not yet known whether they add anything to prediction**.

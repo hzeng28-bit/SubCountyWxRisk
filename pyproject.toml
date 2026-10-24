@@ -20,13 +20,28 @@ dependencies = [
     "scikit-learn>=1.5",
     "pandas>=2,<3",
     "pyarrow>=18",
+    "cdsapi>=0.7.7",
+    "h5netcdf>=1.8.1",
+    "h5py>=3.16.0",
+    "shapely>=2.2.0",
+    "pyshp>=3.1.6",
+    "cfgrib>=0.9.15.1",
+    "eccodes>=2.50.0",
+    "pygrib>=2.1.8",
+    "netcdf4>=1.7.5",
+    "boto3>=1.43.118",
 ]
 
 [project.optional-dependencies]
 torch = ["torch>=2.4,<3"]
 
 [dependency-groups]
-dev = ["ipykernel>=6,<8", "matplotlib>=3.8,<4", "ruff>=0.11,<1"]
+dev = [
+    "ipykernel>=6,<8",
+    "matplotlib>=3.8,<4",
+    "pytest>=9.1.1",
+    "ruff>=0.11,<1",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wxrisk"]

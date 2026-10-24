@@ -7,3 +7,8 @@ cache/
 *.npz
 *.npy
 figures/
+.cdsapirc
+
+# local / not for sharing
+.Rhistory
+*.pdf

@@ -1,86 +1,89 @@
-# 设计：视频编码器类比下的集合预报风险指数
+# Design: an ensemble-forecast risk index under a video-encoder analogy
 
-## 0. 问题形式化
+## 0. Problem formulation
 
-给定
-- 起始条件 $X_0 \in \mathbb{R}^{V \times H \times W}$（analysis 场，V 个变量）
-- 集合预报成员 $\{M_m\}_{m=1}^{50}$，$M_m \in \mathbb{R}^{V \times L \times H \times W}$（L 个 lead）
+Given
+- initial conditions $X_0 \in \mathbb{R}^{V \times H \times W}$ (the analysis field, V variables)
+- ensemble members $\{M_m\}_{m=1}^{50}$, $M_m \in \mathbb{R}^{V \times L \times H \times W}$ (L lead times)
 
-求
-$$R_c(h, w, \tau) = \Pr\big[\text{灾害类别 } c \text{ 在格点 }(h,w)\text{、窗口 } [\tau-24\mathrm{h}, \tau] \text{ 内发生} \mid X_0, \{M_m\}\big]$$
+find
+$$R_c(h, w, \tau) = \Pr\big[\text{hazard class } c \text{ occurs at grid point }(h,w)\text{ within window } [\tau-24\mathrm{h}, \tau] \mid X_0, \{M_m\}\big]$$
 
-**灾害类别（阶段一只做 c=precip）**
-- `precip`：24h 累计降水 > 该格点气候 p99（且 ≥ 10 mm，避免干旱格点的伪极值）
-- `wind`：窗口内 10m 风速 > 该格点气候 p99（阶段二）
-- `heat`：2m 温度 > 该格点当日历气候 p99（阶段二）
+**Hazard classes (stage one covers only c=precip)**
+- `precip`: 24 h accumulated precipitation > the grid point's climatological p99 (and ≥ 10 mm, to avoid spurious extremes at arid points)
+- `wind`: 10 m wind speed within the window > the grid point's climatological p99 (stage two)
+- `heat`: 2 m temperature > the grid point's calendar-day climatological p99 (stage two)
 
-气候阈值用 **ERA5 1990–2017** 估计（按格点 × 日历月，30 天滑窗），与 2018–2022 的
-评测期完全不重叠 —— 阈值本身不能泄露评测期信息。
+Climatological thresholds are estimated from **ERA5 1990–2017** (per grid point × calendar month, 30-day sliding window), which
+does not overlap at all with the 2018–2022 evaluation period: the thresholds themselves must not leak information from the
+evaluation period.
 
-## 1. 编码器 → 气象的概念映射
+## 1. Mapping from encoder concepts to meteorology
 
-上一条研究线（nanoTSFM 频率头）用的是音频编码器类比：子带划分（Opus/CELT）+
-RAW 兜底（FLAC）。这次换成视频编码器，因为问题从 1D 变成 2D+时间。
+The previous line of research (the nanoTSFM frequency head) used an audio-encoder analogy: sub-band splitting (Opus/CELT) plus a
+RAW fallback (FLAC). This time we switch to a video encoder, because the problem goes from 1D to 2D plus time.
 
-| 视频编码概念 | 本项目对应物 | 备注 |
+| Video-coding concept | Counterpart in this project | Notes |
 | --- | --- | --- |
-| I 帧（帧内编码） | 起始条件 $X_0$ | 只能用当前空间结构，纯二维特征识别 |
-| P 帧（帧间预测） | 成员 $M_m$ 在 lead $\tau$ 的场 | 由 I 帧"预测"而来 |
-| 运动矢量 (MV) | 初始场特征到成员预报场的位移/平流 | 天气系统的移动就是字面意义上的 motion |
-| 残差 | 成员场里不能被平流解释的部分 | 对应生消、相变、对流触发 |
-| 多参考帧预测 | 50 个成员都是候选参考 | **用户的"条件投票"入口** |
-| 模式决策 (RD-opt) | 每个块选哪些成员/哪种预测模式胜出 | $J = D + \lambda R$ |
-| 可变块大小 (macroblock partition) | 风险特征的自适应空间尺度 | 天气尺度 vs 局地对流尺度 |
-| 帧内模式兜底 | 气候态 / persistence 分支 | 对应上条线 FLAC 的 RAW 兜底 |
-| 模式决策的熵 | 成员分歧度 → **风险指数的分布宽度** | 不是副产品，是目标量的一部分 |
-| 去块滤波 | 对逐块风险指数做空间平滑 | 防 block artifact |
+| I-frame (intra coding) | Initial conditions $X_0$ | Can only use the current spatial structure; pure 2D feature recognition |
+| P-frame (inter prediction) | Member $M_m$'s field at lead $\tau$ | "Predicted" from the I-frame |
+| Motion vector (MV) | Displacement / advection from initial-field features to a member's forecast field | The movement of weather systems is literally motion |
+| Residual | The part of a member's field that advection cannot explain | Corresponds to genesis and decay, phase change, convective initiation |
+| Multi-reference prediction | All 50 members are candidate references | **The entry point for the user's "conditional voting"** |
+| Mode decision (RD-opt) | Which members / which prediction mode wins in each block | $J = D + \lambda R$ |
+| Variable block size (macroblock partition) | Adaptive spatial scale of the risk features | Synoptic scale vs local convective scale |
+| Intra-mode fallback | Climatology / persistence branch | Counterpart of the RAW fallback (FLAC) in the previous line |
+| Entropy of the mode decision | Member disagreement → **width of the risk-index distribution** | Not a by-product; part of the target quantity |
+| Deblocking filter | Spatial smoothing of the per-block risk index | Prevents block artifacts |
 
-**核心赌注**：标准集合概率是"民主投票"——50 个成员每人一票、权重相同、逐格点独立。
-视频编码器的 mode decision 不是民主投票，是**逐块、按 RD 代价加权**的。如果大气的可预报
-性确实是空间非均匀的（它是），那么"逐块 + 流对齐 + 学出来的模式权重"应该打败等权投票。
+**The core bet**: the standard ensemble probability is a "democratic vote": 50 members, one vote each, equal weights, independent
+at every grid point. A video encoder's mode decision is not a democratic vote; it is **per block and weighted by RD cost**. If
+atmospheric predictability really is spatially non-uniform (it is), then "per block + flow-aligned + learned mode weights" should
+beat the equal-weight vote.
 
-## 2. 必须打赢的基线（否则就是在重新发明 EPS 概率）
+## 2. Baselines that must be beaten (otherwise we are reinventing EPS probabilities)
 
-逐级加强，**同一套 label / 指标 / 时间划分，只换方法**：
+Progressively stronger, **same labels / metrics / time split, only the method changes**:
 
-| # | 基线 | 说明 |
+| # | Baseline | Description |
 | --- | --- | --- |
-| B0 | 气候频率 | 逐格点 × 日历月的事件发生率，不看预报 |
-| B1 | 等权投票 | $\hat p = \frac{1}{50}\sum_m \mathbb{1}[M_m > \text{thr}]$ —— 业务上就是这个 |
-| B2 | 全局校准投票 | B1 过一个全局 isotonic/logistic 校准 |
-| B3 | 逐格点校准投票 | 每格点自己的校准曲线（纬度带共享参数） |
-| B4 | 投票 + 成员离散度特征 | 加 ensemble spread、集合均值、集合 max 等标量特征 |
-| C\* | 候选方法 | 块级 RD 模式决策 / 流对齐的成员加权 |
+| B0 | Climatological frequency | Per grid point × calendar month event rate, ignoring the forecast |
+| B1 | Equal-weight vote | $\hat p = \frac{1}{50}\sum_m \mathbb{1}[M_m > \text{thr}]$: this is what operations actually do |
+| B2 | Globally calibrated vote | B1 passed through one global isotonic/logistic calibration |
+| B3 | Per-grid-point calibrated vote | Each grid point has its own calibration curve (parameters shared within latitude bands) |
+| B4 | Vote + member-spread features | Add scalar features such as ensemble spread, ensemble mean, ensemble max |
+| C\* | Candidate methods | Block-level RD mode decision / flow-aligned member weighting |
 
-B2/B3 是真正难打的：**等权投票经过校准后已经很强**，上条研究线的教训（全局线性
-混合权重在异质数据上反而更差）在这里会以"全局校准 vs 逐格点校准"的形式重现。
+B2/B3 are the truly hard ones: **an equal-weight vote is already strong once calibrated**, and the lesson of the previous line of
+research (a globally linear mixing weight does worse on heterogeneous data) will reappear here as "global calibration vs
+per-grid-point calibration".
 
-## 3. 指标
+## 3. Metrics
 
-- **Brier score** 与 **BSS**（相对 B0 气候基线）—— 主指标
-- 可靠性图 + 分解（reliability / resolution / uncertainty）—— 看增益来自校准还是分辨力
-- 极端事件的 **AUC-PR**（p99 事件基率 ~1%，AUC-ROC 会虚高）
-- 分层报告：按纬度带、按海陆、按季节；全球 pooled 数字单独看会骗人
+- **Brier score** and **BSS** (relative to the B0 climatological baseline): the primary metrics
+- Reliability diagram plus decomposition (reliability / resolution / uncertainty): to see whether a gain comes from calibration or from resolution
+- **AUC-PR** for extreme events (the p99 event base rate is ~1%, so AUC-ROC would be inflated)
+- Stratified reporting: by latitude band, land/sea, season; a pooled global number alone is misleading
 
-## 4. 划分与泄露防护
+## 4. Split and leakage protection
 
-- 时间划分：训练 2018–2020，验证 2021，测试 2022（**严格时间顺序，不做随机划分**）
-- 同一 init time 的所有格点属于同一组；任何 CV 必须按 **init time 分组**（相邻 init
-  的预报高度相关，随机分格点会泄露）
-- 气候阈值、校准曲线一律只在训练期拟合，评测期只应用
-- 相邻 init time（6h 间隔）之间强相关 → 评测时只取每日 00Z，避免样本量虚高
+- Time split: train 2018–2020, validate 2021, test 2022 (**strictly chronological, no random split**)
+- All grid points of the same init time belong to the same group; any CV must group by **init time** (forecasts from adjacent
+  inits are highly correlated, so splitting randomly by grid point would leak)
+- Climatological thresholds and calibration curves are fitted on the training period only and merely applied in the evaluation period
+- Adjacent init times (6 h apart) are strongly correlated → at evaluation take only the daily 00Z, to avoid an inflated sample size
 
-## 5. 开放风险（先记下来，不自欺）
+## 5. Open risks (noted up front, no self-deception)
 
-- ENS 的 `total_precipitation_24hr` 本身有模式偏差；"超过 ERA5 气候 p99"是跨数据集
-  阈值比较，必须额外报告"超过 ENS 自己气候 p99"的版本作为对照
-- 64×32 格点（~600 km）上"极端降水"的物理意义有限，是方法学试验台而非业务产品
-- 50 成员 × 2048 格点 × 1826 init 的数据量不大，很容易在 2022 测试期上反复试错而过拟合
-  —— 测试期只允许在方法冻结后看一次
+- The ENS `total_precipitation_24hr` itself has model bias; "exceeds the ERA5 climatological p99" is a cross-dataset threshold
+  comparison, so a version that uses "exceeds the ENS's own climatological p99" must also be reported as a control
+- "Extreme precipitation" has limited physical meaning on a 64×32 grid (~600 km); this is a methodological testbed, not an operational product
+- 50 members × 2048 grid points × 1826 inits is not a large dataset, and it is easy to overfit by trying things repeatedly on the
+  2022 test period: the test period may be looked at only once, after the method is frozen
 
-## 6. 阶段计划
+## 6. Stage plan
 
-1. **阶段 0（当前）**：数据管线 + B0/B1/B2/B3 基线数字跑通，确认"等权投票有多强"
-2. **阶段 1**：运动矢量/光流是否真的能对齐成员场（纯几何检验，不学习）
-3. **阶段 2**：块级模式决策（先用闭式 RD 代价，不学习），对比 B3
-4. **阶段 3**：才上神经网络（video-encoder 风格的 3D conv / 成员注意力）
+1. **Stage 0 (current)**: data pipeline plus B0/B1/B2/B3 baseline numbers working, to establish how strong the equal-weight vote is
+2. **Stage 1**: can motion vectors / optical flow really align the member fields (a purely geometric test, no learning)
+3. **Stage 2**: block-level mode decision (first with a closed-form RD cost, no learning), compared against B3
+4. **Stage 3**: only then bring in neural networks (video-encoder-style 3D conv / member attention)
