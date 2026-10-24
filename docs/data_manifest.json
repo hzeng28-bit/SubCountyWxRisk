@@ -1,7 +1,7 @@
 {
  "entries": {
   ".lock_cache.json": {
-   "bytes": 398237
+   "bytes": 402717
   },
   "audit/building_attrs.txt": {
    "bytes": 3959
@@ -183,6 +183,22 @@
   },
   "labels_extra/econ/pmms_history.csv": {
    "bytes": 97564
+  },
+  "labels_extra/econ/redfin_county_market_tracker.tsv.gz": {
+   "bytes": 241131599
+  },
+  "labels_extra/econ/redfin_tx.parquet": {
+   "bytes": 330191,
+   "columns": {
+    "HOMES_SOLD": "DOUBLE",
+    "IS_SEASONALLY_ADJUSTED": "BOOLEAN",
+    "PERIOD_BEGIN": "BYTE_ARRAY",
+    "PROPERTY_TYPE": "BYTE_ARRAY",
+    "REGION": "BYTE_ARRAY",
+    "STATE_CODE": "BYTE_ARRAY",
+    "__index_level_0__": "INT64"
+   },
+   "rows": 33110
   },
   "labels_extra/econ/zillow_zhvi_county.csv": {
    "bytes": 13632587
@@ -1228,6 +1244,6 @@
    "rows": 25902
   }
  },
- "n_entries": 131,
+ "n_entries": 133,
  "root": "$WXRISK_DATA"
 }

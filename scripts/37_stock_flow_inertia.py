@@ -117,7 +117,9 @@ def intensity(claims: np.ndarray, s_all: np.ndarray) -> np.ndarray:
 
 
 ECON = FLOOD.parent / "econ"
-ECON_NAMES = ["d_mortgage_rate_4q", "d_log_home_value_4q", "log_permits_prev_year", "log_avg_premium"]
+ECON_NAMES = ["d_mortgage_rate_4q", "d_log_home_value_4q", "log_permits_prev_year", "log_avg_premium", "log_homes_sold"]
+ECON_LAG = [1, 1, 1, 1, 0]  # quarters; home sales act in the same quarter as the policy is bought (insurance at closing)
+QMIN = [1]  # first training quarter (set from --econ: Redfin sales start in 2012)
 ACTIVE = list(range(len(ECON_NAMES)))  # columns of Z used by the econ mode (set by --econ)
 
 
@@ -157,15 +159,39 @@ def load_econ(cts: np.ndarray, avg_prem: np.ndarray) -> np.ndarray:
         y = max(2010 + q // 4 - 1, 2010)  # the previous calendar year; 2010 uses its own year
         Z[:, q, 2] = np.log1p(bp[y].to_numpy())
     Z[:, :, 3] = np.log(np.where(avg_prem > 0, avg_prem, np.nan))
+    Z[:, :, 4] = redfin_sales(cts)
     return Z
+
+
+def redfin_sales(cts: np.ndarray) -> np.ndarray:
+    """log of quarterly home sales (Redfin 'All Residential', not seasonally adjusted) per county; NaN before 2012."""
+    cache = ECON / "redfin_tx.parquet"
+    if not cache.exists():
+        parts = []
+        for ch in pd.read_csv(ECON / "redfin_county_market_tracker.tsv.gz", sep="\t", chunksize=200_000, low_memory=False,
+                              usecols=["PERIOD_BEGIN", "REGION", "STATE_CODE", "PROPERTY_TYPE", "IS_SEASONALLY_ADJUSTED", "HOMES_SOLD"]):
+            parts.append(ch[(ch.STATE_CODE == "TX") & (ch.PROPERTY_TYPE == "All Residential")
+                            & (ch.IS_SEASONALLY_ADJUSTED == False)])  # noqa: E712
+        pd.concat(parts).to_parquet(cache)
+    d = pd.read_parquet(cache)
+    z = pd.read_csv(ECON / "zillow_zhvi_county.csv", usecols=["State", "RegionName", "StateCodeFIPS", "MunicipalCodeFIPS"],
+                    dtype=str)
+    z = z[z.State == "TX"]
+    fips = dict(zip(z.RegionName.str.strip(), "48" + z.MunicipalCodeFIPS.str.zfill(3)))  # 'Harris County' -> 48201
+    d["fips"] = d.REGION.str.replace(", TX", "", regex=False).str.strip().map(fips)
+    d = d.dropna(subset=["fips", "HOMES_SOLD"])
+    t = pd.to_datetime(d.PERIOD_BEGIN)
+    d["q"] = (t.dt.year - 2010) * 4 + (t.dt.month - 1) // 3
+    sold = d.groupby(["fips", "q"]).HOMES_SOLD.sum().unstack().reindex(index=cts, columns=range(NQ))
+    return np.log(sold.where(sold > 0)).to_numpy()
 
 
 def econ_design(Z: np.ndarray, origin: int, qs: np.ndarray) -> np.ndarray:
     """Standardise on the training quarters (1..origin), fill unknowns with 0 (= the training mean), lag one quarter."""
-    tr = Z[:, 1 : origin + 1, :]
+    tr = Z[:, QMIN[0] : origin + 1, :]
     mu, sd = np.nanmean(tr, axis=(0, 1)), np.nanstd(tr, axis=(0, 1))
     zs = np.nan_to_num((Z - mu) / np.where(sd > 0, sd, 1), nan=0.0)
-    return zs[:, np.clip(qs - 1, 0, None), :][:, :, ACTIVE]
+    return np.stack([zs[:, np.clip(qs - ECON_LAG[e], 0, None), e] for e in ACTIVE], axis=2)
 
 
 def design(I: np.ndarray, qs: np.ndarray, mode: str, Zs: np.ndarray | None = None) -> np.ndarray:
@@ -181,7 +207,7 @@ def design(I: np.ndarray, qs: np.ndarray, mode: str, Zs: np.ndarray | None = Non
 
 
 def fit_flow(N, S, I, Z, mode: str, origin: int, keep: np.ndarray):
-    qs = np.arange(1, origin + 1)
+    qs = np.arange(QMIN[0], origin + 1)
     x = design(I[keep], qs, mode, econ_design(Z[keep], origin, qs))
     expo = np.broadcast_to(S[keep][:, 1 : origin + 1].mean(axis=1)[:, None], (keep.sum(), len(qs)))
     y = N[keep][:, qs]
@@ -322,9 +348,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--origins", nargs="+", default=["2016Q4", "2019Q4"])
     ap.add_argument("--boot", type=int, default=200)
+    ap.add_argument("--qmin", type=int, default=None, help="first training quarter index (0 = 2010Q1); default 1, or 8 with log_homes_sold")
     ap.add_argument("--econ", nargs="+", default=ECON_NAMES, choices=ECON_NAMES, help="economic features in the econ mode")
     a = ap.parse_args()
     ACTIVE[:] = [ECON_NAMES.index(n) for n in a.econ]
+    QMIN[0] = a.qmin if a.qmin is not None else (8 if "log_homes_sold" in a.econ else 1)
     cts, N, stock, s_all, claims, avg_prem = load_panel()
     Z = load_econ(cts, avg_prem)
     print("economic features, non-missing share:", dict(zip(ECON_NAMES, np.isfinite(Z).mean(axis=(0, 1)).round(2))))

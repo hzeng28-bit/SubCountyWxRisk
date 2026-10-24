@@ -639,6 +639,21 @@
    "content_sha256": "fab11d759e905ff61838b8dfa41c0f2082e150cad07a20c65ddd620a007aa158",
    "sha256": "fab11d759e905ff61838b8dfa41c0f2082e150cad07a20c65ddd620a007aa158"
   },
+  "labels_extra/econ/redfin_county_market_tracker.tsv.gz": {
+   "bytes": 241131599,
+   "category": "derived",
+   "content_kind": "gunzip",
+   "content_sha256": "7200856aa54bfcafeebe7d1cfeb0f9dfc7f209ffcf89febdbc4374da83127d2f",
+   "sha256": "9470b1c6145dc51721dc717d62ea986a43e1bf2d7fdc57875af2f55e007dd634"
+  },
+  "labels_extra/econ/redfin_tx.parquet": {
+   "bytes": 330191,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "e59378163520edf9199705179a5c942882d35819489dfcafe4f56d7362602a28",
+   "rows": 33110,
+   "sha256": "ea4448a20786b66a98ac798c5525666b6d68a4563d365c332795e435d3b9bce2"
+  },
   "labels_extra/fig.json": {
    "bytes": 118,
    "category": "derived",
