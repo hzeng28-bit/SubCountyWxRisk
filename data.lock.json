@@ -484,6 +484,43 @@
    "content_sha256": "e8befb525015d9077d3c5bb59e433a91b51938c26a969ea7fed14612202874fb",
    "sha256": "aeaeca2e35f015650c555f0600560461962666ec1613895cfb68fd1ee174bd40"
   },
+  "clean/claims_nfip.parquet": {
+   "bytes": 31553297,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "ff38a31032f01b0ce98857ff642854c4f6a83fe09026185b1d8296d1dfc15ead",
+   "rows": 1564325,
+   "sha256": "f8fcca23f6fc61acc05dc1e46b7e90384fc595799cba31f78b8a7eb7fbd2a44e"
+  },
+  "clean/claims_nfip.prep.json": {
+   "bytes": 2970,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "ffe3b4377032236b16db344582af1e6ef330d446d01c1c191e7c3abc06d22645",
+   "sha256": "ffe3b4377032236b16db344582af1e6ef330d446d01c1c191e7c3abc06d22645"
+  },
+  "clean/policies_tx.norm.json": {
+   "bytes": 586,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "5f1e6d758dfc16f58eb838d416f2b7664b8bb7ecf041206ada94d9b2cba968b3",
+   "sha256": "5f1e6d758dfc16f58eb838d416f2b7664b8bb7ecf041206ada94d9b2cba968b3"
+  },
+  "clean/policies_tx.parquet": {
+   "bytes": 127551374,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "576fe7cf8c169d397a72fe817cdc59ab78ab0a81cf69e014c8150b8be0ef43ae",
+   "rows": 11612805,
+   "sha256": "3cc4f49bca02c2bed6a00dbb3a82bf37bc9c6d6c9a053254321bd7b27527dba1"
+  },
+  "clean/policies_tx.prep.json": {
+   "bytes": 2720,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "d6097eb074aed74f367374ba18380d6f7ee3f8032ffcf888f3a3526d4cce0940",
+   "sha256": "d6097eb074aed74f367374ba18380d6f7ee3f8032ffcf888f3a3526d4cce0940"
+  },
   "ens_tp24_2018_lead72h_00z.npz": {
    "bytes": 140003913,
    "category": "derived",
@@ -685,6 +722,27 @@
    "content_kind": "bytes",
    "content_sha256": "bd303c2c4db1e25b781f56f65dd9ec6cb0e1f1c2fe4f8e2b13e2faee250adb8e",
    "sha256": "bd303c2c4db1e25b781f56f65dd9ec6cb0e1f1c2fe4f8e2b13e2faee250adb8e"
+  },
+  "labels_extra/flood/mrms_hourly/ev_32097.npz": {
+   "bytes": 2163792,
+   "category": "derived",
+   "content_kind": "zip-members",
+   "content_sha256": "d515bc502eab1e5c0e67ee8762ca23141875b4bf34c2db1f298944a67952b203",
+   "sha256": "5ddf9458898351bdef22896cc52c10f6e89c562d66a96202f93c6b9297814ff1"
+  },
+  "labels_extra/flood/mrms_hourly/ev_32130.npz": {
+   "bytes": 2163792,
+   "category": "derived",
+   "content_kind": "zip-members",
+   "content_sha256": "6acf6f3d1258312bd4d017c3a45c83ad2cf10568bfb61531871995c6e8d1adab",
+   "sha256": "1529eb4b7fc16349edf2e4796ebaa346b0b894587c0a7905326a5c1fa2f60404"
+  },
+  "labels_extra/flood/mrms_hourly/ev_45944.npz": {
+   "bytes": 4237584,
+   "category": "derived",
+   "content_kind": "zip-members",
+   "content_sha256": "8f12c9a5b608cbbca8b18e526999926bd1f02de62a386beb778061e63e7487a1",
+   "sha256": "119367d9d0a2bee975e9b234b0b7dec94e8178c923b2f24154aee158f4c052ff"
   },
   "labels_extra/flood/nfip_claims_conmaz.parquet": {
    "bytes": 1099562,
@@ -1512,6 +1570,34 @@
    "mutable": true,
    "sha256": "f0d4d347abaa5f8b45b9ce54e859d092c264bdbf25405fb59f5f953866990c64"
   },
+  "labels_extra/flood/openfema_dictionary/NfipClaims.dataset.json": {
+   "bytes": 5547,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "9841536c6f252c6708f54ec1532b4ec749323d237e7472349e361eefb4238237",
+   "sha256": "9841536c6f252c6708f54ec1532b4ec749323d237e7472349e361eefb4238237"
+  },
+  "labels_extra/flood/openfema_dictionary/NfipClaims.fields.json": {
+   "bytes": 72847,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "9e28172dfae02ea174cb6c686e70532c54519d7b00407719c92c4f6df082594a",
+   "sha256": "9e28172dfae02ea174cb6c686e70532c54519d7b00407719c92c4f6df082594a"
+  },
+  "labels_extra/flood/openfema_dictionary/NfipPolicies.dataset.json": {
+   "bytes": 5430,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "5b1ff1242fd3a3c8ff89c259fe104117a2eb08053d5a4a5d6db31dcdc58fd8dc",
+   "sha256": "5b1ff1242fd3a3c8ff89c259fe104117a2eb08053d5a4a5d6db31dcdc58fd8dc"
+  },
+  "labels_extra/flood/openfema_dictionary/NfipPolicies.fields.json": {
+   "bytes": 75195,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "ebf96c54715f46f573db6cd80a8b25e5e508d969fdf763863adafb8f06c01a0c",
+   "sha256": "ebf96c54715f46f573db6cd80a8b25e5e508d969fdf763863adafb8f06c01a0c"
+  },
   "labels_extra/flood/pilot/bg2010_tx.zip": {
    "bytes": 5146382,
    "category": "raw",
@@ -1549,6 +1635,13 @@
    "content_sha256": "5d61d63220cac39fe10f95c14e7e45267b4e8f60ac653c084c677c56523a266c",
    "sha256": "5d61d63220cac39fe10f95c14e7e45267b4e8f60ac653c084c677c56523a266c"
   },
+  "labels_extra/flood/pilot/claims_cum_clean.npy": {
+   "bytes": 323307208,
+   "category": "derived",
+   "content_kind": "bytes",
+   "content_sha256": "5d61d63220cac39fe10f95c14e7e45267b4e8f60ac653c084c677c56523a266c",
+   "sha256": "5d61d63220cac39fe10f95c14e7e45267b4e8f60ac653c084c677c56523a266c"
+  },
   "labels_extra/flood/pilot/county_daily.npz": {
    "bytes": 4648142,
    "category": "derived",
@@ -1563,6 +1656,28 @@
    "content_sha256": "0bc8db432d94510220c91ec14f1182d3b55f6f27424d03a7a5418d833f636022",
    "sha256": "24d3d67834985fde0fda3fd1125611590806c632e5b4d99e87f12b179b0dd215"
   },
+  "labels_extra/flood/pilot/expo_2010_2023_clean.npz": {
+   "bytes": 1293735318,
+   "category": "derived",
+   "content_kind": "zip-members",
+   "content_sha256": "4f442a957ebf7a06480184d118eb12e6559a8e78d854f26b2c603544fa871a47",
+   "sha256": "f94478ef9ebd0d79415698de06e12193c241fb1f09e5d2aa7b415ab944fef537"
+  },
+  "labels_extra/flood/pilot/flood_pilot_expodyn.parquet": {
+   "bytes": 14567237,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "42c34075721b9a5cb5450fe04b745d10842656a4882fcef46e2fd353ba2f9166",
+   "rows": 2996576,
+   "sha256": "af82d4684df944a4f97e15b3a5a1e6a803fb87c8da25e614655d907dfdf82e51"
+  },
+  "labels_extra/flood/pilot/flood_pilot_results_clean_test_preds.npz": {
+   "bytes": 77915618,
+   "category": "derived",
+   "content_kind": "zip-members",
+   "content_sha256": "72496e1bc4408f3a8d31bc73b2d57f00af343c0ae2deb97dd0dc6e076e7ed26c",
+   "sha256": "c27bd969b04be35827f1ce7f916452ea2f3b176608fbb9074df92db01d6f2b72"
+  },
   "labels_extra/flood/pilot/flood_pilot_table.parquet": {
    "bytes": 91703881,
    "category": "derived",
@@ -1571,12 +1686,20 @@
    "rows": 2996576,
    "sha256": "c86494276f0c65d34e2e0b44a08fe7bb852ebf4594a8eb7e2b4fedb6da43901a"
   },
+  "labels_extra/flood/pilot/flood_pilot_table_clean.parquet": {
+   "bytes": 90972458,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "fc03f34f146e7839d50812ad55243925a096ba84e303c5661d973ce999e81072",
+   "rows": 2996630,
+   "sha256": "c4f39117fb3c9051806adc10613c8f9871c355216f5b9046f92bb493b418ab42"
+  },
   "labels_extra/flood/pilot/flood_pilot_test_preds.npz": {
-   "bytes": 25968066,
+   "bytes": 77156965,
    "category": "derived",
    "content_kind": "zip-members",
-   "content_sha256": "7835ed117d7d38ba3a2fa1e085c60890159f1dfc86679685450a43df821f7630",
-   "sha256": "04637d81a46ca955b4547bbaad9a2a7272e0bf0376c345a92f934d3e15601938"
+   "content_sha256": "9aed362aa6876ad88907d6e5a791087d75cdb889aae695605125f2805b9e470e",
+   "sha256": "dcefb47cefa1e2a5d26c3f0072c395fc67ae39bae76b8098afb278f33c753cbb"
   },
   "labels_extra/flood/pilot/flood_pilot_wavelet.parquet": {
    "bytes": 103136223,

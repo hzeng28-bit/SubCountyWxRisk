@@ -380,6 +380,39 @@ def e8_log_ols_vs_glm() -> None:
     put("E8.log_ols_vs_loglink_glm", n=int(len(d)), controls="depth bin (5) + loss year", vs="slab", results=out)
 
 
+def e9_bins_blocked_cv(t, plan) -> None:
+    """Confirmation of the exposure bins (E5b found the gain on one test period, 15 comparisons): blocked-by-year CV over year pairs.
+    Cut points are refitted on the training years of every fold; test folds are disjoint, so the episodes are disjoint too."""
+    y = t.y.to_numpy(float)
+    base = with_cyclic_month(apply_transform(t, BASE, plan))
+    cols = ["log_pol", "sfha_share", "single_share", "mean_cov"]
+    years = list(range(2010, 2024))
+    folds = [years[i:i + 2] for i in range(0, len(years), 2)]
+    ref, new, per = [], [], []
+    for f in folds:
+        te = t.year.isin(f).to_numpy()
+        tr = ~te
+        cuts = {c: supervised_bins(t[c].to_numpy(float)[tr], y[tr]) for c in cols}
+        bins = pd.concat([pd.DataFrame(onehot_bins(t[c].to_numpy(float), cuts[c]), index=t.index,
+                                       columns=[f"{c}_bin{i}" for i in range(len(cuts[c]) + 1)]) for c in cols], axis=1)
+
+        def fit(X, tr=tr, te=te):
+            a, b = std_fit(X.to_numpy(np.float32)[tr], X.to_numpy(np.float32)[te])
+            return episode_stats(t.ep.to_numpy()[te], y[te], fit_lr(a, y[tr], b, 0.1))
+
+        r, n = fit(base), fit(pd.concat([base, bins], axis=1))
+        ref.append(r)
+        new.append(n)
+        per.append({"test_years": f, "reference": round(auc(r), 4), "with_bins": round(auc(n), 4), "diff": round(auc(n) - auc(r), 4)})
+        print(f"  fold {f}: {per[-1]}", flush=True)
+    R, N = pd.concat(ref), pd.concat(new)
+    d = boot_diff(N, R)
+    print(f"E9 pooled within-event AUC: reference {auc(R):.4f}, with exposure bins {auc(N):.4f}, diff {d[0]:+.4f} [{d[1]:+.4f}, {d[2]:+.4f}]")
+    put("E9.exposure_bins_blocked_cv", folds=per, reference_auc=round(auc(R), 4), with_bins_auc=round(auc(N), 4),
+        diff=[round(float(v), 4) for v in d], columns=cols,
+        confirmed=bool(d[1] > 0 and sum(p["diff"] > 0 for p in per) >= len(per) - 1))
+
+
 def main() -> None:
     only = sys.argv[1] if len(sys.argv) > 1 else ""
     t = load()
@@ -405,6 +438,13 @@ def main() -> None:
         e7_retransform()
         e8_log_ols_vs_glm()
         prev["E7.retransformation"], prev["E8.log_ols_vs_loglink_glm"] = EV["E7.retransformation"], EV["E8.log_ols_vs_loglink_glm"]
+        (wb2.DATA_DIR / "audit" / "scaling_evidence.json").write_text(json.dumps(prev, indent=1, sort_keys=True, default=str) + "\n")
+        return
+    if only == "bins-cv":  # python scripts/42_scaling_audit.py bins-cv : E9 only, merged into the evidence file
+        prev = json.loads((wb2.DATA_DIR / "audit" / "scaling_evidence.json").read_text())
+        plan = {k: v["suggested"] for k, v in prev["E1.feature_diagnostics"]["columns"].items()}
+        e9_bins_blocked_cv(t, plan)
+        prev["E9.exposure_bins_blocked_cv"] = EV["E9.exposure_bins_blocked_cv"]
         (wb2.DATA_DIR / "audit" / "scaling_evidence.json").write_text(json.dumps(prev, indent=1, sort_keys=True, default=str) + "\n")
         return
     if only == "bins":  # python scripts/42_scaling_audit.py bins : only the per-column bin ablation, merged into the evidence file

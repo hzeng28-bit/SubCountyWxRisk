@@ -138,8 +138,32 @@ def tc_flags(days: pd.DatetimeIndex, ctab: pd.DataFrame, radius_km: float, windo
     return flags
 
 
+# word boundaries matter: a bare "ida" or "ian" would flag Florida, Idaho, Louisiana, Indiana (same list as scripts/21)
+TC_PATTERN = (r"(?i)\b(hurricane|tropical|typhoon|superstorm|post-tropical|"
+              r"katrina|harvey|irma|florence|michael|gustav|wilma|dorian|sandy|rita|ike|ian|ida)\b")
+
+
 def claims_tx() -> pd.DataFrame:
-    """Texas non-tropical-named inland claims (cause 2/3/4) on the 2010 block-group geography."""
+    """Texas non-tropical-named inland claims (cause 2/3/4) with a block group, from the CLEAN claims table, on the 2010 block-group geography."""
+    import polars as pl
+
+    from .prep import build as prep
+
+    s = (prep.scan("claims_nfip")
+         .filter((pl.col("state") == "TX") & pl.col("cause").is_in(["2", "3", "4"]) & pl.col("geoid").is_not_null()
+                 & ~pl.col("flood_event").fill_null("").str.contains(TC_PATTERN))
+         .select("id", "state", pl.col("geoid").alias("bg"), pl.col("loss_date").alias("date"))
+         .collect().to_pandas())
+    s["date"] = pd.to_datetime(s["date"])
+    cw = bg_crosswalk.build().set_index("code")
+    s["bg10"] = s.bg.map(cw.bg10)
+    s["share"] = s.bg.map(cw.share)
+    s["cty"] = s.bg10.str[:5]
+    return s[s.bg10.notna()]
+
+
+def claims_tx_raw() -> pd.DataFrame:
+    """(Original, from the intermediate file of scripts/21; kept for the parity check.)"""
     s = pd.read_parquet(wb2.cache_path("nfip_inland_nontropical.parquet"))
     s = s[s.state == "TX"].copy()
     cw = bg_crosswalk.build().set_index("code")
@@ -158,7 +182,40 @@ def expo_days() -> pd.DatetimeIndex:
 
 
 def exposure_matrices(bg_ids: list[str]) -> dict[str, np.ndarray]:
-    """In-force policy statistics per block group and day, float32[bg, day] for 2010-2023.
+    """In-force policy statistics per block group and day, float32[bg, day] for 2010-2023, from the CLEAN policies table.
+
+    n_pol policies in force, n_sfha in a special flood hazard area (zone A*/V*), n_single single-family occupancy,
+    cov_sum building coverage ($ millions). In force on day d means eff <= d < coverage_end, the earlier of the
+    provider's termination date and a mid-term cancellation (a policy without either runs open-ended).
+    """
+    from . import policies
+
+    pol = policies.frame(extra=("occupancy", "cov_building"), occupancy=None).to_pandas()
+    cw = bg_crosswalk.build().set_index("code")
+    bi = pol.geoid.map(cw.bg10).map({b: i for i, b in enumerate(bg_ids)})
+    keep = bi.notna().to_numpy()
+    pol, bi = pol[keep], bi[keep].astype(np.int64).to_numpy()
+    n = len(expo_days())
+    e = (pd.to_datetime(pol.eff) - EXPO_START).dt.days.to_numpy()
+    end = (pd.to_datetime(pol.term) - EXPO_START).dt.days.to_numpy()
+    s0, s1 = np.clip(e, 0, n), np.clip(end, 0, n)
+    ok = s1 > s0
+    cnt = pol.w.to_numpy().astype(np.float64)
+    zone = pol.sfha.to_numpy()
+    single = pol.occupancy.isin([1, 11]).to_numpy()  # 11 = single-family under Risk Rating 2.0 (2021+)
+    cov = pol.cov_building.fillna(0).to_numpy().astype(np.float64) / 1e6 * cnt
+    out = {}
+    nb = len(bg_ids)
+    for name, w in (("n_pol", cnt), ("n_sfha", cnt * zone), ("n_single", cnt * single), ("cov_sum", cov)):
+        up = np.bincount(bi[ok] * (n + 1) + s0[ok], weights=w[ok], minlength=nb * (n + 1))
+        dn = np.bincount(bi[ok] * (n + 1) + s1[ok], weights=w[ok], minlength=nb * (n + 1))
+        m = np.cumsum((up - dn).reshape(nb, n + 1), axis=1, dtype=np.float64)[:, :n]
+        out[name] = m.astype(np.float32)
+    return out
+
+
+def exposure_matrices_raw(bg_ids: list[str]) -> dict[str, np.ndarray]:
+    """(Original, from the raw extract; kept for the parity check of scripts/25 --check-inputs.) In-force policy statistics per block group and day, float32[bg, day] for 2010-2023.
 
     n_pol policies in force, n_sfha in a special flood hazard area (zone A*/V*), n_single single-family
     occupancy, cov_sum building coverage ($ millions). Policy terms are 365-366 days, so in force on

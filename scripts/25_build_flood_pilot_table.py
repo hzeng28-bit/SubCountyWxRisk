@@ -48,6 +48,9 @@ def main() -> None:
     ap.add_argument("--threshold", type=float, default=30.0)
     ap.add_argument("--out", default="flood_pilot_table.parquet")
     ap.add_argument("--tc-file", default="tc_flag_800_2.npy")
+    ap.add_argument("--inputs", choices=["clean", "stored"], default="clean",
+                    help="exposure and claim arrays: rebuilt from the clean tables (default; scripts/45 compares them with the stored "
+                         "ones) or read from the stored expo_2010_2023.npz / claims_cum.npy the first pilot table was built from")
     ap.add_argument("--min-share", type=float, default=0.0,
                     help="keep only claims whose block-group crosswalk share is at least this")
     a = ap.parse_args()
@@ -59,10 +62,13 @@ def main() -> None:
     g = fp.bg_geometry()
     ids = g.bg10.tolist()
     iy, ix = fp.grid_index(lat, lon, g.lat.to_numpy(), g.lon.to_numpy())
-    e = np.load(fp.PILOT / "expo_2010_2023.npz")
-    assert list(e["bg"]) == ids
+    if a.inputs == "stored":
+        e = np.load(fp.PILOT / "expo_2010_2023.npz")
+        assert list(e["bg"]) == ids
+    else:
+        e = fp.exposure_matrices(ids)
     n_pol, n_sfha, n_single, cov = e["n_pol"], e["n_sfha"], e["n_single"], e["cov_sum"]
-    if a.min_share > 0:
+    if a.min_share > 0 or a.inputs == "clean":
         cl = fp.claims_tx()
         C = fp.claim_cumulative(cl[cl.share >= a.min_share], ids)
         print(f"claims kept with crosswalk share >= {a.min_share}: {int(C[:, -1].sum()):,}", flush=True)

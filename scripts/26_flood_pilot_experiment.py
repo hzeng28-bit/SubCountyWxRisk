@@ -157,7 +157,9 @@ def main() -> None:
     print("\nTEST 2017-2023")
     print(res.round(4).to_string(index=False))
     res.to_csv(fp.PILOT / a.out, index=False)
-    np.savez_compressed(fp.PILOT / "flood_pilot_test_preds.npz", **{k: v for k, v in preds.items()},
+    # a non-default --out gets its own predictions file so a side experiment cannot overwrite the ones scripts/29 bootstraps
+    pred_name = "flood_pilot_test_preds.npz" if a.out == "flood_pilot_results.csv" else Path(a.out).stem + "_test_preds.npz"
+    np.savez_compressed(fp.PILOT / pred_name, **{k: v for k, v in preds.items()},
                         ep=t.ep.to_numpy()[te], y=y[te], bg=t.bg.to_numpy()[te], year=yr[te])
 
     if a.cv:

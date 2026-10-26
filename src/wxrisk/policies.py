@@ -17,13 +17,13 @@ OPEN_END = dt.date(2100, 1, 1)  # no end date at all means the policy is still r
 SINGLE_FAMILY = (1, 11)  # coding changed to 11 from 2021
 
 
-def frame(extra: tuple[str, ...] = (), occupancy: tuple[int, ...] = SINGLE_FAMILY, path=None) -> pl.DataFrame:
+def frame(extra: tuple[str, ...] = (), occupancy: tuple[int, ...] | None = SINGLE_FAMILY, path=None) -> pl.DataFrame:
     """Policies with a block group: geoid (12-digit, 2010 vintage), eff, term (= coverage_end: the earlier of the nominal expiry and a mid-term
     cancellation, see prep.clean.DERIVED), w (policy count), sfha (rated zone A/V), vol (not mandatory purchase).
-    `extra` names further clean-table columns to carry along."""
+    `extra` names further clean-table columns to carry along; occupancy=None keeps every occupancy code."""
     q = pl.scan_parquet(path) if path else prep.scan("policies_tx")
     return (
-        q.filter(pl.col("occupancy").is_in(occupancy) & pl.col("geoid").is_not_null())
+        q.filter((pl.col("occupancy").is_in(occupancy) if occupancy is not None else pl.lit(True)) & pl.col("geoid").is_not_null())
         .select(
             "geoid", "eff",
             pl.col("coverage_end").fill_null(OPEN_END).alias("term"),

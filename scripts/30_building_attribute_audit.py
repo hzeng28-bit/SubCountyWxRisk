@@ -7,6 +7,7 @@ Candidate PRIORS for the flood work (foundation, elevation, basement), not forec
   known     known vs unknown foundation on the same years: is 'unknown' missing at random?
   fe        damage/coverage vs slab with depth-bin and state-month fixed effects (national + per state)
   plateau   median building damage ($) by INTERIOR depth, slab vs basement vs elevated
+  glm       the same foundation ratios with a log-link GLM (ratio of MEANS, dollars) next to the log-OLS (ratio of geometric means)
   occ       in the claims file 'unknown' foundation IS the legacy occupancy code 1: loss ratio of occupancy 1 vs 11
             under state-month fixed effects, and the elevated-indicator effect inside each family
 
@@ -188,7 +189,29 @@ def sec_occ(c: pd.DataFrame) -> None:
           " sections claims/fe is an occupancy-11 estimate.")
 
 
-SECTIONS = ["fill", "claims", "known", "fe", "plateau", "occ"]
+def sec_glm(c: pd.DataFrame) -> None:
+    from scipy import sparse
+    from sklearn.linear_model import LinearRegression, PoissonRegressor
+    from sklearn.preprocessing import OneHotEncoder
+
+    print("\n## glm: foundation vs slab, depth-bin + fixed effects; exp(coef) of log-OLS (ratio of geometric means) vs log-link GLM (ratio of means)")
+    s = single_family(c)
+    s = s[s.g.isin(["slab", "bsmt", "crawl", "elev"]) & s.buildingDamageAmount.gt(0) & s.exteriorWaterDepth.gt(0)].copy()
+    s["dr"] = s.dr.clip(1e-4, 1.5)
+    for label, d, fe in (("Texas, year FE", s[s.state == "TX"], "yearOfLoss"), ("national, state-month FE", s, "ev")):
+        d = d[d.groupby(fe)[fe].transform("size") >= 30]
+        g = pd.get_dummies(d.g).astype(float).drop(columns="slab")
+        db = pd.get_dummies(pd.cut(d.exteriorWaterDepth, DEPTH_BINS, labels=False)).astype(float).iloc[:, 1:]
+        f = OneHotEncoder(drop="first", sparse_output=True).fit_transform(d[[fe]].astype(str))
+        X = sparse.hstack([sparse.csr_matrix(pd.concat([g, db], axis=1).to_numpy()), f]).tocsr()
+        ols = LinearRegression().fit(X, np.log(d.dr))
+        glm = PoissonRegressor(alpha=0, max_iter=500).fit(X, d.dr)
+        print(f"{label} (n {len(d):,}):", {k: {"geo_mean_ratio": round(float(np.exp(ols.coef_[i])), 2),
+                                              "mean_ratio": round(float(np.exp(glm.coef_[i])), 2)} for i, k in enumerate(g.columns)})
+    print("Dollar losses follow the ratio of means; the geometric-mean ratio overstates a reduction when the spread differs between groups.")
+
+
+SECTIONS = ["fill", "claims", "known", "fe", "plateau", "occ", "glm"]
 
 
 def main() -> None:
@@ -199,7 +222,7 @@ def main() -> None:
         sec_fill()
     if set(a.sections) - {"fill"}:
         c = load_claims()
-        for name, fn in [("claims", sec_claims), ("known", sec_known), ("fe", sec_fe), ("plateau", sec_plateau), ("occ", sec_occ)]:
+        for name, fn in [("claims", sec_claims), ("known", sec_known), ("fe", sec_fe), ("plateau", sec_plateau), ("occ", sec_occ), ("glm", sec_glm)]:
             if name in a.sections:
                 fn(c)
 

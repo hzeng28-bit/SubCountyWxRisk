@@ -26,6 +26,7 @@ Ensemble-forecast-conditioned **meteorological hazard risk index** (video-codec 
 | `src/wxrisk/prep/`, `scripts/40_prep.py` | **preprocessing pipeline** raw -> clean -> normalized: declarative per-column rules for nulls/sentinels, sidecar with hashes, `verify` rebuilds and compares (`docs/DATA_PREP.md`). New analyses should read `clean/` tables, not re-clean raw ones |
 | `RAW_STATICS_DA_REPORT.md` | generated: raw-dataset statistics, K-means/mixture diagnostics with PCA projections for every clustering claim, covariate reports for every regression claim (`scripts/44_raw_report.py all`; figures in `docs/figures/raw_report/`) |
 | `docs/CLEANING_REGISTER.md`, `docs/SCALING_PLAN.md` | generated: why each cleaning rule exists (provider-documented / undocumented code / entry error) and the scaling decisions (which columns, group-aware or not, discretise or not, which targets need an inverse). `scripts/41`, `42`, `43` produce the evidence |
+| `scripts/45_pilot_input_parity.py` | compares flood-pilot exposure/claim arrays built from the clean tables with the stored ones (`flood_pilot.exposure_matrices`, `claims_tx` read `clean/`; `scs_eval.anomalise` is a `FeaturePlan`, `anomalise_plain` the old one) |
 | `tests/` | `pytest` (motion estimation only so far) |
 
 ## Setup and conventions

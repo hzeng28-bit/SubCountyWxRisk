@@ -55,7 +55,7 @@ class FeatureRule:
     cyclic: float | None = None  # period: the column becomes <col>_sin, <col>_cos (no scaling afterwards)
     group: str | None = None  # group-aware column (name of the grouping column)
     group_mode: str = "fitted"  # fitted | sample
-    group_stat: str = "center"  # center | zscore | percentile   (percentile: sample mode only)
+    group_stat: str = "center"  # center | center_z | zscore | percentile   (percentile: sample mode only; center_z: fitted only)
     bins: tuple[float, ...] | None = None  # supervised cut points (fitted by `fit_bins`); output is the bin index one-hot
     basis: str = ""  # why: evidence key or provider statement, quoted in the plan document
 
@@ -111,7 +111,10 @@ class FeaturePlan:
         w = n / (n + SHRINK)
         mu_s = w * mu + (1 - w) * g["center"]
         sd_s = np.sqrt(w * sd.fillna(0) ** 2 + (1 - w) * g["scale"] ** 2)
-        return {str(k): [_r(float(mu_s[k])), _r(float(max(sd_s[k], 1e-12))), int(n[k])] for k in n.index}
+        out = {str(k): [_r(float(mu_s[k])), _r(float(max(sd_s[k], 1e-12))), int(n[k])] for k in n.index}
+        if r.group_stat == "center_z":  # spread of the training anomalies themselves, so the output has unit variance on the fit rows
+            out["__anomaly_scale__"] = [_r(float((x - key.map(mu_s)).std(ddof=0)))]
+        return out
 
     # ------------------------------------------------ apply
     def apply(self, df: pd.DataFrame, params: dict) -> pd.DataFrame:
@@ -135,7 +138,10 @@ class FeaturePlan:
                 continue
             if r.group:  # fitted groups
                 mu, sd = self._lookup(df[r.group].astype(str).to_numpy(), p)
-                z = (x - mu) / (sd if r.group_stat == "zscore" else 1.0)
+                if r.group_stat == "center_z":
+                    z = (x - mu) / p["groups"]["__anomaly_scale__"][0]
+                else:
+                    z = (x - mu) / (sd if r.group_stat == "zscore" else 1.0)
                 out[f"{r.col}_{_tag(r)}"] = z
                 continue
             out[r.col] = (x - p["center"]) / p["scale"]
@@ -144,8 +150,8 @@ class FeaturePlan:
     @staticmethod
     def _lookup(keys: np.ndarray, p: dict) -> tuple[np.ndarray, np.ndarray]:
         g = p["groups"]
-        mu = np.array([g[k][0] if k in g else p["center"] for k in keys])
-        sd = np.array([g[k][1] if k in g else p["scale"] for k in keys])
+        mu = np.array([g[k][0] if k in g and k != "__anomaly_scale__" else p["center"] for k in keys])
+        sd = np.array([g[k][1] if k in g and k != "__anomaly_scale__" else p["scale"] for k in keys])
         return mu, sd  # a group unseen in training falls back to the global statistics
 
     def _within_sample(self, df: pd.DataFrame, r: FeatureRule, x: np.ndarray) -> np.ndarray:
@@ -162,7 +168,7 @@ class FeaturePlan:
 
 
 def _tag(r: FeatureRule) -> str:
-    return {"center": "dev", "zscore": "z", "percentile": "pct"}[r.group_stat] + ("_" + r.group)
+    return {"center": "dev", "center_z": "anom", "zscore": "z", "percentile": "pct"}[r.group_stat] + ("_" + r.group)
 
 
 def _digest(params: dict) -> str:

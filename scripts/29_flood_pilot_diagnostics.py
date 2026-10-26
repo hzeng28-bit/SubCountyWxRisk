@@ -25,6 +25,8 @@ from sklearn.preprocessing import StandardScaler
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import flood_pilot as fp  # noqa: E402
+from wxrisk.prep.scaling import FeaturePlan  # noqa: E402
+from wxrisk.prep.scaling_plan import PILOT_PLAN  # noqa: E402
 
 exp = __import__("importlib").util.spec_from_file_location(
     "exp26", Path(__file__).resolve().parent / "26_flood_pilot_experiment.py")
@@ -129,7 +131,13 @@ def main() -> None:
         out.append((f"boosting depth {d}", m26.within_auc(e_te, y[te], mdl.predict_proba(X[te])[:, 1])[0]))
     sc = StandardScaler().fit(np.nan_to_num(X[tr]))
     lr = LogisticRegression(C=0.1, max_iter=300).fit(sc.transform(np.nan_to_num(X[tr])), y[tr])
-    out.append(("logistic regression", m26.within_auc(e_te, y[te], lr.predict_proba(sc.transform(np.nan_to_num(X[te])))[:, 1])[0]))
+    out.append(("logistic, z-score only", m26.within_auc(e_te, y[te], lr.predict_proba(sc.transform(np.nan_to_num(X[te])))[:, 1])[0]))
+    # the plan of docs/SCALING_PLAN.md (log1p / asinh / cyclic month, fitted on the training years only)
+    plan = FeaturePlan(tuple(r for r in PILOT_PLAN.rules if r.col in cols))
+    prm = plan.fit(t, tr, "year <= 2016")
+    Z = np.nan_to_num(plan.apply(t, prm).to_numpy())
+    lr = LogisticRegression(C=0.1, max_iter=300).fit(Z[tr], y[tr])
+    out.append(("logistic, scaling plan", m26.within_auc(e_te, y[te], lr.predict_proba(Z[te])[:, 1])[0]))
     print(pd.DataFrame(out, columns=["learner", "within_AUC"]).round(4).to_string(index=False))
 
     print("\n== DRIFT")

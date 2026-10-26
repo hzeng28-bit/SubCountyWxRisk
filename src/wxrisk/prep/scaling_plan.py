@@ -152,6 +152,7 @@ def _p4(e, k):
     r = e["E2_E3.within_event_auc"]["results"]
     b = e["E5b.bins_ablation"]["results"]
     sh = e["E5.single_feature_shape"]["columns"]
+    x = e["E9.exposure_bins_blocked_cv"]
     return (
         "**Discretise only to give a linear or distance-based learner the thresholds a tree has, and only as an extra column.** Cut points come from a shallow tree on the "
         "training rows (target-based, at most 8 bins, at least 1% of the rows per bin). Never for trees; never instead of the continuous column: one feature's within-event AUC "
@@ -162,8 +163,10 @@ def _p4(e, k):
         f"rain {ci(b['rain (bg_f1, cty_f1_max, nb7_mean)']['diff_vs_reference'])}, geography {ci(b['geography (elev, rel3, slope, cty_nbg, log_area, bg_a14)']['diff_vs_reference'])}; "
         f"single columns: sfha_share {ci(b['sfha_share']['diff_vs_reference'])}, log_pol {ci(b['log_pol']['diff_vs_reference'])}, mean_cov {ci(b['mean_cov']['diff_vs_reference'])}.\n\n"
         "The gain sits in the exposure columns, where the response has thresholds (share of policies in the special flood hazard area: none against some). Rain and geography gain nothing. "
-        "**Status: candidate.** 15 comparisons were made on one test period and are not corrected for multiplicity; before the bins enter a model, confirm them with the blocked-by-year "
-        "cross-validation. The discretisation of the target-free analysis bins (depth classes in script 33, claim-rate classes in script 35) is descriptive and is not part of any model input.")
+        f"**Status: confirmed, small.** The ablation above made 15 comparisons on one test period; the exposure bins were therefore re-tested with blocked-by-year cross-validation "
+        f"(7 folds of two test years, cut points refitted on the other years): pooled within-event AUC {x['reference_auc']} -> {x['with_bins_auc']}, difference {ci(x['diff'])}, positive in "
+        f"{sum(f['diff'] > 0 for f in x['folds'])} of {len(x['folds'])} folds. The gain is about 0.003 AUC and only for linear / distance-based learners; use the bins as extra columns there, "
+        "never for trees. The discretisation of the target-free analysis bins (depth classes in script 33, claim-rate classes in script 35) is descriptive and is not part of any model input.")
 
 
 def _p5(e, k):
@@ -210,8 +213,8 @@ def render(out) -> None:
     for t in TARGETS:
         md.append(f"| {t.name} | {t.where} | {t.model_space} | {t.transform} | {'**yes**' if t.inverse_needed else 'no'} | {t.inverse_point} | {t.basis} |")
     md += ["", "## Open items", "",
-           "- Supervised bins for the exposure columns are a candidate: confirm with blocked-by-year cross-validation before use (multiple comparisons).",
-           "- The stage 9 foundation effect is stated as a geometric-mean ratio; restate it with the log-link GLM (or per-group smearing) when it is next used.",
-           "- The plan covers the Texas flood pilot features. The SCS features keep `anomalise` (county x month, fitted on the training years); a `FeaturePlan` version of it with the shrinkage and the unseen-group fallback is not yet wired into scripts 10-14.",
+           "- The stage 9 foundation effect: script 30 (`--sections glm`) now reports both the geometric-mean ratio and the log-link GLM ratio of means; quote the second for dollars.",
+           "- The SCS features go through `scs_eval.anomalise`, now a `FeaturePlan` (shrunk county x month means, global fallback for an unseen cell); the older version is `anomalise_plain`. "
+           "Skill of scripts 10 and 14 with the two versions is compared in RESULTS stage 14.",
            "- Tree models receive raw features; if boosting is ever replaced by a linear or neural learner, apply `PILOT_PLAN` first and re-run `scripts/42_scaling_audit.py`.", ""]
     out.write_text("\n".join(md))

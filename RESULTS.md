@@ -841,6 +841,7 @@ So code compliance is a **latent variable**; only coarse proxies are observable.
 - Block groups with > 10% claims grew 45-53% (2018-07 to 2020-07), 12-20 points more than the control; the excess peaked at +19.5% (2018-06) and fell to +11.7% by 2020-12 (half-life about 2.5 years, memory fades).
   The 2-10% bin: +11.6% peak, +7.0% by 2020-12; the 0-2% bin: +8.4% peak, +3.0%.
 - Reading: directly experienced take-up is 7-12% of the current stock (lower bound; the control may itself be Harvey-driven). The total event-driven share is between that and most of the post-event growth.
+- **Corrected 2026-10-25 (stage 11 table, re-run on the clean tables)**: the figures above include a phantom null-key block group and cancelled policies. Now 5,088 block groups; the >10% bin's excess peaks at +18.6% (2018-06) and is +9.9% at 2020-12 (was +19.5% / +11.7%), the 2-10% bin +11.7% / +6.5% (was +11.6% / +7.0%), the 0-2% bin +7.4% / +1.8% (was +8.4% / +3.0%). Pre-trend and the 30-35% no-claim control growth are unchanged in shape (control 1.353 by 2020-07); the conclusion stands with a smaller excess.
 - Caveats: `mandatoryPurchaseFlag == False` only approximates voluntary purchase; policy rows are terms, not households, so no per-household probability (the uninsured flooded households are not in the data);
   one event, one region; claim-rate bins correlate with urban growth.
 
@@ -1087,3 +1088,30 @@ It states every claim of the project that a dataset can be clustered or regresse
 - The stock-flow statistics rest on 45 counties and the first half contains one dominant event; intervals understate the uncertainty.
 - Hopkins and silhouette depend on the scaling of the inputs; clustering raw physical values would give a different partition.
 - The OpenFEMA FAQ was read through a summarising fetch tool, so its quotations are partial.
+
+# Stage 14: scaling plan wired into the models, pilot inputs from the clean tables, open items closed (2026-10-25)
+
+Scripts: `10`, `12`, `14` (SCS, via `scs_eval.anomalise`), `25`, `26`, `29` (flood pilot), `30 --sections glm occ`, `42 bins-cv`, `45` (input parity). No stored result of stages 0-10 was overwritten; every re-run wrote a side file.
+
+## What changed in the code
+
+- `scs_eval.anomalise` is now a `FeaturePlan` (county x month centre shrunk toward the global mean for sparse cells, global fallback for a cell not seen in the fit rows, unit variance on the fit rows). The old function is `anomalise_plain` (it returned NaN for an unseen county-month).
+- Script 29's logistic regression runs on `PILOT_PLAN` (log1p / asinh / cyclic month, fitted on 2010-2016 only) next to the plain z-score version.
+- `flood_pilot.exposure_matrices` and `claims_tx` read the clean tables (`policies.frame`, `claims_nfip` with the new `flood_event` column); the raw versions stay as `*_raw` for the parity check. The stored `expo_2010_2023.npz` / `claims_cum.npy` had been written by an ad hoc call (no script); script 25 now builds them (`--inputs clean`, default) or reads the stored ones (`--inputs stored`).
+
+## Results
+
+- **SCS K-means (script 10), lift readout, BSS against p0**: tier C y0 0.0431 -> 0.0446, y10k 0.0188 -> 0.0193; tier B y0 0.0265 -> 0.0321 (K chosen 32 -> 128, a flat curve). Tier A uses only static columns, so its change (0.0069 -> 0.0047, K 128 -> 64) is K selection on a flat curve, not the normalisation. No change exceeds the bootstrap interval.
+- **Script 14 (20 tier x label rows)**: logistic regression BSS changes by at most 0.006 (median below 0.001); boosting by at most 0.006. **Script 12 (96 rows)**: median |change| 0.0007, maximum 0.0078. The SCS conclusions of stages 3-5 do not move; their stored numbers were produced with `anomalise_plain`.
+- **Pilot logistic regression (script 29, within-event AUC, test 2017-2023)**: z-score only 0.7806, scaling plan 0.7858, boosting depth 5 0.7859. The plan closes the gap between the linear and the tree learner.
+- **Pilot inputs from the clean tables (script 45)**: claims in the cumulative array identical (0 differing cells). Exposure differs in 7% of block-group-days (totals -0.19% to +0.06%): the raw code ended every policy 366 days after its effective date, the provider term is 365 days (366 across a leap day), so the clean arrays are the faithful ones. The rebuilt table (`flood_pilot_table_clean.parquet`) has 2,996,630 rows against 2,996,576, identical labels, feature correlations >= 0.9993. Script 26 on it: within-event AUC L2 0.7857 -> 0.7864, L4b 0.7809 -> 0.7861, L5 0.7839 -> 0.7878 (the stored table remains the one quoted in stage 8).
+- **Exposure bins, blocked-by-year CV (E9, 7 folds of two test years, cut points refitted per fold)**: pooled within-event AUC 0.7892 -> 0.7919, difference +0.0028 [+0.0003, +0.0051], positive in 6 of 7 folds. Confirmed, small; for linear / distance learners only.
+- **Foundation effect restated with the log-link GLM (script 30 `glm`, occupancy 11 claims, depth bin + fixed effects)**: ratio of geometric means (log-OLS) against ratio of means (GLM): Texas elevated 0.27 / **0.47**, crawlspace 0.29 / 0.50, basement 0.74 / 0.96 (62 claims); national with state-month fixed effects elevated 0.26 / **0.39**, crawlspace 0.55 / 0.67, basement 0.46 / 0.55. In dollars the elevated reduction is about 0.4-0.5x, not 0.27x. The stage 9 text quotes the geometric-mean figure.
+- Stage 10's Harvey take-up figures carry a dated correction pointing at the stage 11 table.
+
+## Caveats
+
+- The SCS re-runs show equivalence within noise, not an improvement; K selection on flat validation curves moves by itself between runs.
+- The clean-input pilot table was not adopted as the default table of stages 8-10; adopting it needs the wavelet and terrain features regenerated for the 376 changed (episode, block group) rows.
+- E9 uses folds that train on later years to predict earlier ones; it checks the feature-engineering decision, not forecast skill.
+- GLM ratios have no bootstrap interval here (single fit); Texas basement is untestable.

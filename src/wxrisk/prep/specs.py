@@ -55,6 +55,7 @@ CLAIMS_NFIP = TableSpec(
         Col("dateOfLoss", "date", name="loss_date", parse="%Y-%m-%d", nulls="drop"),
         Col("yearOfLoss", "int", name="loss_year"),
         Col("causeOfDamage", "str", name="cause", nulls="flag"),
+        Col("floodEvent", "str", name="flood_event", nulls="flag"),  # ~81% filled, ~72 names; used only to drop tropical-named claims
         # docs/DATA_SOURCES trap 2: depth 0 is a default, not "dry" (large damage at depth 0). 999 is a second unknown code:
         # it holds essentially all depths above 600 in (99th percentile of the positive values is 999). Anything else above 600 in is
         # out of range (a few 9600 / 7000 entries). floodWaterDuration (~0 everywhere) is left out.

@@ -129,3 +129,19 @@ def test_pilot_plan_and_target_registry_are_consistent() -> None:
     for t in TARGETS:
         assert t.inverse_point, f"{t.name}: say where the inverse is applied (or why none is needed)"
     assert any(t.inverse_needed and "GEOMETRIC" in t.inverse_point for t in TARGETS)  # the stage 9 trap stays on record
+
+
+def test_scs_anomalise_matches_plain_and_survives_unseen_cell():
+    from wxrisk import scs_eval as se
+
+    rng = np.random.default_rng(0)
+    n = 6000
+    df = pd.DataFrame({"cty": rng.choice(["08001", "35001"], n), "month": rng.integers(1, 13, n),
+                       "lat": rng.normal(size=n), "cape_12": rng.gamma(2, size=n)})
+    fit = pd.Series(np.arange(n) < 5000)
+    a, b = se.anomalise(df, ["lat", "cape_12"], fit), se.anomalise_plain(df, ["lat", "cape_12"], fit)
+    assert np.corrcoef(a[:, 1], b[:, 1])[0, 1] > 0.995  # shrinkage only moves sparse cells
+    assert abs(a[fit.to_numpy(), 1].std() - 1) < 0.02
+    df.loc[5500, ["cty", "month"]] = ["04001", 7]  # never seen in the fit rows
+    assert np.isnan(se.anomalise_plain(df, ["cape_12"], fit)[5500]).all()
+    assert np.isfinite(se.anomalise(df, ["cape_12"], fit)[5500]).all()

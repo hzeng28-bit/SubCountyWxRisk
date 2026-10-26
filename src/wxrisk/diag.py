@@ -96,11 +96,11 @@ def label_association(lab: np.ndarray, y: np.ndarray, n_perm: int = 200, seed: i
     y = np.asarray(y, float)
     k = int(lab.max()) + 1
 
-    def mi(l, yy) -> float:
+    def mi(cl, yy) -> float:
         """I(cluster; y) = sum_k sum_v p(k,v) log(p(k,v) / (p(k) p(v)))."""
-        n = len(l)
-        c = np.bincount(l, minlength=k).astype(float)
-        c1 = np.bincount(l, weights=yy, minlength=k)
+        n = len(cl)
+        c = np.bincount(cl, minlength=k).astype(float)
+        c1 = np.bincount(cl, weights=yy, minlength=k)
         c0 = c - c1
         p1 = yy.mean()
         out = 0.0

@@ -6,13 +6,15 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 
+from .prep.scaling import FeaturePlan, FeatureRule
+
 HEADS = ["y0", "y10k", "y100k", "y1m"]
 SHRINK = 20.0  # pseudo-counts pulling a cluster toward its prior
 STATIC = {"doy_s", "doy_c", "lat", "lon"}
 
 
-def anomalise(df: pd.DataFrame, cols: list[str], fit: pd.Series) -> np.ndarray:
-    """Subtract the train county x month mean, scale by train std; calendar/location stay as-is."""
+def anomalise_plain(df: pd.DataFrame, cols: list[str], fit: pd.Series) -> np.ndarray:
+    """The original normalisation (kept for the comparison in RESULTS stage 14): raw county x month mean, NaN for a county-month unseen in the fit rows."""
     out = np.empty((len(df), len(cols)), np.float32)
     key = df.cty + "_" + df.month.astype(str)
     fit = fit.to_numpy()
@@ -25,6 +27,22 @@ def anomalise(df: pd.DataFrame, cols: list[str], fit: pd.Series) -> np.ndarray:
         z = x - key.map(mu).to_numpy()
         out[:, j] = z / z[fit].std()
     return out
+
+
+def scs_plan(cols: list[str]) -> FeaturePlan:
+    """County x month anomaly (fitted on the training rows, shrunk toward the global mean for sparse cells, global fallback for an unseen cell), unit variance on the fit rows."""
+    return FeaturePlan(tuple(
+        FeatureRule(c, basis="calendar / location: standardise only") if c in STATIC
+        else FeatureRule(c, group="_ck", group_stat="center_z", basis="county x month anomaly (docs/SCALING_PLAN.md, SCS K-means)")
+        for c in cols))
+
+
+def anomalise(df: pd.DataFrame, cols: list[str], fit: pd.Series) -> np.ndarray:
+    """Subtract the train county x month mean (shrunk), scale by the train anomaly std; calendar/location are only standardised. Fit rows only."""
+    d = df[cols].assign(_ck=(df.cty + "_" + df.month.astype(str)).to_numpy())
+    plan = scs_plan(cols)
+    prm = plan.fit(d, fit.to_numpy(), "fit rows of the experiment")
+    return plan.apply(d, prm).to_numpy()
 
 
 def climatology(df: pd.DataFrame, fit: pd.Series) -> dict[str, np.ndarray]:

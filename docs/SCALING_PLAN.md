@@ -36,7 +36,7 @@ SCS K-means: removing the county x month mean against a plain global z-score: ti
 
 Measured, added to the transformed + cyclic logistic regression (0.7854): all 12 tested columns +0.0084 [+0.0021, +0.0142] (that run also carries the group-aware columns), by role: exposure columns +0.0041 [+0.0009, +0.0072], rain -0.0003 [-0.0034, +0.0025], geography -0.0014 [-0.0045, +0.0021]; single columns: sfha_share +0.0017 [+0.0005, +0.0030], log_pol +0.0021 [-0.0001, +0.0040], mean_cov +0.0018 [-0.0008, +0.0040].
 
-The gain sits in the exposure columns, where the response has thresholds (share of policies in the special flood hazard area: none against some). Rain and geography gain nothing. **Status: candidate.** 15 comparisons were made on one test period and are not corrected for multiplicity; before the bins enter a model, confirm them with the blocked-by-year cross-validation. The discretisation of the target-free analysis bins (depth classes in script 33, claim-rate classes in script 35) is descriptive and is not part of any model input.
+The gain sits in the exposure columns, where the response has thresholds (share of policies in the special flood hazard area: none against some). Rain and geography gain nothing. **Status: confirmed, small.** The ablation above made 15 comparisons on one test period; the exposure bins were therefore re-tested with blocked-by-year cross-validation (7 folds of two test years, cut points refitted on the other years): pooled within-event AUC 0.7892 -> 0.7919, difference +0.0028 [+0.0003, +0.0051], positive in 6 of 7 folds. The gain is about 0.003 AUC and only for linear / distance-based learners; use the bins as extra columns there, never for trees. The discretisation of the target-free analysis bins (depth classes in script 33, claim-rate classes in script 35) is descriptive and is not part of any model input.
 
 ## 5. Targets and the inverse transform
 
@@ -138,7 +138,6 @@ Diagnostics behind the plan (training rows 2010-2016): skew / excess kurtosis / 
 
 ## Open items
 
-- Supervised bins for the exposure columns are a candidate: confirm with blocked-by-year cross-validation before use (multiple comparisons).
-- The stage 9 foundation effect is stated as a geometric-mean ratio; restate it with the log-link GLM (or per-group smearing) when it is next used.
-- The plan covers the Texas flood pilot features. The SCS features keep `anomalise` (county x month, fitted on the training years); a `FeaturePlan` version of it with the shrinkage and the unseen-group fallback is not yet wired into scripts 10-14.
+- The stage 9 foundation effect: script 30 (`--sections glm`) now reports both the geometric-mean ratio and the log-link GLM ratio of means; quote the second for dollars.
+- The SCS features go through `scs_eval.anomalise`, now a `FeaturePlan` (shrunk county x month means, global fallback for an unseen cell); the older version is `anomalise_plain`. Skill of scripts 10 and 14 with the two versions is compared in RESULTS stage 14.
 - Tree models receive raw features; if boosting is ever replaced by a linear or neural learner, apply `PILOT_PLAN` first and re-run `scripts/42_scaling_audit.py`.
