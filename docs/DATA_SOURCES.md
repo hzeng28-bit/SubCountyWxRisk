@@ -100,6 +100,7 @@ parquet/NetCDF files above 1 GB record only the byte hash and row count (a conte
 | IEM warning polygons | NWS storm-based warnings, 2002+ | `fetch_raw.py iem` | `labels_extra/iem/` | 0.11 GB | None |
 | MRMS MESH (radar hail) | 24 h maximum MESH, 2021–2023 | `scripts/17` | `labels_extra/mesh/` | 0.4 GB | None (public AWS bucket) |
 | MRMS MultiSensor QPE | 24 h rainfall, 2021–2023 | `scripts/19` | `labels_extra/qpe/` | 1.9 GB | None |
+| GEFSv12 reforecast APCP | 00Z runs the day before each Texas episode, 5 members, 6-h accumulations at leads 36-84 h, 2010-2019, 0.25 deg Texas crop | `scripts/47` | `labels_extra/flood/gefs/` | 410 MB (21 GB read through .idx byte ranges) | None (`noaa-gefs-retrospective`). Reforecast ends 2019; Wednesdays have 11 members, cut to 5; gridMET day = 12Z..12Z |
 | MRMS MultiSensor QPE 01H Pass2 | hourly rain, ~600 km crops (4 km blocks) around 8 Texas episodes, 2021–2023 | `scripts/39` | `labels_extra/flood/mrms_hourly/` | 42 MB (450 MB transferred) | None. Hourly product starts 2020-10; -3 / -999 are no-coverage flags, not dry |
 | USGS NWIS | Daily river discharge (CO/NM/AZ) | `fetch_raw.py nwis` | `labels_extra/flood/nwis/` | Small | None |
 | Census | 2020 county boundaries, 2010/2020 block groups | `fetch_raw.py census`, `scripts/22` | `labels_extra/census/`, `labels_extra/flood/pilot/` | Small | None |

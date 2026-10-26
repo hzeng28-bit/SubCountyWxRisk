@@ -214,3 +214,20 @@ def test_s3_anonymous_download_and_resume(tmp_path):
     assert dest.read_bytes() == full
     with pytest.raises(fetch.ChecksumMismatch):
         fetch.s3(bucket, key, tmp_path / "m2.gz", expect_sha256="0" * 64, retries=1)
+
+
+def test_s3_range_returns_the_requested_slice(monkeypatch):
+    calls = []
+
+    class Body:
+        def read(self):
+            return b"abc"
+
+    class Client:
+        def get_object(self, **kw):
+            calls.append(kw)
+            return {"Body": Body()}
+
+    monkeypatch.setattr(fetch, "s3_client", lambda: Client())
+    assert fetch.s3_range("b", "k", 10, 12) == b"abc"
+    assert calls[0]["Range"] == "bytes=10-12"

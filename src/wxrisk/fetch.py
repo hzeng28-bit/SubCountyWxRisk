@@ -2,7 +2,7 @@
 
 Channel by source type (see docs/DATA_SOURCES.md):
   vendor API            use the vendor's library (cdsapi / ecmwf-datastores for CDS; gcsfs/zarr for WeatherBench-2)
-  object storage (S3)   `s3` / `s3_bytes`  (boto3, anonymous by default)
+  object storage (S3)   `s3` / `s3_bytes` / `s3_range`  (boto3, anonymous by default)
   plain HTTP(S) file    `https`            (urllib; no curl, so Windows works)
   small HTTP(S) payload `get_bytes` / `get_json`
   many files            `fetch_many`       (one space check for the whole batch, then parallel downloads)
@@ -430,6 +430,18 @@ def s3_bytes(bucket: str, key: str, retries: int = 4) -> bytes:
     for k in range(retries):
         try:
             return s3_client().get_object(Bucket=bucket, Key=key)["Body"].read()
+        except Exception as e:  # noqa: BLE001
+            if _s3_code(e) in S3_NO_RETRY or k == retries - 1:
+                raise
+            time.sleep(2 * (k + 1))
+    raise RuntimeError(f"failed: s3://{bucket}/{key}")  # pragma: no cover
+
+
+def s3_range(bucket: str, key: str, start: int, end: int, retries: int = 4) -> bytes:
+    """Bytes [start, end] (inclusive) of an S3 object, e.g. single GRIB messages located through an .idx file."""
+    for k in range(retries):
+        try:
+            return s3_client().get_object(Bucket=bucket, Key=key, Range=f"bytes={start}-{end}")["Body"].read()
         except Exception as e:  # noqa: BLE001
             if _s3_code(e) in S3_NO_RETRY or k == retries - 1:
                 raise

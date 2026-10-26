@@ -1,0 +1,19 @@
+# Files to move from the Mac to Sol with Globus (paths relative to $WXRISK_DATA, same layout on both sides).
+# Bundle A: enough to run scripts 26, 29, 42, 48 (modelling) and 49 on Sol. About 380 MB.
+labels_extra/flood/pilot/flood_pilot_table.parquet
+labels_extra/flood/pilot/flood_pilot_fc_features.parquet
+labels_extra/flood/pilot/flood_pilot_expodyn.parquet
+labels_extra/flood/pilot/flood_pilot_wavelet.parquet
+labels_extra/flood/pilot/bg_terrain.parquet
+labels_extra/flood/pilot/bg_crosswalk_tx.parquet
+labels_extra/flood/pilot/bg2010_tx.zip
+clean/claims_nfip.parquet
+clean/claims_nfip.prep.json
+clean/policies_tx.parquet
+clean/policies_tx.prep.json
+clean/policies_tx.norm.json
+# Bundle B (optional, 410 MB): the GEFS crops, if you prefer to copy them instead of re-fetching with hpc/fetch_gefs.sbatch.
+# labels_extra/flood/gefs/
+# Not transferred, rebuild or re-download on Sol: raw NFIP bulk files, gridMET, ERA5, MRMS (see docs/DATA_SOURCES.md).
+# Needed only for `48 --build` and the pilot-table builders (25): labels_extra/flood/pilot/pr_tx_2000_2023.npy (2.7 GB), pr_tx_meta.npz,
+# expo_2010_2023_clean.npz (1.3 GB), claims_cum_clean.npy (323 MB), gridmet/ (1.4 GB).

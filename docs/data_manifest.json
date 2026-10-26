@@ -1,7 +1,7 @@
 {
  "entries": {
   ".lock_cache.json": {
-   "bytes": 409131
+   "bytes": 414419
   },
   "audit/building_attrs.txt": {
    "bytes": 5879
@@ -11,6 +11,12 @@
   },
   "audit/flood_definition_diag.txt": {
    "bytes": 2871
+  },
+  "audit/flood_forecast_pilot.json": {
+   "bytes": 2280
+  },
+  "audit/flood_forecast_pilot.txt": {
+   "bytes": 1175
   },
   "audit/flood_pilot_diag.txt": {
    "bytes": 3919
@@ -46,10 +52,10 @@
    "bytes": 1134
   },
   "audit/mrms_sparse.json": {
-   "bytes": 2964
+   "bytes": 5540
   },
   "audit/mrms_sparse.txt": {
-   "bytes": 3061
+   "bytes": 5140
   },
   "audit/nfip_granularity.txt": {
    "bytes": 6121
@@ -211,6 +217,9 @@
   },
   "fetch_b.log": {
    "bytes": 7923
+  },
+  "fetch_gefs.log": {
+   "bytes": 816
   },
   "flood_labels_county_day.parquet": {
    "bytes": 580177,
@@ -403,6 +412,15 @@
   },
   "labels_extra/flood/fetch_nfip.log": {
    "bytes": 483
+  },
+  "labels_extra/flood/gefs/apcp_#.npy": {
+   "bytes": 424379520,
+   "collapsed": true,
+   "example": "apcp_20100119.npy",
+   "files": 1640
+  },
+  "labels_extra/flood/gefs/gefs_meta.npz": {
+   "bytes": 22815
   },
   "labels_extra/flood/mrms_hourly/ev_31275.npy": {
    "bytes": 6307328
@@ -809,6 +827,32 @@
     "new12_share": "FLOAT"
    },
    "rows": 2996576
+  },
+  "labels_extra/flood/pilot/flood_pilot_fc_features.parquet": {
+   "bytes": 23260289,
+   "columns": {
+    "bg": "INT64",
+    "ep": "INT64",
+    "fc_cty_max": "DOUBLE",
+    "fc_cty_mean": "DOUBLE",
+    "fc_f1": "FLOAT",
+    "fc_nb3": "FLOAT",
+    "fc_s": "FLOAT",
+    "fc_sd": "FLOAT",
+    "fc_v25": "DOUBLE",
+    "fc_v25_nb3": "DOUBLE",
+    "fc_v50": "DOUBLE",
+    "nd": "INT64",
+    "o4_cty_max": "DOUBLE",
+    "o4_cty_mean": "DOUBLE",
+    "o4_f1": "FLOAT",
+    "o4_s": "FLOAT",
+    "oc_cty_max": "DOUBLE",
+    "oc_cty_mean": "DOUBLE",
+    "oc_f1": "DOUBLE",
+    "oc_s": "DOUBLE"
+   },
+   "rows": 2047775
   },
   "labels_extra/flood/pilot/flood_pilot_results.csv": {
    "bytes": 1727
@@ -1504,6 +1548,6 @@
    "rows": 25902
   }
  },
- "n_entries": 182,
+ "n_entries": 188,
  "root": "$WXRISK_DATA"
 }

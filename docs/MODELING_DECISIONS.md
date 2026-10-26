@@ -72,9 +72,9 @@ an **episode-level factor** (how many claims this event produces, a count-type m
 
 | Open item | Why it matters | Cost / blocker |
 |---|---|---|
-| **O1. Forecast-mode pilot**: swap observed gridMET rain for IFS ENS (or HRES) rain at the block-group point; compare point value, ensemble mean, vote probability, NEP at 1-3 day leads, same within-event AUC | Everything learned is perfect-prog; neighbourhood features and the encoder may matter once rain has position error | Need ENS precipitation for the 44k Texas episodes (download size to check); highest priority |
+| **O1. Forecast-mode pilot (done, stage 16: 40% of the rain gain survives, ensemble extras add nothing; next: finer/longer-lead/more members)**: swap observed gridMET rain for IFS ENS (or HRES) rain at the block-group point; compare point value, ensemble mean, vote probability, NEP at 1-3 day leads, same within-event AUC | Everything learned is perfect-prog; neighbourhood features and the encoder may matter once rain has position error | Need ENS precipitation for the 44k Texas episodes (download size to check); highest priority |
 | O2. Level model (episode-level claim count / rate) | The ranking model cannot give usable absolute probabilities across eras | Needs a model of episode claims on rain and stock; positives are dominated by 2015-2016 |
-| O3. Building priors in the pilot table (elevated share, known-foundation shares + unknown share, post-FIRM share) | Stage 9 left it as "not yet known whether they add" | Cheap; script 38 pattern; expect small, the rain and exposure columns already dominate |
+| O3. Flood history (claims 2000-2009, prior 3 years) and building priors (elevated share, known-foundation shares + unknown share, post-FIRM share) in the pilot table | History: +0.026 observed / +0.051 forecast mode (stage 17); building priors still untested | History is cheap and ready (script 49 `history`); building priors follow script 38 |
 | O4. FEMA NFHL + HAND flood-zone features | Terrain centroid features added nothing; zone geometry may | Download + processing; only after O1 |
 | O5. Clean-input pilot table as default for stages 8-10 | Stored table carries 376 changed rows and the old 366-day term | Regenerate wavelet and terrain features for those rows |
 | O6. Impact-layer model fit end to end (depth distribution given rain, then damage ratio) | Only the pieces exist; rain-to-depth is not modelled | Exterior depth exists mostly from 2016-2017 onward (Harvey-heavy) |
@@ -84,7 +84,7 @@ an **episode-level factor** (how many claims this event produces, a count-type m
 
 ## 6. Recommended order
 
-1. **O1** (forecast-mode pilot). It decides whether the encoder / neighbourhood machinery has a role at all, and it is the only step that tests what the project claims.
+1. ~~O1~~ done (stage 16). Follow-ups: a finer or more-member forecast than 5 members at 0.25 deg, other leads, and 2020-2023 with IFS ENS.
 2. **O3 + O5** together (cheap, close two stage-8/9 loose ends on one rebuilt table).
 3. **O2** (level model) once O1 fixes which rain feature is the driver.
 4. **O4, O7, O8** by data availability.
@@ -95,3 +95,13 @@ an **episode-level factor** (how many claims this event produces, a count-type m
 - No payout or loss forecast (occurrence only).
 - No evidence for scale decomposition or motion as predictors; they are valid tools for the sparse-to-dense and motion-estimation questions only.
 - No cross-state or cross-era absolute probability.
+
+## 8. Data needs from the information audit (stage 17)
+
+| Priority | Data | Evidence | Status |
+|---|---|---|---|
+| 1 | Flood history features (claims 2000-2009, rolling prior claims, per-policy rates) into the pilot table | +0.026 observed, +0.051 forecast mode | in hand; add to the table and the model |
+| 2 | Building-level susceptibility: share of buildings / area in the FEMA NFHL flood zone, HAND or distance to channel at building footprints, imperviousness, soils | centroid terrain is null in both modes; history (a proxy) already gives +0.026, so the extra from a real layer is unknown | needs download (NFHL, building footprints, NLCD) |
+| 3 | A finer forecast for forecast mode: HRRR / HREF / NAM-nest hourly rain, or more members; Stage IV or MRMS hourly for sub-daily intensity | forecast mode loses 0.024 (resolution) + 0.045 (error); outcome oracle leaves +0.085 | needs download; sub-daily intensity in observed mode is not supported by the miss analysis (3.9% of last-ranked positives have cell rain < 10 mm) |
+| 4 | More outcome data: a second state (LA, FL, SC) and later years | test is 497-1015 episodes, intervals +-0.03; small-exposure block groups dominate misses | NFIP claims and policies are already national |
+| 5 | Soil moisture beyond 14-day rain | antecedent rain was null in stage 8 | untested; low prior |

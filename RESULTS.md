@@ -1168,3 +1168,83 @@ Simple kriging of the residual (exponential covariance, 5% relative nugget, 16 n
 - The prior's heavy-rain CSI advantage at very low density survives only for inverse-distance weighting (0.306 against 0.203 for S); kriged observations alone have 0.167 at 0.5% / 1 h (the kriged zero-mean field smooths peaks away), where MOK has 0.307.
 
 **Conclusion of the stage**: with a global advection of a dense hourly field and the observation densities tested, the motion-compensated prior is not worth adding to point observations for the squared error; its value is in placing heavy-rain cells when almost nothing is observed (0.5% of cells).
+
+# Stage 16: forecast-mode flood pilot, observed rain replaced by GEFSv12 reforecast rain (2026-10-26)
+
+Scripts: `47` (GEFSv12 reforecast APCP, 00Z runs of the day before each episode, control + 4 members, leads 36-84 h, Texas crop; 1,640 days, 410 MB kept of ~21 GB read), `48` (features and models; output `audit/flood_forecast_pilot.{txt,json}`).
+Question: stage 8 used observed rain, so its 0.78 within-event AUC is a perfect-prognosis number. How much of the rain skill survives when the rain is a forecast?
+
+## Design
+
+- Same unit, label and learner as stage 8 (block group x rain episode, any inland non-tropical claim, boosting depth 5), restricted to episodes starting 2010-2019 because the reforecast ends in 2019: 30,362 episodes, 2.05 M rows; train 2010-2016 (7,553 positives), test 2017-2019 (2,075 positives, 497 episodes with a within-event AUC).
+- Rain enters through the two gridMET days the run can see (day S and S+1), F1 = largest daily rain, S = sum, truncated at the episode end. A gridMET day was matched to 12Z..12Z by pooled correlation with the ensemble mean over 24 prototype days (r 0.70 at that window against 0.55-0.61 for the neighbouring 6 h shifts).
+- Sources, same features in every row of the table: obs4k (gridMET at the block group's 4 km cell), obsC (gridMET averaged over the 0.25 deg GEFS cell), fcmean (5-member mean at the cell), fcens (fcmean + share of members >= 25 / 50 mm, spread, 3x3 neighbourhood). County max / mean of the same quantity added in each. Exposure columns and duration / month identical.
+
+## Results (test 2017-2019, within-event AUC, pair weighted)
+
+| Rain input | within-event AUC | paired difference, event-clustered bootstrap |
+|---|---|---|
+| exposure and calendar only | 0.622 | |
+| obs4k | 0.736 | +0.114 [+0.071, +0.171] over exposure only |
+| obsC (resolution only) | 0.712 | -0.024 [-0.047, -0.004] vs obs4k |
+| fcmean | 0.667 | -0.045 [-0.074, -0.008] vs obsC; +0.046 [+0.020, +0.083] over exposure only |
+| fcens | 0.669 | +0.002 [-0.017, +0.016] vs fcmean |
+| trained on obsC, scored with fcmean | 0.667 | same as training on the forecast (+0.0004 [-0.009, +0.013]) |
+
+Untrained scores: point value obs4k 0.647, obsC 0.604, fcmean 0.539; vote >= 25 mm 0.519 (overall AUC 0.60).
+
+## Conclusions
+
+- The rain skill drops from +0.114 to +0.046 over exposure, so about 40% of the observed-rain gain survives a 1.5-3.5 day forecast. Of the 0.068 lost, about 0.024 is resolution (4 km to a 0.25 deg cell) and about 0.045 is forecast error.
+- Ensemble information (vote fractions, spread, neighbourhood) adds nothing on top of the mean (+0.002 [-0.017, +0.016]), and training on forecast rain instead of observed rain does not help (+0.0004). With five members and one run the position error is not what limits the score.
+- Exposure alone carries 0.62 of the 0.67 forecast score, so in forecast mode exposure is the larger part of the skill. The ranking inside a county would improve mostly with finer rain forecasts, not with a smarter use of five members.
+- Decision effect: neighbourhood / encoder machinery is still not supported (it was not even needed at 0.25 deg); the open question moves to forecasts of finer resolution and more members.
+
+## Caveats
+
+- Test = 3 years (2017-2019), 497 episodes; stage 8's 0.786 is on 2017-2023 and all rain days, so absolute levels here (obs4k 0.736) are not comparable with it, only the rows of this table are.
+- One run per episode (00Z the day before, leads 36-84 h) and episodes truncated at two days; later days and longer leads are not tested. Control + 4 members only (11 on Wednesdays were cut to 5).
+- GEFSv12 reforecast is a fixed 2000-2019 re-run of one model, not an operational forecast archive; its skill is not IFS's. 0.25 deg is about 25 km, still much coarser than a block group (the resolution cost above is measured on gridMET).
+- The day alignment came from 24 days; rain gain depends on it (a 6 h shift lowered the pooled correlation from 0.70 to 0.55).
+- No calibration of the level was tried (positive rate changes by era), and the model is the stage 8 learner with default settings.
+
+# Stage 17: information audit of the flood models, which data would lift the bottleneck (2026-10-26)
+
+Script `49` (output `audit/information_audit.txt`). Within-event AUC, event-clustered paired bootstrap. Base model = stage 8 L2 features (county rain, exposure, cell rain, boosting depth 5); observed-rain arm trained 2010-2016, tested 2017-2023 (3,711 positives); forecast arm = stage 16 subset with ensemble-mean rain, tested 2017-2019 (2,075 positives).
+
+## 1-2. Where the stage 8 model (L5 predictions) is weak
+
+- By stratum: many-positive episodes are easiest (>= 10 positives 0.798, 1 positive 0.703); the lowest-rain quarter of episodes 0.68-0.70 (62-101 episodes, wide), the highest 0.799; episodes of 1 day 0.807, of >= 5 days 0.757; county size 21-60 block groups 0.725 against > 150 at 0.784; by year 0.738 (2018) to 0.838 (2020).
+- Positives ranked in the bottom quarter of their episode are 4.9% of positives (61% are in the top quarter). They are **small-exposure block groups**: median 16 policies against 76 for top-quarter positives, 0 flood-zone share against 0.24, area 1.3 against 2.6 km2. Only 3.9% of them have cell rain below 10 mm and 3.7% of all positives have cell rain below a quarter of the county peak: the missed claims are not mostly rain placed in the wrong cell.
+
+## 4. Label-randomness ceiling
+
+If the model's own probabilities (re-centred to the test prevalence) were the truth, redrawn labels would give within-event AUC 0.7909 (sd 0.0045 over 10 redraws) against the observed 0.7839. The model is at the level its own probabilities imply; remaining misranking is consistent with Bernoulli noise given those probabilities. It is not a bound on the achievable skill (new information changes the probabilities, see below, and 0.812 exceeds it).
+
+## 3. Information added to the base model
+
+| Added information | observed rain, 2017-2023 | forecast rain (fcmean), 2017-2019 |
+|---|---|---|
+| base | 0.7857 | 0.6674 |
+| + claims 2000-2009 in the block group (`hist00`) | +0.016 [+0.011, +0.021] | +0.037 [+0.013, +0.057] |
+| + claims in the 3 years before the episode (`prior3`) | +0.018 [+0.013, +0.024] | +0.030 [+0.017, +0.042] |
+| + both | **+0.026** [+0.020, +0.033] | **+0.051** [+0.023, +0.075] |
+| + terrain (elevation, relative height, slope) | -0.002 [-0.010, +0.007] | -0.031 [-0.070, +0.009] |
+| + history + terrain + location / area / 14-day antecedent rain | +0.025 [+0.018, +0.031] | +0.044 [+0.018, +0.067] |
+| oracle: outcome of the 5 nearest other block groups (not known ahead) | +0.022 [+0.015, +0.029] | +0.085 [+0.045, +0.116] |
+
+(A first oracle, the leave-one-out share of the whole episode, was anti-correlated with a block group's own label by construction and gave -0.03; it was dropped.)
+
+## Conclusions
+
+- **Flood history is the largest available gain not yet in the pilot**: +0.026 with observed rain and +0.051 with forecast rain, known ahead and from data already in the repository. The gain doubles in forecast mode, so static susceptibility replaces some of the local rain detail that a 25 km forecast loses.
+- **Centroid terrain stays null, also in forecast mode**, and history absorbs location / area / antecedent rain. Susceptibility needs a different representation (below), not more centroid features.
+- **Spatial coherence of the outcome is modest in observed mode** (+0.022 even knowing the 5 nearest outcomes) and large in forecast mode (+0.085): the forecast leaves about that much local information on the table. History recovers about 60% of it.
+- Observed-rain misses are exposure-noise (small block groups) rather than rain placement; the data that would change the ranking is therefore building / susceptibility detail, not finer daily rain, in observed mode. Finer rain matters for forecast mode (stage 16: 0.024 resolution + 0.045 forecast error).
+
+## Caveats
+
+- Same tests as before (one split, 2017-2023 / 2017-2019); intervals from event-clustered bootstrap, no multiplicity correction over the 6 added-information rows.
+- History counts claims of the same peril in the same block group: it is partly a proxy for flood zone, building stock and take-up, so it is not a clean "susceptibility" measure and its gain may shrink once better static layers are added.
+- `prior3` counts claims before the episode start only; episodes inside a continued wet spell share history with the previous one.
+- The ceiling is a self-consistency check, not an information bound.
