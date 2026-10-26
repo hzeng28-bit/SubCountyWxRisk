@@ -1115,3 +1115,38 @@ Scripts: `10`, `12`, `14` (SCS, via `scs_eval.anomalise`), `25`, `26`, `29` (flo
 - The clean-input pilot table was not adopted as the default table of stages 8-10; adopting it needs the wavelet and terrain features regenerated for the 376 changed (episode, block group) rows.
 - E9 uses folds that train on later years to predict earlier ones; it checks the feature-engineering decision, not forecast skill.
 - GLM ratios have no bootstrap interval here (single fit); Texas basement is untestable.
+
+# Stage 15: sparse-to-dense test on hourly MRMS, motion-compensated prior vs observations alone (2026-10-25)
+
+Scripts: `39` (8 Texas events 2021-2023, ~450 MB transferred, 42 MB kept as crops, MRMS MultiSensor QPE Pass2 01H from `noaa-mrms-pds`, ~4 km), `46` (the test; output `audit/mrms_sparse.{txt,json}`).
+Question (the idea of the first request): does an old dense field, advected by the motion measured between the two frames before it, add information to a few current observations?
+
+## Design
+
+Truth = MRMS at hour t. Observations = a random 0.5 / 2 / 8% of cells (perfect point values, an upper bound on a gauge network). Methods: S (inverse-distance interpolation of the observations), P (persistence of F[t-L]), M (F[t-L] shifted by L times the phase-correlation motion of F[t-L-1] -> F[t-L]), PO / MO (P / M plus the interpolated residual at the observed cells). L = 1 and 3 h. Rainy hours only (>= 2% of cells at >= 1 mm/h), scored on the cells that were NOT observed; interval = bootstrap over the 8 events.
+
+## Results (mean over events; RMSE in mm/h; CSI at >= 5 mm/h)
+
+| L, observed cells | S RMSE / CSI | M | MO | MO - S in RMSE skill (1 - RMSE/RMSE_S) |
+|---|---|---|---|---|
+| 1 h, 0.5% | 2.12 / 0.205 | 2.20 / 0.280 | 2.15 / 0.308 | -0.003 [-0.049, +0.043] |
+| 1 h, 2% | 1.72 / 0.348 | 2.19 / 0.280 | 1.87 / 0.374 | -0.077 [-0.118, -0.028] |
+| 1 h, 8% | 1.27 / 0.499 | 2.19 / 0.280 | 1.45 / 0.477 | -0.136 [-0.168, -0.095] |
+| 3 h, 2% | 1.73 / 0.340 | 3.03 / 0.078 | 2.15 / 0.290 | -0.242 [-0.279, -0.202] |
+
+- **Motion compensation works as a motion estimate**: the advected field beats persistence by 0.42 mm/h RMSE at L = 1 [-0.66, -0.27] and 0.22 at L = 3 [-0.33, -0.11]; CSI 0.280 against 0.203. Mean estimated shift 4.8 pixels (about 19 km per hour), coherence 17.
+- **It does not beat the observations alone** once there are a few percent of cells observed: with the residual correction (MO) it is worse than S in RMSE at 2% and 8% (and at 3 h at every density) and ties at 0.5% (skill -0.003, interval contains 0). At 0.5% and 2% it is better in CSI of heavy rain (0.308 against 0.205; 0.374 against 0.348), so the prior helps place the heavy cells when the network is very sparse, at no gain in squared error.
+- The prior's advantage decays quickly with its age (L = 3 h loses most of it), as expected for convective rain.
+
+## Conclusions
+
+- The hypothesis "an advected dense prior plus sparse observations is a better dense field than the observations alone" is **not supported** on RMSE for networks denser than about 0.5% of 4 km cells (about one point per 3,000 km^2); it is weakly supported on heavy-rain CSI at 0.5-2%.
+- As a source of data augmentation the idea needs a dense prior at t-1, which this setting assumes (radar). Where only sparse gauges exist at t-1 as well, the prior is not available, so this test is an upper bound for that use.
+
+## Caveats
+
+- 8 events, 3 days at most each, Texas only; intervals are over events and the hours inside an event are not independent.
+- The prior and the truth come from the same product, and the observations are perfect: both favour the method, which still lost.
+- The combination rule is the naive full residual correction. A prior weighted by its local error (optimal interpolation / kriging with the advected field as a trend) was not tried and could close the gap at 2-8%; the test shows the simple version is not enough.
+- Edge effects of the shifted field (zero fill) and the 4x4 block average are not examined.
+- The first half of the original idea (extrapolating the RISK of a neighbouring cell, as opposed to its weather) is not tested here.

@@ -1,6 +1,6 @@
 """Hourly MRMS MultiSensor QPE (Pass2) crops around heavy-rain Texas episodes, block-averaged to ~4 km.
 
-Testbed for the sparse-to-dense / motion-compensated reconstruction test (script 40). gridMET is daily, which
+Testbed for the sparse-to-dense / motion-compensated reconstruction test (script 46). gridMET is daily, which
 is too coarse for storm motion; MRMS hourly starts 2020-10, so only 2021-2023 episodes are usable.
 
 Inputs : flood_pilot_table.parquet (episode dates, county), MRMS on s3://noaa-mrms-pds (anonymous)
@@ -87,7 +87,7 @@ def main() -> None:
         hours = pd.date_range(s, end + pd.Timedelta(hours=24), freq="h")
         box = (lat - HALF_LAT, lat + HALF_LAT, lon - HALF_LON, lon + HALF_LON)
         with ThreadPoolExecutor(8) as ex:
-            res = list(ex.map(lambda h: read_crop(h, box), hours))
+            res = list(ex.map(lambda h, box=box: read_crop(h, box), hours))
         ok = [r for r in res if r is not None]
         if not ok:
             print(f"ep {ep}: no data", flush=True)
