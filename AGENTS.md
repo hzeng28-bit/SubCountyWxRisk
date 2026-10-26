@@ -28,6 +28,7 @@ Ensemble-forecast-conditioned **meteorological hazard risk index** (video-codec 
 | `docs/CLEANING_REGISTER.md`, `docs/SCALING_PLAN.md` | generated: why each cleaning rule exists (provider-documented / undocumented code / entry error) and the scaling decisions (which columns, group-aware or not, discretise or not, which targets need an inverse). `scripts/41`, `42`, `43` produce the evidence |
 | `scripts/45_pilot_input_parity.py` | compares flood-pilot exposure/claim arrays built from the clean tables with the stored ones (`flood_pilot.exposure_matrices`, `claims_tx` read `clean/`; `scs_eval.anomalise` is a `FeaturePlan`, `anomalise_plain` the old one) |
 | `scripts/39_mrms_hourly_events.py`, `scripts/46_mrms_sparse_reconstruction.py` | hourly MRMS crops of 8 Texas events and the sparse-to-dense test of a motion-compensated prior (RESULTS stage 15: not better than the observations alone) |
+| `docs/MODELING_DECISIONS.md` | synthesis of stages 0-15: what is settled, what was rejected, what each layer should be, open experiments in priority order |
 | `tests/` | `pytest` (motion estimation only so far) |
 
 ## Setup and conventions
