@@ -1147,6 +1147,24 @@ Truth = MRMS at hour t. Observations = a random 0.5 / 2 / 8% of cells (perfect p
 
 - 8 events, 3 days at most each, Texas only; intervals are over events and the hours inside an event are not independent.
 - The prior and the truth come from the same product, and the observations are perfect: both favour the method, which still lost.
-- The combination rule is the naive full residual correction. A prior weighted by its local error (optimal interpolation / kriging with the advected field as a trend) was not tried and could close the gap at 2-8%; the test shows the simple version is not enough.
+- Kriging variant (below) tried the obvious fix of the naive residual correction; it did not close the gap. Not tried: a non-stationary error model (error variance growing with the prior's value), a different motion model than one global shift, an ensemble of priors.
 - Edge effects of the shifted field (zero fill) and the 4x4 block average are not examined.
 - The first half of the original idea (extrapolating the RISK of a neighbouring cell, as opposed to its weather) is not tested here.
+
+## Addendum: the same test with kriging (optimal interpolation) instead of inverse-distance weighting
+
+Simple kriging of the residual (exponential covariance, 5% relative nugget, 16 nearest observations, range chosen per hour among 2 / 4 / 8 / 16 pixels by holding out 20% of the observations), so the correction fades to zero away from the observations and the prior takes over there. SK = kriged observations alone (prior 0), POK / MOK = kriged residual added to persistence / to the advected prior. Same hours, same observation sets; RMSE in mm/h, difference MOK - SK with the event bootstrap interval (positive = the prior makes it worse):
+
+| L, observed cells | SK RMSE | MOK RMSE | MOK - SK |
+|---|---|---|---|
+| 1 h, 0.5% | 2.146 | 2.106 | -0.040 [-0.138, +0.060] |
+| 1 h, 2% | 1.722 | 1.868 | +0.146 [+0.061, +0.233] |
+| 1 h, 8% | 1.210 | 1.421 | +0.210 [+0.136, +0.290] |
+| 3 h, 0.5% | 2.130 | 2.659 | +0.530 [+0.364, +0.690] |
+| 3 h, 8% | 1.217 | 1.507 | +0.290 [+0.208, +0.372] |
+
+- Kriging helps every variant a little at 8% (SK against inverse-distance S: RMSE skill +0.04 [+0.03, +0.06]) and nothing at 0.5-2%, but it **does not change the ordering**: observations alone are at least as good as observations plus the advected prior from 2% of the cells upward, and clearly better at a 3 h prior age. At 0.5% (1 h) the prior ties (skill +0.026 against inverse-distance S, interval [-0.014, +0.069]; difference to SK above includes 0).
+- The motion still pays against persistence (MOK - POK = -0.37 [-0.52, -0.26] at 0.5%, 1 h): the advected prior is a better prior than the old field, it is just not a better one than the observations once there are a few of them.
+- The prior's heavy-rain CSI advantage at very low density survives only for inverse-distance weighting (0.306 against 0.203 for S); kriged observations alone have 0.167 at 0.5% / 1 h (the kriged zero-mean field smooths peaks away), where MOK has 0.307.
+
+**Conclusion of the stage**: with a global advection of a dense hourly field and the observation densities tested, the motion-compensated prior is not worth adding to point observations for the squared error; its value is in placing heavy-rain cells when almost nothing is observed (0.5% of cells).

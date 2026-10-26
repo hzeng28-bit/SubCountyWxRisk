@@ -10,6 +10,9 @@ For every rainy hour t of an event (frames t-L-1, t-L, t all valid):
   M    advected prior         F[t-L] shifted by L x the motion between F[t-L-1] and F[t-L] (phase correlation), no observations
   PO   persistence + obs      P plus the interpolated residual (obs - P) at the observed cells
   MO   advected prior + obs   M plus the interpolated residual
+  SK / POK / MOK   the same three with simple kriging of the residual instead of inverse-distance weighting: exponential covariance, range
+                   picked per hour by holding out 20% of the observations, so the correction fades to zero away from the observations and the
+                   prior (or zero, for SK) takes over there. This is optimal interpolation with the advected field as the background.
 Scores on the NON-observed cells: RMSE (mm/h), CSI at >= 5 mm/h. Skill = 1 - RMSE(method) / RMSE(S). Intervals: bootstrap over EVENTS
 (hours inside an event are strongly dependent, so the event is the unit).
 
@@ -55,6 +58,41 @@ def idw(shape: tuple[int, int], obs_idx: np.ndarray, values: np.ndarray, k: int 
     return ((w * values[i]).sum(1) / w.sum(1)).reshape(shape)
 
 
+RANGES = (2.0, 4.0, 8.0, 16.0)  # pixels (~4 km)
+NUGGET = 0.05  # relative to the residual variance
+K_NEAR = 16
+
+
+def krige(shape, obs_idx, resid, rng_px, targets=None, k=K_NEAR) -> np.ndarray:
+    """Simple kriging (zero mean) of `resid` with an exponential covariance of range rng_px and a relative nugget, using the k nearest
+    observations of every target; returns the field (targets=None) or the values at the flat indices `targets`."""
+    oy, ox = np.divmod(obs_idx, shape[1])
+    pts = np.c_[oy, ox].astype(float)
+    if targets is None:
+        gy, gx = np.mgrid[: shape[0], : shape[1]]
+        tp = np.c_[gy.ravel(), gx.ravel()].astype(float)
+    else:
+        tp = np.column_stack(np.divmod(targets, shape[1])).astype(float)
+    k = min(k, len(pts))
+    d, i = cKDTree(pts).query(tp, k=k)
+    P = pts[i]  # (n, k, 2)
+    dd = np.linalg.norm(P[:, :, None, :] - P[:, None, :, :], axis=-1)
+    A = np.exp(-dd / rng_px) + NUGGET * np.eye(k)[None]
+    b = np.exp(-d / rng_px)
+    w = np.linalg.solve(A, b[:, :, None])[:, :, 0]
+    est = (w * resid[i]).sum(1)
+    return est.reshape(shape) if targets is None else est
+
+
+def krige_fit(shape, obs_idx, resid):
+    """Pick the range by predicting 20% held-out observations from the other 80%, then krige with all observations."""
+    n = len(obs_idx)
+    hold = RNG.choice(n, max(n // 5, 4), replace=False)
+    keep = np.setdiff1d(np.arange(n), hold)
+    err = [np.mean((krige(shape, obs_idx[keep], resid[keep], r, obs_idx[hold]) - resid[hold]) ** 2) for r in RANGES]
+    return krige(shape, obs_idx, resid, RANGES[int(np.argmin(err))]), RANGES[int(np.argmin(err))]
+
+
 def motion(a: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, float]:
     """Shift s with b(x) ~ a(x - s), array-axis units, on log1p fields; zero when the peak is weak."""
     s = compute.estimate_shift_batch(np.log1p(a)[None], np.log1p(b)[None])[0]
@@ -98,10 +136,15 @@ def event_rows(path: Path) -> list[dict]:
                         "PO": prior_p + idw(R0[t].shape, idx, obs - prior_p.ravel()[idx]),
                         "MO": prior_m + idw(R0[t].shape, idx, obs - prior_m.ravel()[idx]),
                     }
+                    ranges = {}
+                    for name, prior in (("SK", np.zeros_like(prior_p)), ("POK", prior_p), ("MOK", prior_m)):
+                        corr, ranges[name] = krige_fit(R0[t].shape, idx, obs - prior.ravel()[idx])
+                        est[name] = prior + corr
                     for name, e in est.items():
                         rmse, csi = scores(R0[t], e, free)
                         rows.append({"event": path.stem, "lag": lag, "frac": f, "method": name, "rmse": rmse, "csi": csi,
-                                     "shift_pix": float(np.hypot(*s)), "coh": coh})
+                                     "shift_pix": float(np.hypot(*s)), "coh": coh,
+                                     "range": ranges.get(name, np.nan)})
     return rows
 
 
@@ -121,27 +164,27 @@ def main() -> None:
     rows = []
     for f in files:
         r = event_rows(f)
-        print(f"  {f.stem}: {len(r) // (5 * len(FRACTIONS) * REPS * len(LAGS)) or len(r)} rows-groups", flush=True)
+        print(f"  {f.stem}: {len(r) // (8 * len(FRACTIONS) * REPS * len(LAGS)) or len(r)} rows-groups", flush=True)
         rows += r
     df = pd.DataFrame(rows)
     if df.empty:
         print("no evaluable hours")
         return
     out: dict = {"events": len(files), "hours_evaluated": int(df[df.method == "S"].groupby(["event", "lag"]).size().sum() / (len(FRACTIONS) * REPS))}
-    pe = df.groupby(["lag", "frac", "event", "method"], as_index=False)[["rmse", "csi", "shift_pix", "coh"]].mean()
+    pe = df.groupby(["lag", "frac", "event", "method"], as_index=False)[["rmse", "csi", "shift_pix", "coh", "range"]].mean()
     print("\nmean over events of RMSE (mm/h) and CSI(>=5 mm/h), non-observed cells")
     print(pe.groupby(["lag", "frac", "method"])[["rmse", "csi"]].mean().unstack("method").round(3).to_string())
-    print("\nRMSE skill against S = 1 - RMSE/RMSE(S), event-bootstrap 95% interval; and the motion effect (MO vs PO, M vs P)")
+    print("\nRMSE skill against S = 1 - RMSE/RMSE(S) (kriged variants SK, POK, MOK too; MOK - SK is the effect of the motion-compensated prior), event-bootstrap 95% interval; and the motion effect (MO vs PO, M vs P)")
     res = {}
     for (lag, frac), g in pe.groupby(["lag", "frac"]):
         w = g.pivot(index="event", columns="method", values="rmse")
         key = f"lag{lag}_frac{frac}"
         res[key] = {"n_events": int(w.shape[0])}
-        for m in ("P", "M", "PO", "MO"):
+        for m in ("P", "M", "PO", "MO", "SK", "POK", "MOK"):
             sk = (1 - w[m] / w["S"]).dropna().to_numpy()
             bs = RNG.choice(sk, (2000, len(sk))).mean(1) if len(sk) >= 3 else np.array([np.nan, np.nan])
             res[key][f"skill_{m}"] = [round(float(sk.mean()), 3), round(float(np.nanpercentile(bs, 2.5)), 3), round(float(np.nanpercentile(bs, 97.5)), 3)]
-        for a, b in (("MO", "PO"), ("M", "P"), ("MO", "S")):
+        for a, b in (("MO", "PO"), ("M", "P"), ("MO", "S"), ("MOK", "SK"), ("MOK", "POK"), ("MOK", "S"), ("SK", "S")):
             d, lo, hi = boot(g, a, b, "rmse")
             res[key][f"rmse_{a}_minus_{b}"] = [round(d, 3), round(lo, 3), round(hi, 3)]
         print(f"  lag {lag} h, {frac:.1%} of cells: " + "; ".join(f"{k} {v}" for k, v in res[key].items() if k != "n_events"))
