@@ -21,6 +21,11 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
      upload both with Globus or the web file browser, then on Sol
      `cd ~ && sha256sum -c wxrisk-code-<commit>.tar.gz.sha256 && tar xzf wxrisk-code-<commit>.tar.gz`. A new version is a new archive;
      extract it over the old directory (code only, nothing under `$WXRISK_DATA` is touched).
+   - Globus sync is better than the archive: `bash hpc/pack.sh` also unpacks the same tracked files into `dist/stage/nanoWxRisk`;
+     sync that folder to `~/nanoWxRisk` (sync level: checksum differs; leave "delete files on destination" off). Later versions move only
+     the changed files. Never sync the repository working tree itself (it holds `.git`, caches and `dist/`).
+   - Data bundle A: `bash hpc/stage_data.sh` builds `dist/data_A` (hard links, no extra disk) with the manifest paths; sync it to
+     `/scratch/hzeng28/wxrisk_data`. Thousands of small files (the GEFS crops) are better re-fetched on Sol than transferred.
    Then `cd ~/nanoWxRisk && sbatch hpc/probe.sbatch` and read `$WXRISK_DATA/hpc/probe_<jobid>.txt`.
 2. Move bundle A (`hpc/transfer_manifest.txt`, about 380 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
    Raw data is re-downloaded on Sol by the numbered fetch scripts when the probe shows outbound HTTPS works; the lock file

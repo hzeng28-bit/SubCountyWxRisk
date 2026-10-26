@@ -14,3 +14,9 @@ git archive --format=tar.gz --prefix=nanoWxRisk/ -o "$out" HEAD
 (cd dist && shasum -a 256 "wxrisk-code-$rev.tar.gz" > "wxrisk-code-$rev.tar.gz.sha256")
 echo "$out ($(du -h "$out" | cut -f1)), commit $rev"
 cat "$out.sha256"
+
+# Folder form for Globus sync: the same tracked files unpacked into dist/stage/nanoWxRisk. Sync that folder (not the repository
+# working tree, which also holds .git, __pycache__, dist/ and other files that do not belong on Sol).
+rm -rf dist/stage && mkdir -p dist/stage
+git archive --prefix=nanoWxRisk/ HEAD | tar -x -C dist/stage
+echo "folder for sync: dist/stage/nanoWxRisk ($(find dist/stage -type f | wc -l | tr -d ' ') files)"
