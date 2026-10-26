@@ -15,7 +15,13 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
 
 ## Order of work
 
-1. Clone the repository on Sol (git only; no data in it), then `sbatch hpc/probe.sbatch`. Read `$WXRISK_DATA/hpc/probe_<jobid>.txt`.
+1. Put the code in `$HOME/nanoWxRisk` (backed up daily, 100 GiB); data, venv and caches stay on scratch (`hpc/env.sh`).
+   - With a working git login on Sol: `git clone` the private repository.
+   - Without one: `bash hpc/pack.sh` on the Mac builds `dist/wxrisk-code-<commit>.tar.gz` (tracked files at HEAD only) and a `.sha256`;
+     upload both with Globus or the web file browser, then on Sol
+     `cd ~ && sha256sum -c wxrisk-code-<commit>.tar.gz.sha256 && tar xzf wxrisk-code-<commit>.tar.gz`. A new version is a new archive;
+     extract it over the old directory (code only, nothing under `$WXRISK_DATA` is touched).
+   Then `cd ~/nanoWxRisk && sbatch hpc/probe.sbatch` and read `$WXRISK_DATA/hpc/probe_<jobid>.txt`.
 2. Move bundle A (`hpc/transfer_manifest.txt`, about 380 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
    Raw data is re-downloaded on Sol by the numbered fetch scripts when the probe shows outbound HTTPS works; the lock file
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.

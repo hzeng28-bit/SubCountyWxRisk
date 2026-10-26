@@ -14,3 +14,6 @@ figures/
 # local / not for sharing
 .Rhistory
 *.pdf
+
+# code archives built by hpc/pack.sh
+dist/
