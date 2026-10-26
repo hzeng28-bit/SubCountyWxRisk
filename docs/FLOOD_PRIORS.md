@@ -25,7 +25,7 @@ confirm is that there is "possibly a connection".
 | Seepage, backflow-protection design, equipment location | None | Not present in the public data |
 
 `foundationType` codes (**inferred from cross-tabs, not from an official dictionary**; verify before use): 0 unknown; 1 no basement / slab; 2 basement (strongly
-overlapping with "finished / unfinished basement"); 3–6 the various forms of elevated (72–91% have `elevatedBuildingIndicator` true).
+overlapping with "finished / unfinished basement"); 4–6 the various forms of elevated (93–95% have `elevatedBuildingIndicator` true); **3 is a crawlspace** per the OpenFEMA dictionary (65% elevated; mixed class, corrected 2026-10-24).
 
 ## Interpretation hypotheses tested
 
@@ -36,7 +36,7 @@ All results come from `scripts/30` (Texas single-family claims from 2010 on; "lo
 | **A** Elevated buildings lose less at the same water depth | After controlling for depth bin and year, about **0.27×** a slab building (Texas); **0.32** nationally with state-month fixed effects; monotone across depth bins | **Holds, the most robust** |
 | **B** Elevated buildings have a lower interior/exterior depth ratio | Median 0.35 (elevated) vs 0.56 (slab) | Direction consistent; the reference level of interior depth may differ, so interpret with care |
 | **C** Basements are more vulnerable (backflow) | Only 62 Texas basement claims, untestable; nationally with state-month fixed effects basements are **0.43×** slab, and state-by-state estimates in 14 states are all below 1 (0.26–0.79) | **Not supported**. The reported loss is lower, but see below |
-| **D** "Unknown" foundation is just a reporting habit, unrelated to the building | Texas, same years 2017–2021: median loss ratio 0.39 for the unknown group vs 0.32 for known slab | **Does not hold**. The known subset is not a random sample |
+| **D** "Unknown" foundation is just a reporting habit, unrelated to the building | Texas, same years 2017–2021: median loss ratio 0.39 for the unknown group vs 0.32 for known slab | **Does not hold**, but the contrast is confounded: in claims 'unknown' is exactly occupancy code 1 (legacy) and known is code 11; code 11 has 0.74× the loss ratio of code 1 with state-month and depth-bin fixed effects (`scripts/30 --sections occ`). The elevated effect replicates in both families (0.42×, 0.34×) |
 | **E** Year/event effects are smaller than structure effects | Annual median loss ratio of slab buildings 0.04–0.35 (highest in 2017, Harvey) | **Does not hold**. Year/event must be controlled |
 | **F** Basement equipment is flooded together with the basement (building-design prior raised by the user) | National single-family: basement losses are nearly flat (about $10–20 k, ~$10 k already at 0–3 inches of interior depth), while slab rises to about $100 k with depth | Consistent with a threshold-type loss shape, but **cannot be distinguished** from "NFIP covers only limited basement items and caps payouts"; the commercial vs residential comparison has no data (non-residential claims almost never have a foundation type) |
 

@@ -23,6 +23,9 @@ Ensemble-forecast-conditioned **meteorological hazard risk index** (video-codec 
 | `docs/DATA_SOURCES.md` | **every data source, URL, script, local path, size, and known data trap** |
 | `docs/data_manifest.json` | machine-readable inventory (paths, sizes, parquet columns/rows); regenerate with `scripts/31_data_manifest.py` |
 | `docs/FLOOD_PRIORS.md` | building/foundation/flood-zone prior-feature audit and the hypotheses tested |
+| `src/wxrisk/prep/`, `scripts/40_prep.py` | **preprocessing pipeline** raw -> clean -> normalized: declarative per-column rules for nulls/sentinels, sidecar with hashes, `verify` rebuilds and compares (`docs/DATA_PREP.md`). New analyses should read `clean/` tables, not re-clean raw ones |
+| `RAW_STATICS_DA_REPORT.md` | generated: raw-dataset statistics, K-means/mixture diagnostics with PCA projections for every clustering claim, covariate reports for every regression claim (`scripts/44_raw_report.py all`; figures in `docs/figures/raw_report/`) |
+| `docs/CLEANING_REGISTER.md`, `docs/SCALING_PLAN.md` | generated: why each cleaning rule exists (provider-documented / undocumented code / entry error) and the scaling decisions (which columns, group-aware or not, discretise or not, which targets need an inverse). `scripts/41`, `42`, `43` produce the evidence |
 | `tests/` | `pytest` (motion estimation only so far) |
 
 ## Setup and conventions
@@ -36,6 +39,12 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
                                          # the repo already has ~200 pre-existing ruff findings, so it is not a gate
 ```
 
+- **Compute/IO stack**: array kernels go through `wxrisk.compute` (PyTorch, `device()` picks cuda/xpu/mps/cpu, override with
+  `WXRISK_DEVICE`; fp32 on device, each kernel has a numpy reference and a parity test; `scripts/probe_devices.py` shows what a
+  machine can do). Tables: Polars/DuckDB scan parquet lazily instead of `read_parquet` into pandas (see `wxrisk.policies`).
+  Big arrays: save as `.npy` (never `savez_compressed`) and open with `mmap_mode="r"`; copy the slice you need before sending it to a
+  device. Rewriting a pandas step in Polars/SQL needs a parity check, **null keys behave differently** (pandas `astype(str)` turns
+  them into a phantom group; Polars/DuckDB drop or group them explicitly).
 - Scripts add `src/` to `sys.path`, import `from wxrisk import wb2`, and use `wb2.cache_path(...)`; do the same.
 - **Downloads go through `wxrisk.fetch`, never curl/wget/shell** (must behave the same on macOS, Linux, Windows):
   vendor API → its library (CDS: `ecmwf-datastores-client`; WeatherBench-2: gcsfs/zarr); S3 → `fetch.s3`/`s3_bytes`;
@@ -57,12 +66,13 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
 - **Split by year, never randomly** (train ≤ 2016 / test 2017–2023 in the flood pilot; blocked-by-year CV as a check).
   Rows within a rain event or a year are strongly dependent.
 - Main flood metric is **within-event AUC** (county-level models are 0.5 by definition there). Also report overall AUC, AP.
+- **Scaling is a pipeline step with rules** (`docs/SCALING_PLAN.md`): trees get raw features; logistic regression, K-means/GMM and BFGS fits get the plan's transforms + standardisation, fitted on training rows only; a model that fits a *transformed target* must go through `prep.scaling.TargetTransform` and be inverted (`Scaled`) before scoring; exp(coef) of a log-OLS is a ratio of geometric means, not of means.
 - Absolute event probabilities do **not** transfer across years (Texas claim counts swing from <500 to ~10k per year).
 
 ## Known data traps (full list: `docs/DATA_SOURCES.md`, `docs/FLOOD_PRIORS.md`)
 
 1. **NFIP `foundationType == 0` ("unknown") share collapses from 86% (2010) to ~0% (2022+)** in Texas policies. It is a
-   reporting-regime change. A naïve feature leaks year. Use known-subset shares plus an explicit unknown-share feature,
+   reporting-regime change (in the CLAIMS file '0' is instead exactly the legacy occupancy codes 1, 2, 3, 4, 6, with a known foundation for the two-digit codes 11, 12, ...: RAW_STATICS_DA_REPORT.md). In claims, "unknown vs known foundation" is therefore a contrast between occupancy-code families (code 11 has 0.74× the loss ratio of code 1 even before any foundation effect); foundation ratios are code-11 estimates. A naïve feature leaks year. Use known-subset shares plus an explicit unknown-share feature,
    or post-2022 only. And the unknown group is *not* random (higher damage ratio).
 2. **Depth = 0 means missing/default, not dry** (large damage at 0). `floodWaterDuration` is unusable (≈0 everywhere).
 3. **No wood/brick/masonry field exists in NFIP.** `construction` is an "under construction" boolean. Do not use it as material.
@@ -72,8 +82,9 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
 6. `floodEvent` covers ~81% of claims and only ~72 named events; do not use it as an event fixed effect.
 7. NFIP covers only limited basement items: "damage / coverage" understates basement loss. Do not read "basement losses are
    lower" as "basements are safer".
-8. `foundationType` codes (0 unknown, 1 no basement/slab, 2 basement, 3–6 elevated) were **inferred from cross-tabs**, not
-   from an official dictionary. Verify against the OpenFEMA v3 dictionary before relying on a specific code.
+8. `foundationType` codes (OpenFEMA dictionary): 1 slab, 2 basement, **3 crawlspace**, 4-6 elevated variants. **0 is not in the dictionary**
+   (an unknown/default code; its share depends on the reporting year, see trap 1). Earlier versions of this note and of script 30 took 3
+   for elevated; corrected 2026-10-24 (65% of code 3 claims are flagged elevated, against 93-95% for 4-6).
 9. FEMA API: `NfipPolicies` with a "policy in force" filter returns HTTP 503; filter by state + effective date instead.
    The bulk-file URL is not recorded here; `HEAD` to fema.gov returns 403 (Akamai), so don't treat that as "missing".
 10. The official floodplain layer is **FEMA NFHL**, not USGS. USGS FIM maps cover only a few gaged reaches.

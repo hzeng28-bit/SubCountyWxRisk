@@ -31,18 +31,18 @@ media, lenders, officials), see RESULTS.md stage 10.
 from __future__ import annotations
 
 import argparse
-import glob
 import sys
 import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyarrow.dataset as ds
+import polars as pl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import panel, wb2  # noqa: E402
+from wxrisk.prep import build as prep  # noqa: E402
 
 warnings.filterwarnings("ignore")
 FLOOD = wb2.cache_path("labels_extra") / "flood"
@@ -65,20 +65,16 @@ def qend(q: int) -> np.datetime64:
 
 def load_panel():
     """Return county list and arrays: N[c,q], S[c,q], stock[c,cohort(0=legacy,1..NQ),q], S_all[c,q], claims[c,q]."""
-    cols = ["censusGeoid", "ratedFloodZone", "occupancyType", "policyEffectiveDate", "policyTerminationDate",
-            "policyCount", "mandatoryPurchaseFlag", "originalNBDate", "totalInsurancePremiumOfThePolicy"]
-    p = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
-    p = p[pd.to_numeric(p.occupancyType, errors="coerce").isin([1, 11])].copy()
-    p["cty"] = p.censusGeoid.astype(str).str.zfill(12).str[:5]
-    p = p[p.cty.str.startswith("48")]
+    p = (prep.scan("policies_tx")
+         .filter(pl.col("occupancy").is_in([1, 11]) & pl.col("geoid").str.starts_with("48"))
+         .select(pl.col("geoid").str.slice(0, 5).alias("cty"), "eff", pl.col("coverage_end").alias("term"), pl.col("first_policy_date").alias("nb"),
+                 pl.col("n_policies").cast(pl.Float64).alias("w"), pl.col("premium").fill_null(0).cast(pl.Float64).alias("prem"),
+                 pl.col("zone").str.slice(0, 1).is_in(["A", "V"]).fill_null(False).alias("sfha"), (~pl.col("mandatory")).alias("vol"))
+         .collect().to_pandas())
     cts = np.array(sorted(p.cty.unique()))
     ci = pd.Index(cts).get_indexer(p.cty)
-    eff, term = pd.to_datetime(p.policyEffectiveDate), pd.to_datetime(p.policyTerminationDate)
-    nb = pd.to_datetime(p.originalNBDate, errors="coerce")
-    w = p.policyCount.astype(float).to_numpy()
-    prem = pd.to_numeric(p.totalInsurancePremiumOfThePolicy, errors="coerce").fillna(0.0).to_numpy()
-    sfha = p.ratedFloodZone.astype(str).str.upper().str[:1].isin(["A", "V"]).to_numpy()
-    vol = ~p.mandatoryPurchaseFlag.astype(bool).to_numpy()
+    eff, term, nb = (pd.to_datetime(p[c]).astype("datetime64[ns]") for c in ("eff", "term", "nb"))
+    w, prem, sfha, vol = p.w.to_numpy(), p.prem.to_numpy(), p.sfha.to_numpy(), p.vol.to_numpy()
     focus = ~sfha & vol
     effv, termv = eff.values, term.fillna(pd.Timestamp("2100-01-01")).values
     nbq = np.where(nb.notna(), qidx(nb.fillna(pd.Timestamp("2010-01-01"))), -1)
@@ -98,11 +94,10 @@ def load_panel():
     eq = qidx(eff)
     ok = first & (eq >= 0) & (eq < NQ)
     N = np.bincount(ci[ok] * NQ + eq[ok], weights=w[ok], minlength=C * NQ).reshape(C, NQ)
-    cl = pd.concat([pd.read_parquet(f, columns=["state", "dateOfLoss", "censusGeoid", "occupancyType"])
-                    for f in sorted(glob.glob(str(FLOOD / "nfip_national" / "*.parquet")))])
-    cl = cl[(cl.state == "TX") & pd.to_numeric(cl.occupancyType, errors="coerce").isin([1, 11])]
-    cc = pd.Index(cts).get_indexer(cl.censusGeoid.astype(str).str.zfill(12).str[:5])
-    cq = qidx(pd.to_datetime(cl.dateOfLoss).dt.tz_localize(None))
+    cl = (prep.scan("claims_nfip").filter((pl.col("state") == "TX") & pl.col("occupancy").is_in([1, 11]))
+          .select(pl.col("geoid").str.slice(0, 5).alias("cty"), "loss_date").collect().to_pandas())
+    cc = pd.Index(cts).get_indexer(cl.cty)
+    cq = qidx(pd.to_datetime(cl.loss_date))
     k = (cc >= 0) & (cq >= 0) & (cq < NQ)
     claims = np.bincount(cc[k] * NQ + cq[k], minlength=C * NQ).reshape(C, NQ).astype(float)
     avg_prem = prem_sum / np.clip(stock.sum(axis=1), 1, None)

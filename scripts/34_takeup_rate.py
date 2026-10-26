@@ -25,11 +25,12 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyarrow.dataset as ds
+import polars as pl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import fetch, wb2  # noqa: E402
+from wxrisk.prep import build as prep  # noqa: E402
 
 FLOOD = wb2.cache_path("labels_extra") / "flood"
 ACS = wb2.cache_path("labels_extra") / "census" / "acs5_2022_b25001.dat"
@@ -44,18 +45,12 @@ def housing_units() -> pd.Series:
 
 
 def snapshot_policies(day: str) -> pd.DataFrame:
-    cols = ["censusGeoid", "ratedFloodZone", "occupancyType", "policyEffectiveDate", "policyTerminationDate",
-            "policyCount", "mandatoryPurchaseFlag"]
-    p = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
-    d = pd.Timestamp(day)
-    eff, term = pd.to_datetime(p.policyEffectiveDate), pd.to_datetime(p.policyTerminationDate)
-    p = p[(eff <= d) & (term.isna() | (term > d))].copy()
-    p["occ"] = pd.to_numeric(p.occupancyType, errors="coerce")
-    p = p[p.occ.isin([1, 11])]
-    z = p.ratedFloodZone.astype(str).str.upper().str[:1]
-    p["sfha"] = z.isin(["A", "V"])
-    p["geoid"] = p.censusGeoid.astype(str).str.zfill(12)
-    return p
+    d = pd.Timestamp(day).date()
+    return (prep.scan("policies_tx")
+            .filter(pl.col("occupancy").is_in([1, 11]) & pl.col("geoid").is_not_null() & (pl.col("eff") <= d) & (pl.col("coverage_end").is_null() | (pl.col("coverage_end") > d)))
+            .select("geoid", pl.col("n_policies").alias("policyCount"), pl.col("mandatory").alias("mandatoryPurchaseFlag"),
+                    pl.col("zone").str.slice(0, 1).is_in(["A", "V"]).fill_null(False).alias("sfha"))
+            .collect().to_pandas())
 
 
 def gmm_bic(x: np.ndarray) -> dict[int, float]:

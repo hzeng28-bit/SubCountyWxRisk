@@ -27,31 +27,25 @@ and read q10 as a floor on *reported* claims only. Tiers are selected (insured) 
 from __future__ import annotations
 
 import argparse
-import glob
 import sys
 import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyarrow.compute as pc
-import pyarrow.dataset as ds
+import polars as pl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk.prep import build as prep  # noqa: E402
 
 warnings.filterwarnings("ignore")
 FLOOD = wb2.cache_path("labels_extra") / "flood"
-CLAIMS = sorted(glob.glob(str(FLOOD / "nfip_national" / "*.parquet")))
-POLICIES_TX = FLOOD / "pilot" / "policies_tx.parquet"
 TIERS = ["T0", "T1", "T2", "T3"]
 DEPTH_BINS = [0, 6, 12, 24, 48, 1e4]
 DEPTH_LAB = ["1-6", "7-12", "13-24", "25-48", ">48"]
 QS = [0.1, 0.5]
-COLS = ["state", "yearOfLoss", "dateOfLoss", "ratedFloodZone", "elevatedBuildingIndicator",
-        "postFIRMConstructionIndicator", "exteriorWaterDepth", "buildingDamageAmount",
-        "totalBuildingInsuranceCoverage", "occupancyType"]
 
 
 def is_sfha(zone: pd.Series) -> pd.Series:
@@ -69,16 +63,18 @@ def assign_tier(sfha: pd.Series, post: pd.Series, elev: pd.Series | None) -> pd.
 
 
 def load_claims(scope: str, since: int = 2010) -> pd.DataFrame:
-    c = pd.concat([pd.read_parquet(f, columns=COLS) for f in CLAIMS])
-    c = c[c.yearOfLoss >= since]
+    """Single-family claims with a usable depth and damage ratio, from the clean table `claims_nfip`.
+    `depth_ext` is null where the source says 0 (default, FLOOD_PRIORS trap 2), 999 (unknown code) or > 600 in."""
+    q = (prep.scan("claims_nfip")
+         .filter((pl.col("loss_year") >= since) & pl.col("occupancy").is_in([1, 11]) & (pl.col("depth_ext") > 0)
+                 & (pl.col("cov_building") > 0) & pl.col("damage_building").is_not_null()))
     if scope == "tx":
-        c = c[c.state == "TX"]
-    for k in ["exteriorWaterDepth", "buildingDamageAmount", "totalBuildingInsuranceCoverage"]:
-        c[k] = pd.to_numeric(c[k], errors="coerce")
-    c["occ"] = pd.to_numeric(c.occupancyType, errors="coerce")
-    # single-family, exterior depth 0 is missing/default (see FLOOD_PRIORS trap 2), coverage > 0
-    c = c[c.occ.isin([1, 11]) & c.exteriorWaterDepth.gt(0) & c.totalBuildingInsuranceCoverage.gt(0)
-          & c.buildingDamageAmount.notna()].copy()
+        q = q.filter(pl.col("state") == "TX")
+    c = q.select("state", pl.col("loss_year").alias("yearOfLoss"), pl.col("loss_date").alias("dateOfLoss"),
+                 pl.col("zone").alias("ratedFloodZone"), pl.col("elevated").alias("elevatedBuildingIndicator"),
+                 pl.col("post_firm").alias("postFIRMConstructionIndicator"), pl.col("depth_ext").alias("exteriorWaterDepth"),
+                 pl.col("damage_building").alias("buildingDamageAmount"),
+                 pl.col("cov_building").cast(pl.Float64).alias("totalBuildingInsuranceCoverage")).collect().to_pandas()
     c["dr"] = (c.buildingDamageAmount / c.totalBuildingInsuranceCoverage).clip(0, 1.5)
     c["tier"] = assign_tier(is_sfha(c.ratedFloodZone), c.postFIRMConstructionIndicator.astype(bool),
                             c.elevatedBuildingIndicator.astype(bool))
@@ -139,11 +135,12 @@ def policy_years(t: pd.DataFrame, year: int) -> pd.Series:
 
 
 def sec_freq() -> None:
-    cols = ["ratedFloodZone", "postFIRMConstructionIndicator", "policyEffectiveDate",
-            "policyTerminationDate", "policyCount", "occupancyType"]
-    p = ds.dataset(POLICIES_TX).to_table(columns=cols).to_pandas()
-    p["occ"] = pd.to_numeric(p.occupancyType, errors="coerce")
-    p = p[p.occ.isin([1, 11])].copy()
+    p = (prep.scan("policies_tx").filter(pl.col("occupancy").is_in([1, 11]))
+         .select(pl.col("zone").alias("ratedFloodZone"), pl.col("post_firm").alias("postFIRMConstructionIndicator"),
+                 pl.col("eff").alias("policyEffectiveDate"), pl.col("coverage_end").alias("policyTerminationDate"),
+                 pl.col("n_policies").alias("policyCount")).collect().to_pandas())
+    p["policyEffectiveDate"] = pd.to_datetime(p.policyEffectiveDate).astype("datetime64[ns]")
+    p["policyTerminationDate"] = pd.to_datetime(p.policyTerminationDate).astype("datetime64[ns]")
     p["tier"] = assign_tier(is_sfha(p.ratedFloodZone), p.postFIRMConstructionIndicator.astype(bool), None)
     c = load_claims("tx")
     c["tier"] = assign_tier(is_sfha(c.ratedFloodZone), c.postFIRMConstructionIndicator.astype(bool), None)

@@ -16,17 +16,17 @@ purchase is approximated by mandatoryPurchaseFlag == False; rows are policy term
 
 from __future__ import annotations
 
-import glob
+import datetime as dt
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import pyarrow.dataset as ds
+import polars as pl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from wxrisk import wb2  # noqa: E402
+from wxrisk import policies, wb2  # noqa: E402
+from wxrisk.prep import build as prep  # noqa: E402
 
 FLOOD = wb2.cache_path("labels_extra") / "flood"
 BASE = pd.Timestamp("2017-07-31")
@@ -36,33 +36,22 @@ RATE_LAB = ["no claims", "0-2%", "2-10%", ">10%"]
 
 
 def main() -> None:
-    cols = ["censusGeoid", "ratedFloodZone", "occupancyType", "policyEffectiveDate", "policyTerminationDate",
-            "policyCount", "mandatoryPurchaseFlag"]
-    p = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
-    p["occ"] = pd.to_numeric(p.occupancyType, errors="coerce")
-    p = p[p.occ.isin([1, 11])].copy()
-    p["geoid"] = p.censusGeoid.astype(str).str.zfill(12)
-    eff = pd.to_datetime(p.policyEffectiveDate).values.astype("datetime64[D]")
-    term = pd.to_datetime(p.policyTerminationDate).fillna(pd.Timestamp("2100-01-01")).values.astype("datetime64[D]")
-    w = p.policyCount.astype(float).values
-    sfha = p.ratedFloodZone.astype(str).str.upper().str[:1].isin(["A", "V"]).values
-    vol = ~p.mandatoryPurchaseFlag.astype(bool).values
+    p = policies.frame()
+    sfha, vol = pl.col("sfha"), pl.col("vol")
 
-    def in_force(day: pd.Timestamp, mask: np.ndarray) -> pd.Series:
-        d = np.datetime64(day.date())
-        m = mask & (eff <= d) & (term > d)
-        return pd.Series(w[m]).groupby(p.geoid.values[m]).sum()
+    def in_force(day: pd.Timestamp, where: pl.Expr | None = None) -> pd.Series:
+        return policies.in_force(p, day, where)
 
-    all_base = in_force(BASE, np.ones(len(p), bool))
-    c = pd.concat([pd.read_parquet(f, columns=["state", "dateOfLoss", "censusGeoid"])
-                   for f in sorted(glob.glob(str(FLOOD / "nfip_national" / "*2017.parquet")))])
-    c = c[(c.state == "TX") & pd.to_datetime(c.dateOfLoss).between("2017-08-25", "2017-09-05")]
-    n_claims = c.censusGeoid.astype(str).str.zfill(12).value_counts()
+    all_base = in_force(BASE)
+    c = (prep.scan("claims_nfip").filter((pl.col("state") == "TX") & pl.col("geoid").is_not_null()
+                                          & pl.col("loss_date").is_between(dt.date(2017, 8, 25), dt.date(2017, 9, 5)))
+         .select("geoid").collect())
+    n_claims = c["geoid"].value_counts().to_pandas().set_index("geoid")["count"]
     g = pd.DataFrame({"base": all_base})
     g = g[g.base >= 20]
     g["rate"] = (n_claims.reindex(g.index).fillna(0) / g.base)
     g["bin"] = pd.cut(g.rate, RATE_BINS, labels=RATE_LAB)
-    print(f"Harvey claims in file: {len(c):,}; block groups with >= 20 policies on {BASE.date()}: {len(g):,}")
+    print(f"Harvey claims with a block group: {len(c):,}; block groups with >= 20 policies on {BASE.date()}: {len(g):,}")
     print(g.bin.value_counts().reindex(RATE_LAB).to_dict())
 
     for name, mask in [("non-SFHA voluntary", ~sfha & vol), ("non-SFHA all", ~sfha), ("SFHA all", sfha)]:

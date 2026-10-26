@@ -23,19 +23,19 @@ new stock" cannot be separated here; the result is an association, not an effect
 from __future__ import annotations
 
 import argparse
-import glob
 import sys
 import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyarrow.dataset as ds
+import polars as pl
 from scipy.optimize import minimize
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk.prep import build as prep  # noqa: E402
 
 warnings.filterwarnings("ignore")
 FLOOD = wb2.cache_path("labels_extra") / "flood"
@@ -56,15 +56,15 @@ def events() -> pd.DataFrame:
 
 
 def load_claims(since: int = 2010) -> pd.DataFrame:
-    cols = ["state", "yearOfLoss", "dateOfLoss", "censusGeoid", "buildingDamageAmount", "occupancyType"]
-    c = pd.concat([pd.read_parquet(f, columns=cols) for f in sorted(glob.glob(str(FLOOD / "nfip_national" / "*.parquet")))])
-    c = c[(c.state == "TX") & (c.yearOfLoss >= since)].copy()
-    c["dmg"] = pd.to_numeric(c.buildingDamageAmount, errors="coerce")
-    c["date"] = pd.to_datetime(c.dateOfLoss).dt.tz_localize(None).dt.normalize()
-    c["geoid"] = c.censusGeoid.astype(str).str.zfill(12)
-    c["county"] = c.geoid.str[:5]
-    c["occ"] = pd.to_numeric(c.occupancyType, errors="coerce")
-    return c[c.dmg.notna() & c.geoid.str.startswith("48")]
+    """Texas claims with a located block group and a building damage amount (clean table `claims_nfip`)."""
+    c = (prep.scan("claims_nfip")
+         .filter((pl.col("state") == "TX") & (pl.col("loss_year") >= since) & pl.col("damage_building").is_not_null()
+                 & pl.col("geoid").str.starts_with("48"))
+         .select(pl.col("damage_building").alias("dmg"), pl.col("loss_date").alias("date"), "geoid",
+                 pl.col("geoid").str.slice(0, 5).alias("county"), pl.col("occupancy").alias("occ"))
+         .collect().to_pandas())
+    c["date"] = pd.to_datetime(c["date"]).astype("datetime64[ns]")  # polars gives ms; the rest of the script is ns
+    return c
 
 
 def sec_known() -> None:
@@ -109,22 +109,20 @@ def poisson_fe(y, x, expo, grp, boot_groups=None):
 
 def harvey_policies(d0: pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.Timestamp]:
     """Voluntary non-SFHA single-family policies in force on d0 (default: the day before Harvey), with NB date, sorted by NB."""
-    cols = ["censusGeoid", "ratedFloodZone", "occupancyType", "policyEffectiveDate", "policyTerminationDate",
-            "policyCount", "mandatoryPurchaseFlag", "originalNBDate", "postFIRMConstructionIndicator"]
-    p = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
-    p["occ"] = pd.to_numeric(p.occupancyType, errors="coerce")
     d0 = d0 if d0 is not None else HARVEY[0] - pd.Timedelta(days=1)
-    eff, term = pd.to_datetime(p.policyEffectiveDate), pd.to_datetime(p.policyTerminationDate)
-    z = p.ratedFloodZone.astype(str).str.upper().str[:1]
-    keep = (p.occ.isin([1, 11]) & (eff <= d0) & (term.isna() | (term > d0)) & ~z.isin(["A", "V"])
-            & ~p.mandatoryPurchaseFlag.astype(bool))
-    p = p[keep].copy()
-    p["geoid"] = p.censusGeoid.astype(str).str.zfill(12)
+    day = d0.date()
+    p = (prep.scan("policies_tx")
+         .filter(pl.col("occupancy").is_in([1, 11]) & pl.col("geoid").is_not_null() & (pl.col("eff") <= day)
+                 & (pl.col("coverage_end").is_null() | (pl.col("coverage_end") > day))
+                 & ~pl.col("zone").str.slice(0, 1).is_in(["A", "V"]).fill_null(False) & ~pl.col("mandatory")
+                 & pl.col("first_policy_date").is_not_null() & (pl.col("first_policy_date") <= day))
+         .select("geoid", pl.col("n_policies").cast(pl.Float64).alias("policyCount"),
+                 pl.col("first_policy_date").alias("nb"), pl.col("post_firm").cast(pl.Float64).alias("postfirm"))
+         .collect().to_pandas())
+    p["nb"] = pd.to_datetime(p["nb"]).astype("datetime64[ns]")
     p["county"] = p.geoid.str[:5]
     p["tract"] = p.geoid.str[:11]
-    p["nb"] = pd.to_datetime(p.originalNBDate, errors="coerce").dt.normalize()
-    p["postfirm"] = p.postFIRMConstructionIndicator.astype(bool).astype(float)
-    return p[p.nb.notna() & (p.nb <= d0)].sort_values("nb"), d0
+    return p.sort_values("nb", kind="stable"), d0
 
 
 def boot_fe(g: pd.DataFrame, cov: list[str], nboot: int, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
@@ -184,12 +182,12 @@ def tract_hits(ev: pd.DataFrame, d_ref: pd.Timestamp, cutoff: pd.Timestamp) -> t
 
     hit = >= 3 single-family claims inside the declared window of the county AND claims / in-force policies
     (all zones, on d_ref) >= 2%. Returns (hits[tract, county, end], tracts[prior_rate, ever_hit])."""
-    cols = ["censusGeoid", "policyEffectiveDate", "policyTerminationDate", "policyCount", "occupancyType"]
-    q = ds.dataset(FLOOD / "pilot" / "policies_tx.parquet").to_table(columns=cols).to_pandas()
-    q = q[pd.to_numeric(q.occupancyType, errors="coerce").isin([1, 11])]
-    eff, term = pd.to_datetime(q.policyEffectiveDate), pd.to_datetime(q.policyTerminationDate)
-    q = q[(eff <= d_ref) & (term.isna() | (term > d_ref))]
-    pol = q.policyCount.astype(float).groupby(q.censusGeoid.astype(str).str.zfill(12).str[:11]).sum()
+    day = d_ref.date()
+    pol = (prep.scan("policies_tx")
+           .filter(pl.col("occupancy").is_in([1, 11]) & pl.col("geoid").is_not_null() & (pl.col("eff") <= day)
+                   & (pl.col("coverage_end").is_null() | (pl.col("coverage_end") > day)))
+           .group_by(pl.col("geoid").str.slice(0, 11).alias("tract")).agg(pl.col("n_policies").cast(pl.Float64).sum())
+           .collect().to_pandas().set_index("tract").n_policies)
     c = load_claims()
     c = c[c.occ.isin([1, 11]) & (c.date < cutoff)].reset_index(drop=True)
     c["tract"] = c.geoid.str[:11]

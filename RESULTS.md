@@ -934,3 +934,156 @@ Poisson(Sref[c] * exp(county effect + season + 7 lags of log1p(100 * claims per 
   this table and this learner do not benefit.
 - Also: with the economic covariates (stage 10 stock-flow model) this closes the "human factors" candidates for the pilot table: season, event pulse, lapse, economic cycle and exposure composition were tested; none improves the forecasts.
 - Side note: `scripts/26` writes `flood_pilot_test_preds.npz` on every run (an `--only` run overwrote it with two groups; a full rerun restored it, now with the L6 predictions).
+
+---
+
+# Stage 11: preprocessing pipeline, cleaning register, and what it changed in stages 8-10 (2026-10-24)
+
+Code: `src/wxrisk/prep/` (spec, clean, build, normalize, register), `scripts/40_prep.py`, `scripts/41_cleaning_evidence.py`,
+`scripts/fetch/fetch_openfema_dictionary.py`; docs: `docs/DATA_PREP.md`, `docs/CLEANING_REGISTER.md` (generated; every rule with its origin and evidence).
+Scripts 33-37 read the clean tables `policies_tx` and `claims_nfip`; script 30 audits raw data on purpose. Every migration was run before and after and diffed.
+
+## Method: who defines a value, and what the data say
+
+Provider sources: the OpenFEMA data dictionary of NfipClaims v3 and NfipPolicies v3 (84 and 87 fields) and the OpenFEMA FAQ page. A value the
+provider documents is handled as documented. A value it does not define goes through a spike test (count at v >= 5x its neighbours, >= 20 rows;
+run over all 24 numeric columns of both tables) and a profile test (does the outcome at v look like its neighbours?). Sporadic implausible values with
+no signature are entry errors: the value (never the row) is nulled. Missingness diagnostics (standardised mean difference, Cramer's V) say whether dropping rows
+would be safe. Imputation is not done in clean tables; it needs a masked-value test with RMSE gain >= 30% and a typical multiplicative error <= x1.25.
+
+## What the provider documentation settled (and corrected in our own earlier assumptions)
+
+| Item | Documentation / evidence | Consequence |
+|---|---|---|
+| Mid-term cancellation | FAQ: check whether the policy period was cancelled mid-term. 409,641 of 410,241 cancelled policies end before the nominal expiry, which is always effective date + 1 year | `coverage_end = min(expiry, cancellation)`; in-force counts were 2.6% too high (single-family, 2017-07-31: 527,075 -> 513,153) |
+| `foundationType` | codes 1-6 only; **3 = crawlspace** (65% of its claims are flagged elevated, 93-95% for 4-6); 0 undocumented | earlier "3-6 elevated" was wrong (AGENTS.md trap 8, script 30); 0 -> null + flag |
+| `numberOfFloorsInInsuredBuilding` | a code (1 one floor ... 5 manufactured home, 6 townhouse), not a count | handled as a code |
+| Negative premium, negative building payment, negative depth | documented as refund, re-issued check, below the lowest adjacent grade | kept (an intermediate version nulled them) |
+| 99XX placeholders | FAQ: "99XX is often used as placeholder or default value"; scan finds 999 in exterior/interior depth, 99 in `waterDepth`, 999 in `floodWaterDuration` | nulled; no 99XX spike in policies |
+| `waterDepth` | dictionary: some measurements are in feet; 52% of rows agree with feet (x12), 8% with inches | column not carried |
+| `elevationDifference` 9999 | documented "not reported" (0 rows in Texas); 26 values below -1000 ft are entry errors | nulled |
+| Building coverage 0 in claims | **not** a placeholder: 94% have no building damage, 97% have contents damage (contents-only policies) | kept as 0; ratios filter `cov_building > 0` (an intermediate version nulled them; the diagnostic caught it) |
+| First-policy date later than effective date (563,198 rows) | 4-6% of new-business/renewal rows, ~0 for transfers: a booking convention | no rule |
+| Dates | construction date 1492-10-12 on 14,212 rows (undocumented placeholder), scattered years 0001-1100 and 9999; first-policy dates before 1968 (201) | nulled + flag |
+| Exterior depth availability | null share 96-100% in every loss year 2000-2015, 61% in 2016, 18-28% from 2017 | depth analyses effectively start in 2016-2017 |
+
+Not retrievable: the FAQ PDF link (HTTP 403 to our downloader; the browser extension was unavailable). The HTML FAQ was read through a web-fetch tool that summarises, so
+its quotations are partial; the per-dataset "Data Fields" pages and legacy manuals were not read.
+
+## Effect on earlier results (same script, before the pipeline -> after)
+
+| Script | Result | Before | After | Cause |
+|---|---|---|---|---|
+| 35 Harvey take-up | blocks with >= 20 policies | 5,161 | 5,088 | phantom null-key block group (945 policies, 153 claims) and cancelled policies removed |
+| 35 | excess vs control, peak / 2020-12, >10% bin | +19.5% / +11.7% | +18.6% / +9.9% | phantom group; cancellations |
+| 35 | 0-2% bin, peak / 2020-12 | +8.4% / +3.0% | +7.4% / +1.8% | same |
+| 37 stock-flow | stock check 2023Q4 | 403,008 | 398,058 | cancellations |
+| 37 | cohort survival at age 0, 1, 2 quarters | 1.00 | 0.97, 0.97, 0.96 | cancellations are now visible |
+| 37 | flow skill, event vs season (origin 2019Q4) | +0.254 [+0.174, +0.351] | +0.264 [+0.156, +0.378] | same conclusion |
+| 37 | event+econ vs event (2019Q4) | -0.208 [-0.369, -0.106] | -0.242 [-0.412, -0.109] | same conclusion |
+| 36 event features | cohort policies | 342,995 | 335,497 | phantom county `00000`; cancellations |
+| 36 | share_post coefficient | -0.373 [-3.074, +0.509] | -0.443 [-3.290, +0.508] | interval still contains 0 |
+| 36 | share_hitbuy with tract prior | +0.099 [-0.483, +2.988] | +0.218 [-0.343, +3.163] | interval still contains 0 |
+| 36 | placebo 2.5/50/97.5% | -0.662 / -0.217 / +0.26 | -0.779 / -0.051 / +0.386 | 40 random reshuffles; the county set changed |
+| 34 take-up rate | snapshot policy rows / blocks | 627,691 / 17,340 | 607,283 / 17,209 | phantom group; unlocatable and cancelled policies |
+| 34 | median / p90 take-up | 0.0083 / 0.1718 | 0.0082 / 0.1691 | |
+| 33 compliance ladder | claims | 63,925 | 63,164 | 753 Texas claims at depth 999 (unknown code) removed |
+| 33 | ">48 in", T3: 10th percentile / median damage ratio | 0.059 / 0.708 | 0.342 / 0.838 | the 999 claims had a median ratio of 0.135 |
+| 33 | ">48 in" T3/T2 median ratio | 0.85 [0.01, 0.94] | 0.98 [0.83, 1.21] | the earlier reading "T3 much lower at depth > 48 in" is not supported |
+| 33 | ">48 in" T1/T2 | 0.92 [0.05, 0.95] | 0.94 [0.32, 1.11] | |
+| 33 | 2017 claims per 1000 policy-years, T1 / T2 | 130.2 / 173.7 | 135.8 / 181.7 | policy-years shrink with cancellations; ratios T1/T2 = 0.75 unchanged |
+| 30 (raw audit) | national fixed effect vs slab, elevated / basement | 0.32 / 0.43 | 0.27 / 0.45 | code 3 (crawlspace) split out of "elevated"; 109,906 claims instead of 122,415 |
+
+Conclusions in stages 8-10 survive qualitatively; magnitudes move by 1-5% for the stock-based numbers and substantially only for the deepest bin of stage 10's compliance ladder.
+
+## Caveats
+
+- Exterior depth is almost entirely missing before 2016 (null share 96-100% in 2000-2015, 61% in 2016, 18-28% from 2017): the compliance ladder (starting 2010) has depth bins from 2016-2017 on, i.e. mostly the Harvey year and later.
+- The claims frequency table in script 33 counts only claims with a usable depth, coverage and damage amount, a selection in the numerator that predates this stage.
+- Imputation of `buildingReplacementCost` was tested (gradient boosting, RMSE -30.6% vs a per-year median, but typical multiplicative error x1.69): not adopted.
+- The spike test cannot see a placeholder that is also a common true value (the 0 depth is a mixture of both; null + flag keeps the fact).
+- Normalised columns were tested for reproducibility on macOS/arm64 only.
+- Stage 8's pilot-table construction (scripts 25-29) still reads raw files and was not migrated.
+
+---
+
+# Stage 12: scaling audit (which columns, group-aware or not, discretise or not, which targets need an inverse) (2026-10-24)
+
+Code: `scripts/42_scaling_audit.py` (Texas flood pilot, logistic regression and boosting), `scripts/43_scaling_kmeans.py` (SCS K-means),
+`src/wxrisk/prep/scaling.py` (feature plan, target transform, inverse guard), `src/wxrisk/prep/scaling_plan.py` (decisions with basis), `docs/SCALING_PLAN.md` (generated).
+Metric: within-event AUC on 2017-2023 (fit 2010-2016), 1,015 test episodes, paired event-clustered bootstrap; K-means: BSS against the climatology, year-clustered paired bootstrap.
+
+## Results
+
+| Question | Learner | Result (difference, 95% interval) | Decision |
+|---|---|---|---|
+| Is scaling needed? | K-means, SCS tier B / C | no scaling (column std ratio 2e5): y0 BSS 0.0009 vs 0.0253; -0.0244 [-0.0296, -0.0200] / -0.0184 [-0.0233, -0.0138] | standardise |
+| | logistic regression | unscaled AUC 0.7817 vs standardised 0.7806, but 400 iterations (not converged) at every C vs 15-23 | standardise; non-convergence counts as a scaling failure |
+| | boosting | transformed + cyclic vs raw: -0.0014 [-0.0042, +0.0011] | no scaling for trees |
+| Which columns to transform? | logistic regression | log1p/asinh: +0.0032 [-0.0024, +0.0078]; + cyclic month: +0.0048 [-0.0009, +0.0096] | transform by role (rain, counts, depth: log1p; signed heavy tail: asinh; angles, shares, existing logs: standardise; month: sin/cos), kept for conditioning, not for a proven gain |
+| Group-aware? | logistic regression, within-episode z and percentile | +0.0040 [-0.0001, +0.0087] (without them: +0.0048) | not adopted |
+| | boosting | +0.0028 [-0.0013, +0.0064] | not adopted |
+| | K-means, global z vs county x month anomaly, tier B / C (y0) | +0.0013 [-0.0018, +0.0045] / -0.0016 [-0.0055, +0.0022] | no demonstrable gain; anomalies kept to leave stages 2-5 unchanged |
+| | year-wise normalisation | between-year variance share <= 0.09 for every feature; would use test-year statistics | forbidden |
+| Discretise? | logistic regression, supervised bins added | all 12 columns +0.0084 [+0.0021, +0.0142]; exposure columns +0.0041 [+0.0009, +0.0072]; rain -0.0003 [-0.0034, +0.0025]; geography -0.0014 [-0.0045, +0.0021] | candidate for the exposure columns (sfha_share +0.0017 [+0.0005, +0.0030]); never for trees, never instead of the continuous column |
+| | single-feature shape | bg_f1 within-event AUC 0.7398 continuous vs 0.7082 binned | bins tie the rows inside a bin |
+| Does the plan work? | logistic regression on `PILOT_PLAN` | 0.7858 (audit reference 0.7854), 23 iterations | |
+| Inverse transform | log-OLS vs log-link GLM, damage ratio vs slab | elevated 0.208 (geometric means) vs 0.327 (means); crawlspace 0.467 vs 0.569; basement 0.478 vs 0.502 | stage 9's "0.27x slab" is a geometric-mean ratio |
+
+Variance structure (share between episodes): block-group and neighbourhood rain 0.83-0.95, log policy count 0.60, mean coverage 0.01; so only 5-17% of the
+rain variance is within an episode, which is what the within-event metric sees. Retransformation: the Duan factor for the damage ratio differs by foundation
+(slab 1.96, basement 2.05, crawlspace 2.21, elevated 2.86): one global factor would be wrong.
+
+## Inverse-transform inventory (no missing inverse found in the existing scripts)
+
+Flood and SCS targets are probabilities (nothing to invert). Stock-flow (37) and event features (36) are Poisson with a log link: `exp(eta)` is applied inside the
+prediction and the score uses the original-scale prediction (37 then scores `log1p` of it, a loss different from the training likelihood). Script 33 reports medians, which commute with
+monotone transforms. The one case needing action is the damage-ratio regression of scripts 30 / stage 9 (geometric-mean ratio, see above). New code that transforms a target must use `TargetTransform`;
+`Scaled` outputs are refused by the metrics until inverted.
+
+## Caveats
+
+- The pilot results are one test period (2017-2023). 15 bin comparisons and ~10 other comparisons were made without multiplicity correction; the bin result is therefore labelled a candidate.
+- Within-event AUC is invariant to a monotone transform of any single feature, so the transform results above are about the multi-feature linear fit, not about single features.
+- The SCS comparison used the K chosen for the current normalisation, which favours it slightly.
+- `FeaturePlan` is not yet wired into the SCS scripts (10-14), which keep `anomalise`; the group-aware `fitted` mode with shrinkage is implemented and tested but unused there.
+- Stage 9's foundation estimate has not been recomputed with the GLM in script 30 itself; the comparison above is a separate fit with different controls (depth bin and loss year).
+
+---
+
+# Stage 13: raw-data diagnostics, cluster and covariate reports (2026-10-24)
+
+Report: `RAW_STATICS_DA_REPORT.md` (generated; commands, figures in `docs/figures/raw_report/`). Code: `scripts/44_raw_report.py` (+ `44b`, `44c`), `src/wxrisk/diag.py`, `tests/test_diag.py`.
+It states every claim of the project that a dataset can be clustered or regressed, tests it, and gives the verdict computed from the data.
+
+## What it found
+
+- **No natural clusters in the SCS environment.** K-means on the anomaly-scaled inputs: silhouette 0.091 (tier B, K=32) and 0.050 (tier C, K=64), against 0.049 / 0.015 for a column-permuted null; the best K is the smallest tried (2);
+  ARI between fits about 0.5; Hopkins statistic 0.86 / 0.88 against 0.79 / 0.77 for a Gaussian cloud with the same covariance. K-means is a **quantiser**, not a discovery of groups; it is justified by out-of-sample information:
+  cluster labels carry mutual information with every head (permutation p = 0.005, the floor of 200 permutations) and the cluster event rates agree between 2000-2016 and 2017-2022 (Spearman 0.65-0.92), explaining 0.6-4.7% of the label variance.
+- **Take-up is bimodal** (bimodality coefficient 0.594 > 0.555; two components cut the BIC by 1,927) but the **number of components is not identifiable** (BIC keeps falling to four); stage 10's "three components" is one point on a flat curve. No Gaussian-process model is used.
+- **Flood occurrence is regressable.** Within-event AUC, established in both periods for 17 of 27 cell-level features (strongest: cell rain 0.725, neighbourhood 3x3 mean 0.723, policy count 0.68); no evidence for lat, lon, elevation, rel1, pos3, slope. Events per variable 222. The rain features are
+  nearly one piece of information (20 pairs with |r| >= 0.9, variance inflation up to 184).
+- **SCS events are regressable** (21 of 28 inputs established for y0; CAPE at 18Z 0.76, 850 hPa humidity 0.73), but **tier C has exact linear dependencies by construction** (`dd_18 - dd_12 = d_t2m - d_d2m`, `d_pw = pw_18 - pw_12`) plus a near one (`msl_12`, `msl_18`): harmless for trees, unidentifiable
+  coefficients for the logistic regression, and a double count of those quantities in the K-means distance.
+- **Purchases vs claim intensity: present, not stable.** rho +0.13 / +0.17 at lags 0 / 1 over all quarters, +0.23 / +0.28 in 2012-2017 (Harvey) and about 0 in 2018-2023; none of the five economic covariates holds in both halves.
+- **Damage ratio is regressable** on depth (within-state-month rho +0.30), foundation group (eta squared 0.092) and elevated indicator (0.068); the SFHA adds nothing alone (0.0008).
+
+## Findings that change earlier statements
+
+1. **Foundation code in the claims file is a function of the occupancy code.** In the raw data every claim with a legacy occupancy code (1, 2, 3, 4, 6) has foundationType '0' and every claim with a two-digit code (11, 12, 15, 16, 18) has a known foundation (year by year for codes 1 and 11, 2000-2023).
+   So the "unknown vs known foundation" contrasts of stages 9-10 (for example "the unknown group has a higher loss ratio") are contrasts between occupancy-code families, and the foundation-group effects (stage 9) are estimated on two-digit-coded claims only.
+   In the policies file, by contrast, '0' falls within code 1 (86% in 2010, 22% in 2021) and is absent for code 11. The register entries P05 / C10 now say so (the earlier text called it a reporting-year marker in both files).
+   Follow-up (`scripts/30 --sections occ`, national single-family claims 2010+, state-month and depth-bin fixed effects): occupancy 11 claims have **0.74×** the loss ratio of occupancy 1 claims with no foundation effect involved, so most of the "unknown is higher" gap (Texas 2017-2021: 0.39 vs 0.32) is a code-family offset.
+   The elevated indicator, which both families carry, replicates in each (0.42× in occupancy 1, 0.34× in occupancy 11), so the elevated finding of stage 9 stands. The slab / basement / elevated ratios (Texas 0.27× elevated, national 0.45× basement and 0.27× elevated after the crawlspace fix) are occupancy-11 estimates and are not known to hold for occupancy-1 buildings.
+   Consequence for features: in claims-based models `foundation_missing` is an occupancy-family flag (do not offer it as a building property); in the policy-based exposure shares the unknown share is still a legitimate regime/filling-in feature.
+2. **Exact duplicate rows in the Texas policies**: 157,230 rows (1.35%) beyond the first occurrence. The redacted file has no policy number, the share depends on block-group size (0.6% to 1.9%) but not monotonically; not removed, effect on counts at most 1.35%.
+3. **gridMET**: 27.85% of the cells are a fixed NaN mask (not US land), and cell-days above 300 mm fall on 38 days (84% on 8 days, including 2017-08-26 to 29); no calendar gap, no negative value.
+4. The ERA5 "outside physical range" counts of an early draft were my wrong unit assumptions (`lapse75` is a temperature difference in K, `w700` a wind speed); with the correct bounds there are none.
+
+## Caveats
+
+- Within-year AUC and within-episode AUC measure discrimination, not calibrated skill; univariate AUCs up to 0.76 sit next to Brier skill of 0.03-0.04.
+- The stock-flow statistics rest on 45 counties and the first half contains one dominant event; intervals understate the uncertainty.
+- Hopkins and silhouette depend on the scaling of the inputs; clustering raw physical values would give a different partition.
+- The OpenFEMA FAQ was read through a summarising fetch tool, so its quotations are partial.

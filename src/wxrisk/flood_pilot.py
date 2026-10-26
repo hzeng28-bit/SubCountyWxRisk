@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -38,26 +39,38 @@ def bg_geometry() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["bg10", "cty", "lon", "lat", "area_km2"])
 
 
-def load_precip() -> tuple[pd.DatetimeIndex, np.ndarray, np.ndarray, np.ndarray]:
-    """days, lat (descending), lon, P[day, lat, lon] in mm; cached as .npy after the first read."""
+def load_precip(cache: Path | None = None, meta: Path | None = None):
+    """days, lat (descending), lon, P[day, lat, lon] in mm, memory-mapped from a .npy built on first use."""
     import xarray as xr
 
-    cache = PILOT / "pr_tx_2000_2023.npy"
-    meta = PILOT / "pr_tx_meta.npz"
+    cache = cache or PILOT / "pr_tx_2000_2023.npy"
+    meta = meta or PILOT / "pr_tx_meta.npz"
     if cache.exists() and meta.exists():
         m = np.load(meta, allow_pickle=True)
         return pd.DatetimeIndex(m["days"]), m["lat"], m["lon"], np.load(cache, mmap_mode="r")
-    parts, days = [], []
-    for y in YEARS:
-        ds = xr.open_dataset(PILOT / "gridmet" / f"pr_tx_{y}.nc", engine="netcdf4")
-        parts.append(ds["precipitation_amount"].values.astype(np.float32))
-        days.append(pd.DatetimeIndex(ds.day.values))
-        lat, lon = ds.lat.values, ds.lon.values
-    P = np.concatenate(parts)
+    files = [PILOT / "gridmet" / f"pr_tx_{y}.nc" for y in YEARS]
+    with xr.open_dataset(files[0], engine="netcdf4") as d0:
+        lat, lon = d0.lat.values, d0.lon.values
+    # write year by year into a memmap, so the 3 GB array is never held in RAM; .part keeps a crash from
+    # leaving a truncated file that the cache check above would accept
+    part = cache.with_name(cache.name + ".part")
+    days, out, i = [], None, 0
+    for f in files:
+        with xr.open_dataset(f, engine="netcdf4") as ds:
+            v = ds["precipitation_amount"].values.astype(np.float32)
+            days.append(pd.DatetimeIndex(ds.day.values))
+        if out is None:
+            n = sum(int(pd.Timestamp(f"{y}-12-31").dayofyear) for y in YEARS)
+            out = np.lib.format.open_memmap(part, mode="w+", dtype=np.float32, shape=(n, *v.shape[1:]))
+        out[i:i + len(v)] = v
+        i += len(v)
+    assert i == out.shape[0], f"expected {out.shape[0]} days, read {i}"
+    out.flush()
+    del out
     days = days[0].append(days[1:])
-    np.save(cache, P)
     np.savez(meta, days=days.values, lat=lat, lon=lon)
-    return days, lat, lon, P
+    part.replace(cache)
+    return days, lat, lon, np.load(cache, mmap_mode="r")
 
 
 def grid_index(lat: np.ndarray, lon: np.ndarray, ylat: np.ndarray, xlon: np.ndarray):

@@ -7,9 +7,12 @@ Candidate PRIORS for the flood work (foundation, elevation, basement), not forec
   known     known vs unknown foundation on the same years: is 'unknown' missing at random?
   fe        damage/coverage vs slab with depth-bin and state-month fixed effects (national + per state)
   plateau   median building damage ($) by INTERIOR depth, slab vs basement vs elevated
+  occ       in the claims file 'unknown' foundation IS the legacy occupancy code 1: loss ratio of occupancy 1 vs 11
+            under state-month fixed effects, and the elevated-indicator effect inside each family
 
-Foundation codes (inferred from cross-tabs, NOT from an official dictionary -- verify against the
-OpenFEMA v3 data dictionary): 0 unknown, 1 no basement / slab, 2 basement, 3-6 elevated variants.
+Foundation codes (OpenFEMA v3 dictionary): 1 slab, 2 basement, 3 crawlspace, 4-6 elevated (4 without enclosure, 5-6 with
+enclosure); 0 is NOT in the dictionary (an unknown/default code, see docs/CLEANING_REGISTER.md). 65% of crawlspace claims
+carry elevatedBuildingIndicator, against 93-95% for 4-6 and 1% for slab and basement, so 3 is its own group.
 
 Reads the files written by scripts/20_fetch_nfip_claims.py and the OpenFEMA policy bulk file.
 
@@ -38,11 +41,11 @@ warnings.filterwarnings("ignore")
 FLOOD = wb2.cache_path("labels_extra") / "flood"
 POLICIES = FLOOD / "nfip_policies_v3.parquet"
 CLAIMS = sorted(glob.glob(str(FLOOD / "nfip_national" / "*.parquet")))
-GROUP = {0: "unk", 1: "slab", 2: "bsmt", 3: "elev", 4: "elev", 5: "elev", 6: "elev"}
+GROUP = {0: "unk", 1: "slab", 2: "bsmt", 3: "crawl", 4: "elev", 5: "elev", 6: "elev"}
 DEPTH_BINS = [0, 6, 12, 24, 48, 1e4]
 DEPTH_LAB = ["1-6", "7-12", "13-24", "25-48", ">48"]
 NUM = ["interiorWaterDepth", "exteriorWaterDepth", "buildingDamageAmount", "totalBuildingInsuranceCoverage"]
-CLAIM_COLS = ["state", "yearOfLoss", "dateOfLoss", "foundationType", "occupancyType", *NUM]
+CLAIM_COLS = ["state", "yearOfLoss", "dateOfLoss", "foundationType", "occupancyType", "elevatedBuildingIndicator", *NUM]
 
 
 def load_claims(since: int = 2010) -> pd.DataFrame:
@@ -104,7 +107,8 @@ def sec_known(c: pd.DataFrame) -> None:
     s = single_family(c[(c.state == "TX") & c.yearOfLoss.between(2017, 2021)])
     print(s.groupby("g", dropna=False).agg(n=("dr", "size"), dr_median=("dr", "median"),
                                            ext_depth_median=("exteriorWaterDepth", "median")).round(3).to_string())
-    print("-> unknown has higher damage ratio: the known subset is NOT a random sample")
+    print("-> unknown has higher damage ratio, but in claims 'unknown' == occupancy code 1 (section occ): this is a contrast "
+          "between occupancy-code families, not between unknown and known buildings")
 
 
 def fe_ratio(d: pd.DataFrame, min_events: int = 30) -> tuple[int, object]:
@@ -148,7 +152,43 @@ def sec_plateau(c: pd.DataFrame) -> None:
     print("Depth 0 / missing is unreliable (damage is large at 0): treat it as missing, not as 'dry'.")
 
 
-SECTIONS = ["fill", "claims", "known", "fe", "plateau"]
+def _fe_diff(d: pd.DataFrame, flag: pd.Series) -> tuple[float, int]:
+    """exp(coef) of log(dr) on a 0/1 flag with state-month and depth-bin fixed effects (ratio of geometric means)."""
+    d = d.assign(f=np.asarray(flag, dtype=float)).reset_index(drop=True)
+    d = d[d.groupby("ev").ev.transform("size") >= 30].reset_index(drop=True)
+    f = d.f
+    db = pd.get_dummies(pd.cut(d.exteriorWaterDepth, DEPTH_BINS, labels=False)).astype(float).iloc[:, 1:]
+    x = pd.concat([f.rename("f"), db], axis=1)
+    xd = x - x.groupby(d.ev.values).transform("mean")
+    yd = d.y - d.groupby("ev").y.transform("mean")
+    b = np.linalg.lstsq(xd.values, yd.values, rcond=None)[0]
+    return round(float(np.exp(b[0])), 2), len(d)
+
+
+def sec_occ(c: pd.DataFrame) -> None:
+    print("\n## occ: foundation 'unknown' vs occupancy code in the claims file (single-family, 2010+, national)")
+    s = single_family(c)
+    print("share foundation == 0 by occupancy code:", s.groupby("occ").g.apply(lambda g: round((g == "unk").mean(), 3)).to_dict())
+    print("rows by occupancy code and year (code 1 = legacy, 11 = Risk Rating 2.0 coding):")
+    print(s.groupby(["yearOfLoss", "occ"]).size().unstack(fill_value=0).to_string())
+    d = s[s.buildingDamageAmount.gt(0) & s.exteriorWaterDepth.gt(0)].copy()
+    d["y"] = np.log(d.dr.clip(1e-4, 1.5))
+    r, n = _fe_diff(d, d.occ == 11)
+    print(f"occupancy 11 vs 1, ratio of geometric-mean loss ratios, state-month + depth-bin FE: {r} (n {n:,})"
+          "  <- the size of the 'unknown vs known' contrast that needs no foundation effect at all")
+    for occ in (1, 11):
+        e = d[d.occ == occ]
+        flag = e.elevatedBuildingIndicator.astype(str).isin(["1", "True", "true", "Y"])
+        if flag.sum() >= 50 and (~flag).sum() >= 50:
+            r, n = _fe_diff(e, flag)
+            print(f"elevated indicator vs not, occupancy {occ}: ratio {r} (n {n:,}, elevated {int(flag.sum()):,})")
+        else:
+            print(f"elevated indicator, occupancy {occ}: too few elevated claims ({int(flag.sum())})")
+    print("foundation groups (slab/bsmt/crawl/elev) exist only inside occupancy 11, so every foundation ratio of"
+          " sections claims/fe is an occupancy-11 estimate.")
+
+
+SECTIONS = ["fill", "claims", "known", "fe", "plateau", "occ"]
 
 
 def main() -> None:
@@ -159,7 +199,7 @@ def main() -> None:
         sec_fill()
     if set(a.sections) - {"fill"}:
         c = load_claims()
-        for name, fn in [("claims", sec_claims), ("known", sec_known), ("fe", sec_fe), ("plateau", sec_plateau)]:
+        for name, fn in [("claims", sec_claims), ("known", sec_known), ("fe", sec_fe), ("plateau", sec_plateau), ("occ", sec_occ)]:
             if name in a.sections:
                 fn(c)
 

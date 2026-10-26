@@ -67,7 +67,7 @@ def main() -> None:
         C = fp.claim_cumulative(cl[cl.share >= a.min_share], ids)
         print(f"claims kept with crosswalk share >= {a.min_share}: {int(C[:, -1].sum()):,}", flush=True)
     else:
-        C = np.load(fp.PILOT / "claims_cum.npy")
+        C = np.load(fp.PILOT / "claims_cum.npy", mmap_mode="r")
     masks = fp.county_masks(lat, lon)
     bg_by_cty = {c: np.flatnonzero((g.cty == c).to_numpy()) for c in cty}
     pd0 = (fp.EXPO_START - days[0]).days  # precipitation index of the first exposure day
