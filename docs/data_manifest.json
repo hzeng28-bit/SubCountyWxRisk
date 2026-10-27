@@ -1,7 +1,7 @@
 {
  "entries": {
   ".lock_cache.json": {
-   "bytes": 414419
+   "bytes": 946470
   },
   "audit/building_attrs.txt": {
    "bytes": 5879
@@ -29,6 +29,9 @@
   },
   "audit/flood_sources.txt": {
    "bytes": 3292
+  },
+  "audit/information_audit.txt": {
+   "bytes": 3841
   },
   "audit/label_comparison.err": {
    "bytes": 388
@@ -92,6 +95,9 @@
   },
   "audit/stderr.txt": {
    "bytes": 388
+  },
+  "audit/usgs_gauge_history.txt": {
+   "bytes": 1254
   },
   "cds/manifest.json": {
    "bytes": 1164
@@ -220,6 +226,9 @@
   },
   "fetch_gefs.log": {
    "bytes": 816
+  },
+  "fetch_usgs.log": {
+   "bytes": 60
   },
   "flood_labels_county_day.parquet": {
    "bytes": 580177,
@@ -1185,6 +1194,43 @@
   "labels_extra/flood/pilot/tile_test.png": {
    "bytes": 40549
   },
+  "labels_extra/flood/usgs_tx/tx_daily_q_series.parquet": {
+   "bytes": 46342,
+   "columns": {
+    "__index_level_0__": "INT64",
+    "begin_utc": "BYTE_ARRAY",
+    "end_utc": "BYTE_ARRAY",
+    "monitoring_location_id": "BYTE_ARRAY",
+    "parent_time_series_id": "BYTE_ARRAY",
+    "primary": "BYTE_ARRAY"
+   },
+   "rows": 949
+  },
+  "labels_extra/flood/usgs_tx/tx_gauges_q.parquet": {
+   "bytes": 64542,
+   "columns": {
+    "begin_utc": "BYTE_ARRAY",
+    "county_code": "BYTE_ARRAY",
+    "drainage_area": "DOUBLE",
+    "end_utc": "BYTE_ARRAY",
+    "hydrologic_unit_code": "BYTE_ARRAY",
+    "id": "BYTE_ARRAY",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "monitoring_location_name": "BYTE_ARRAY"
+   },
+   "rows": 896
+  },
+  "labels_extra/flood/usgs_tx/tx_peaks_q.parquet": {
+   "bytes": 213468,
+   "columns": {
+    "monitoring_location_id": "BYTE_ARRAY",
+    "time": "BYTE_ARRAY",
+    "value": "DOUBLE",
+    "water_year": "INT64"
+   },
+   "rows": 31861
+  },
   "labels_extra/iem/#_tsmf_sbw.zip": {
    "bytes": 116490895,
    "collapsed": true,
@@ -1548,6 +1594,6 @@
    "rows": 25902
   }
  },
- "n_entries": 188,
+ "n_entries": 194,
  "root": "$WXRISK_DATA"
 }

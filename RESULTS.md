@@ -1248,3 +1248,28 @@ If the model's own probabilities (re-centred to the test prevalence) were the tr
 - History counts claims of the same peril in the same block group: it is partly a proxy for flood zone, building stock and take-up, so it is not a clean "susceptibility" measure and its gain may shrink once better static layers are added.
 - `prior3` counts claims before the episode start only; episodes inside a continued wet spell share history with the previous one.
 - The ceiling is a self-consistency check, not an information bound.
+
+
+# Stage 18: USGS streamgage history as a susceptibility prior (script 50)
+
+Question: does the flood record of the nearest small-basin gauge (annual peak discharge before 2010, so known ahead) add to the pilot model, alone or on top of claim history?
+Data: api.waterdata.usgs.gov through the `dataretrieval` package with an API key (896 Texas stream locations with a daily-discharge series; peaks at 845 of them, 31,861 annual peaks). Eligible gauges: at least 10 pre-2010 peaks and drainage area up to 1000 mi2 (374 gauges); 75.8% of block groups have one within 25 km. Features of the nearest eligible gauge: distance, log area, log specific peak, sd of log peaks, log(max/median).
+
+| Added information (within-event AUC difference to base, event-clustered 95% interval) | observed rain, 2017-2023 | forecast rain (fcmean), 2017-2019 |
+|---|---|---|
+| base | 0.7857 | 0.6674 |
+| + gauge history | +0.0049 [+0.0007, +0.0101] | -0.0376 [-0.0857, +0.0071] |
+| + claim history (`hist00`, `prior3`) | +0.0262 [+0.0198, +0.0325] | +0.0510 [+0.0225, +0.0752] |
+| + claim history + gauge history | +0.0278 [+0.0218, +0.0341] | +0.0482 [+0.0244, +0.0682] |
+
+## Conclusions
+
+- **Gauge history adds almost nothing.** Alone it is +0.005 with observed rain (the interval barely excludes 0) and unstable in forecast mode (-0.038, interval spans 0). On top of claim history the extra is +0.0016 (observed) and -0.0028 (forecast), well inside the noise.
+- Claim history stays the best static prior (+0.026 / +0.051); a gauge is a coarser proxy for the same thing (how flood-prone the neighbourhood is).
+- Not worth adding to the model; do not rebuild without a better link than "nearest gauge".
+
+## Caveats
+
+- The gauge is the nearest eligible one within 25 km, not the stream reach of the block group; 24% of block groups have none (NaN handled by the tree learner), which is mostly arid west Texas and small-exposure areas.
+- Gauge peaks describe large rivers; NFIP claims in small urban basins (flash floods) are often unrelated to them. This does not say hydrology is uninformative, only that this link is.
+- One split, one learner (HistGradientBoosting depth 5), no multiplicity correction.

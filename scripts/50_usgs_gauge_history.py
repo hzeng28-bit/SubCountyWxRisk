@@ -12,7 +12,7 @@ Test: base model plus claim history (script 49) plus these, observed-rain arm (t
 
 Inputs : flood_pilot_table.parquet, scripts 48/49 caches
 Outputs: $WXRISK_DATA/labels_extra/flood/usgs_tx/{tx_gauges_q,tx_peaks_q}.parquet, audit/usgs_gauge_history.txt
-Run    : python scripts/50_usgs_gauge_history.py --fetch      # gauges and peaks (about 900 small requests)
+Run    : python scripts/50_usgs_gauge_history.py --fetch      # gauges and peaks (about 18 requests through dataretrieval)
          python scripts/50_usgs_gauge_history.py              # test
 """
 
@@ -76,8 +76,11 @@ def pages(url: str, maxp: int = 80) -> list[dict]:
     return out
 
 
-def fetch() -> None:
-    D.mkdir(parents=True, exist_ok=True)
+def gauge_list() -> pd.DataFrame:
+    """Texas stream locations with a daily-mean discharge series; cached, delete the file to refresh."""
+    gp = D / "tx_gauges_q.parquet"
+    if gp.exists():
+        return pd.read_parquet(gp)
     ts = pages(f"{API}/collections/time-series-metadata/items?f=json&limit=1000&parameter_code=00060&state_name=Texas")
     q = pd.DataFrame([f["properties"] for f in ts])
     q = q[q.statistic_id == "00003"].drop_duplicates("monitoring_location_id")
@@ -88,35 +91,28 @@ def fetch() -> None:
         q[["monitoring_location_id", "begin_utc", "end_utc"]], left_on="id", right_on="monitoring_location_id")
     m = m[["id", "monitoring_location_name", "county_code", "hydrologic_unit_code", "drainage_area", "lon", "lat",
            "begin_utc", "end_utc"]]
-    m.to_parquet(D / "tx_gauges_q.parquet")
+    m.to_parquet(gp)
+    return m
+
+
+def fetch() -> None:
+    D.mkdir(parents=True, exist_ok=True)
+    m = gauge_list()
     print(f"{len(m)} gauges with daily discharge", flush=True)
 
-    def peaks(i):
-        try:
-            f = pages(f"{API}/collections/peaks/items?f=json&limit=1000&monitoring_location_id={i}&parameter_code=00060")
-        except Exception as e:  # noqa: BLE001 - one gauge must not stop the batch
-            return i, str(e)[:80], []
-        return i, None, [x["properties"] for x in f]
+    # dataretrieval reads the API key from API_USGS_PAT or ~/.dataretrieval/config.toml and takes many sites per request
+    from dataretrieval import waterdata
 
-    part = D / "tx_peaks_q.partial.parquet"  # resumable: a gauge already in the file is not requested again
-    have = pd.read_parquet(part) if part.exists() else pd.DataFrame()
-    done = set(have.get("monitoring_location_id", []))
-    rows, bad = ([have] if len(have) else []), []
-    todo = [i for i in m.id if i not in done]
-    print(f"{len(todo)} gauges to fetch ({len(done)} cached)", flush=True)
-    with ThreadPoolExecutor(4) as ex:
-        for k, (i, err, p) in enumerate(ex.map(peaks, todo), 1):
-            if err:
-                bad.append((i, err))
-            elif p:
-                rows.append(pd.DataFrame(p))
-            if k % 100 == 0:
-                pd.concat(rows, ignore_index=True).to_parquet(part)
-                print(f"  {k}/{len(todo)} gauges", flush=True)
+    ids, rows = list(m.id), []
+    for k in range(0, len(ids), 50):
+        df, _ = waterdata.get_peaks(monitoring_location_id=ids[k : k + 50], parameter_code="00060", skip_geometry=True)
+        rows.append(df)
+        print(f"  {min(k + 50, len(ids))}/{len(ids)} gauges", flush=True)
     pk = pd.concat(rows, ignore_index=True)[["monitoring_location_id", "time", "water_year", "value"]]
     pk["value"] = pd.to_numeric(pk["value"], errors="coerce")
+    pk["time"] = pk["time"].astype(str)
     pk.to_parquet(D / "tx_peaks_q.parquet")
-    print(f"{len(pk):,} peaks; {len(bad)} gauges failed {bad[:3]}")
+    print(f"{len(pk):,} peaks at {pk.monitoring_location_id.nunique()} of {len(ids)} gauges")
 
 
 def gauge_features(bgs: pd.DataFrame) -> pd.DataFrame:

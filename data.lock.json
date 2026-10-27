@@ -13603,6 +13603,30 @@
    "content_sha256": "9dca6ff6cc53ed0a1f65d2fbd20ef236fd090e1da00ea9b1d820e04fa6c6db52",
    "sha256": "9dca6ff6cc53ed0a1f65d2fbd20ef236fd090e1da00ea9b1d820e04fa6c6db52"
   },
+  "labels_extra/flood/usgs_tx/tx_daily_q_series.parquet": {
+   "bytes": 46342,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "9e2ca18112846990c7811a88e9be3e280cf294fda1e0f80bfd05c230b83562bd",
+   "rows": 949,
+   "sha256": "95ddffba9af16e8d9f50088137c47f2c0b1904de40f915e21c3fc6a5a6129959"
+  },
+  "labels_extra/flood/usgs_tx/tx_gauges_q.parquet": {
+   "bytes": 64542,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "ec736bc8be66de6bc5ee36d0efc1c0e77f7c3f6cbb760092f981523131625cb1",
+   "rows": 896,
+   "sha256": "0c1609c0eb7fca37585dc8866a26708a20e53142e64deea5d2aacdcef80c4a2b"
+  },
+  "labels_extra/flood/usgs_tx/tx_peaks_q.parquet": {
+   "bytes": 213468,
+   "category": "derived",
+   "content_kind": "parquet-rows",
+   "content_sha256": "34b9e724397d15683a07fdfd9d33ade3e9632c9c0f9728294ef402a5276c38e4",
+   "rows": 31861,
+   "sha256": "06caca8f74969df90beeab6d6483947035b0b40457ff1332365bde527c9e3c9a"
+  },
   "labels_extra/iem/2002_tsmf_sbw.zip": {
    "bytes": 2509307,
    "category": "raw",
