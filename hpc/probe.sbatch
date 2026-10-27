@@ -11,6 +11,7 @@
 
 set -uo pipefail
 cd "${SLURM_SUBMIT_DIR:-.}"
+[ -f hpc/env.sh ] || { echo "hpc/env.sh not found in $PWD: run sbatch from the repository root (the folder that contains hpc/, src/, scripts/)"; exit 2; }
 source hpc/env.sh
 OUT="$WXRISK_DATA/hpc/probe_${SLURM_JOB_ID:-local}.txt"
 {

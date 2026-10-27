@@ -14,6 +14,7 @@
 
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-.}"
+[ -f hpc/env.sh ] || { echo "hpc/env.sh not found in $PWD: run sbatch from the repository root (the folder that contains hpc/, src/, scripts/)"; exit 2; }
 source hpc/env.sh
 uv sync --frozen
 uv run python scripts/47_fetch_gefs_reforecast.py --years "$SLURM_ARRAY_TASK_ID" "$SLURM_ARRAY_TASK_ID" --workers "$SLURM_CPUS_PER_TASK"

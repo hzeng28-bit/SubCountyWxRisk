@@ -15,6 +15,7 @@
 
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-.}"
+[ -f hpc/env.sh ] || { echo "hpc/env.sh not found in $PWD: run sbatch from the repository root (the folder that contains hpc/, src/, scripts/)"; exit 2; }
 source hpc/env.sh
 echo "job ${SLURM_JOB_ID:-local} on $(hostname), ${SLURM_CPUS_PER_TASK:-?} cpus, data $WXRISK_DATA"
 uv sync --frozen
