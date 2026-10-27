@@ -25,13 +25,13 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
      sync that folder to `~/nanoWxRisk` (sync level: checksum differs; leave "delete files on destination" off). Later versions move only
      the changed files. Never sync the repository working tree itself (it holds `.git`, caches and `dist/`).
    - Data bundle A: `bash hpc/stage_data.sh` builds `dist/data_A` (hard links, no extra disk) with the manifest paths; sync it to
-     `/scratch/hzeng28/wxrisk_data`. Thousands of small files (the GEFS crops) are better re-fetched on Sol than transferred.
+     `/scratch/hzeng28/wxrisk_data`. Downloads happen on the Mac only (decision 2026-10-27); Sol computes. Thousands of small files (the GEFS crops) go as one tar, not as a folder.
    Then `cd ~/nanoWxRisk && sbatch hpc/probe.sbatch` and read `$WXRISK_DATA/hpc/probe_<jobid>.txt`.
 1b. `uv` is not installed on Sol (probe 66728619). Install it once on the login node, into `$HOME/.local/bin` (`hpc/env.sh` puts that on PATH), and check `uv --version`; if the cluster blocks the installer, `pip install --user uv` after `module load` of a Python also works.
 2. Move bundle A (`hpc/transfer_manifest.txt`, about 380 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
-   Raw data is re-downloaded on Sol by the numbered fetch scripts when the probe shows outbound HTTPS works; the lock file
+   Raw data is fetched locally by the numbered fetch scripts and synced here (compute nodes do have outbound HTTPS, probe 66728864, but we do not use it); the lock file
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.
-3. `sbatch hpc/fetch_gefs.sbatch` (ten array tasks, resumable).
+3. (Not used: `hpc/fetch_gefs.sbatch` downloads on Sol; kept for the case that it becomes useful.)
 4. Analysis jobs: `sbatch hpc/run.sbatch scripts/49_information_audit.py`. Override resources on the command line.
 
 ## Rules for jobs in this project
