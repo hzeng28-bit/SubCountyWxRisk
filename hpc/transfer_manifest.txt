@@ -1,5 +1,5 @@
 # Files to move from the Mac to Sol with Globus (paths relative to $WXRISK_DATA, same layout on both sides).
-# Bundle A: enough to run scripts 26, 29, 42, 48 (modelling) and 49 on Sol. About 380 MB.
+# Bundle A: enough to run scripts 26, 29, 42, 48 (modelling) and 49 on Sol. About 456 MB.
 labels_extra/flood/pilot/flood_pilot_table.parquet
 labels_extra/flood/pilot/flood_pilot_fc_features.parquet
 labels_extra/flood/pilot/flood_pilot_expodyn.parquet
@@ -7,6 +7,8 @@ labels_extra/flood/pilot/flood_pilot_wavelet.parquet
 labels_extra/flood/pilot/bg_terrain.parquet
 labels_extra/flood/pilot/bg_crosswalk_tx.parquet
 labels_extra/flood/pilot/bg2010_tx.zip
+labels_extra/flood/pilot/rel_bg20_bg10_st48.txt
+labels_extra/flood/pilot/flood_pilot_test_preds.npz
 clean/claims_nfip.parquet
 clean/claims_nfip.prep.json
 clean/policies_tx.parquet

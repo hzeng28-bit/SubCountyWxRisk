@@ -17,3 +17,4 @@ figures/
 
 # code archives built by hpc/pack.sh
 dist/
+wxrisk-probe-*.out

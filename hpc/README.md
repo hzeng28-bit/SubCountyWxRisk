@@ -28,9 +28,10 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
      `/scratch/hzeng28/wxrisk_data`. Downloads happen on the Mac only (decision 2026-10-27); Sol computes. Thousands of small files (the GEFS crops) go as one tar, not as a folder.
    Then `cd ~/nanoWxRisk && sbatch hpc/probe.sbatch` and read `$WXRISK_DATA/hpc/probe_<jobid>.txt`.
 1b. `uv` is not installed on Sol (probe 66728619). Install it once on the login node, into `$HOME/.local/bin` (`hpc/env.sh` puts that on PATH), and check `uv --version`; if the cluster blocks the installer, `pip install --user uv` after `module load` of a Python also works.
-2. Move bundle A (`hpc/transfer_manifest.txt`, about 380 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
+2. Move bundle A (`hpc/transfer_manifest.txt`, about 456 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
    Raw data is fetched locally by the numbered fetch scripts and synced here (compute nodes do have outbound HTTPS, probe 66728864, but we do not use it); the lock file
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.
+2b. Check that the bundle is complete: `sbatch hpc/run.sbatch scripts/49_information_audit.py`; its `$WXRISK_DATA/audit/information_audit.txt` must equal the Mac copy apart from the `fitted ... iterations` lines (verified on the Mac with a data directory holding bundle A only, 2026-10-27).
 3. (Not used: `hpc/fetch_gefs.sbatch` downloads on Sol; kept for the case that it becomes useful.)
 4. Analysis jobs: `sbatch hpc/run.sbatch scripts/49_information_audit.py`. Override resources on the command line.
 
