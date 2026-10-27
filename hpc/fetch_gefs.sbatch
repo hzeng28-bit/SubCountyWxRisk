@@ -5,10 +5,11 @@
 # hit the time limit can simply be submitted again. Run hpc/probe.sbatch first; this job needs outbound HTTPS from the node.
 #SBATCH --job-name=gefs
 #SBATCH --partition=htc
+#SBATCH --qos=class
 #SBATCH --time=0-04:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
-#SBATCH --array=2010-2019%4
+#SBATCH --array=2010-2019%2
 #SBATCH --output=%x-%A_%a.out
 
 set -euo pipefail

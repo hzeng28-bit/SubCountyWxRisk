@@ -7,11 +7,13 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
 |---|---|
 | Scheduler | Slurm; default with no flags is partition `htc`, QOS `public`, 4 h |
 | Partitions we use | `htc` (4 h, never preempted), `public` (7 days), `lightwork` (1 day, <= 8 cores), `highmem` (1-2.2 TiB nodes) |
-| QOS | `public` (default; `--qos=public` was rejected on partition `public`: "Invalid qos specification", so run/fetch scripts leave QOS unset), `debug` (15 min, one running + two queued per user); `long` (14 days) is granted case by case |
+| QOS | `public` (default; rejected for this account: "Invalid qos specification"), `debug` (15 min, one running + two queued per user); `long` (14 days) is granted case by case |
 | Scratch | `/scratch/hzeng28`, quota 100 TB, **not backed up, unused files are purged** |
 | Data movement | Globus (the documentation's recommendation for large transfers) |
 | Internet from a compute node | *check* (the login node answers ping; `probe.sbatch` tests HTTPS from a compute node) |
 | uv / Python 3.12-3.13 / pygrib | *check* |
+
+Account `class_cse47267488fall2026` (course account) is associated with QOS `class` only: MaxWall 1 day, 2 running jobs, 10 submitted, no per-user resource cap (sacctmgr, 2026-10-27). `run.sbatch` and `fetch_gefs.sbatch` request `--qos=class`; `probe.sbatch` uses `debug`.
 
 ## Order of work
 
