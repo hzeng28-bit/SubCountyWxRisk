@@ -27,6 +27,7 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
    - Data bundle A: `bash hpc/stage_data.sh` builds `dist/data_A` (hard links, no extra disk) with the manifest paths; sync it to
      `/scratch/hzeng28/wxrisk_data`. Thousands of small files (the GEFS crops) are better re-fetched on Sol than transferred.
    Then `cd ~/nanoWxRisk && sbatch hpc/probe.sbatch` and read `$WXRISK_DATA/hpc/probe_<jobid>.txt`.
+1b. `uv` is not installed on Sol (probe 66728619). Install it once on the login node, into `$HOME/.local/bin` (`hpc/env.sh` puts that on PATH), and check `uv --version`; if the cluster blocks the installer, `pip install --user uv` after `module load` of a Python also works.
 2. Move bundle A (`hpc/transfer_manifest.txt`, about 380 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
    Raw data is re-downloaded on Sol by the numbered fetch scripts when the probe shows outbound HTTPS works; the lock file
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.

@@ -18,6 +18,8 @@ OUT="$WXRISK_DATA/hpc/probe_${SLURM_JOB_ID:-local}.txt"
   echo "== node"; hostname; date; echo "cpus allocated: ${SLURM_CPUS_PER_TASK:-?}  nproc: $(nproc)"; free -g | head -2
   echo "== scratch"; df -h "$WXRISK_DATA" | tail -1
   echo "== tools"; command -v uv || echo "uv: not on PATH"; command -v module >/dev/null && module list 2>&1 | head -5
+  echo "== python without uv"; command -v python3 && python3 --version; command -v module >/dev/null && module avail python mamba anaconda 2>&1 | head -15
+  command -v uv >/dev/null || { echo "uv missing: install it on the login node (hpc/README.md step 2), then rerun"; }
   echo "== environment"
   (uv sync --frozen 2>&1 | tail -3) || echo "uv sync failed"
   uv run python - <<'PY' 2>&1 | grep -v Warn
