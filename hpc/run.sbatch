@@ -7,7 +7,6 @@
 # highmem (1-2.2 TiB nodes). Scripts that finish in under 4 hours are best on htc.
 #SBATCH --job-name=wxrisk
 #SBATCH --partition=public
-#SBATCH --qos=public
 #SBATCH --time=0-04:00
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G

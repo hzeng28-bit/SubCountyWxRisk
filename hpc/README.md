@@ -7,7 +7,7 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
 |---|---|
 | Scheduler | Slurm; default with no flags is partition `htc`, QOS `public`, 4 h |
 | Partitions we use | `htc` (4 h, never preempted), `public` (7 days), `lightwork` (1 day, <= 8 cores), `highmem` (1-2.2 TiB nodes) |
-| QOS | `public` (default), `debug` (15 min, one running + two queued per user); `long` (14 days) is granted case by case |
+| QOS | `public` (default; `--qos=public` was rejected on partition `public`: "Invalid qos specification", so run/fetch scripts leave QOS unset), `debug` (15 min, one running + two queued per user); `long` (14 days) is granted case by case |
 | Scratch | `/scratch/hzeng28`, quota 100 TB, **not backed up, unused files are purged** |
 | Data movement | Globus (the documentation's recommendation for large transfers) |
 | Internet from a compute node | *check* (the login node answers ping; `probe.sbatch` tests HTTPS from a compute node) |
