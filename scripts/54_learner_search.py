@@ -8,7 +8,8 @@ Families: logit, logit2 (pairwise products), hgb, rf, et (random / extra trees o
 shifts the logit by a constant, which leaves a ranking inside an episode unchanged), mlp (sklearn).
 
 Inputs : flood_pilot_table.parquet, clean NFIP claims (script 49 `history`)
-Outputs: $WXRISK_DATA/audit/learner_sweep/<full|quick>/<family>.json (best parameters, validation score, trial table) and <family>_test.npy
+Outputs: $WXRISK_DATA/audit/learner_sweep/<full|quick>/<family>.json (best parameters, validation score), <family>_trials.csv,
+         <family>_test.npy and <family>.journal (the study; rerunning the command continues an unfinished search)
 Run    : python scripts/54_learner_search.py --family hgb --trials 40 [--quick]
          sbatch hpc/learner_sweep.sbatch                     # all families, then script 55 collects
 """
@@ -156,15 +157,27 @@ def main() -> None:
         print(f"  trial {trial.number}: {num / den:.4f}  {p}  ({(time.time() - t0) / 60:.1f} min)", flush=True)
         return num / den
 
-    study = optuna.create_study(direction="maximize", sampler=optuna.samplers.TPESampler(seed=0, multivariate=True))
-    study.optimize(objective, n_trials=a.trials, timeout=a.timeout_h * 3600)
+    # a journal file keeps the finished trials: a job that hits its wall time (or is cancelled) is resubmitted and carries on
+    from optuna.storages import JournalStorage
+    from optuna.storages.journal import JournalFileBackend
+
+    storage = JournalStorage(JournalFileBackend(str(out_dir(a.quick) / f"{a.family}.journal")))
+    study = optuna.create_study(study_name=a.family, storage=storage, load_if_exists=True, direction="maximize",
+                                sampler=optuna.samplers.TPESampler(seed=0, multivariate=True))
+    done = sum(x.state == optuna.trial.TrialState.COMPLETE for x in study.trials)
+    print(f"  {done} trials already finished", flush=True)
+    if done < a.trials:
+        study.optimize(objective, n_trials=a.trials - done, timeout=a.timeout_h * 3600)
+    if sum(x.state == optuna.trial.TrialState.COMPLETE for x in study.trials) < a.trials:
+        print("budget not reached before the time limit: resubmit the same job to continue", flush=True)
+        return
     best = study.best_params
     s = fit_score(a.family, best, d, d.tr, d.te)  # the only time the test years are scored
     o = out_dir(a.quick)
     np.save(o / f"{a.family}_test.npy", s.astype(np.float32))
     study.trials_dataframe().to_csv(o / f"{a.family}_trials.csv", index=False)
     (o / f"{a.family}.json").write_text(json.dumps({"family": a.family, "best_params": best, "best_validation": study.best_value,
-                                                    "trials": len(study.trials), "minutes": (time.time() - t0) / 60}, indent=1))
+                                                    "trials": sum(x.state == optuna.trial.TrialState.COMPLETE for x in study.trials), "minutes": (time.time() - t0) / 60}, indent=1))
     print(f"best validation {study.best_value:.4f} after {len(study.trials)} trials: {best}", flush=True)
 
 
