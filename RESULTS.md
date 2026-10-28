@@ -1307,3 +1307,35 @@ Blocked cross-validation (boosting, 7 year-pair folds, training on the other 12 
 - The history comes from the same NFIP claim file as the label: block groups with many claims 2000-2009 are partly the ones with many policies, so part of the gain is exposure and take-up history, not only physical flood-proneness (the model already has current policy counts).
 - Observed-rain arm only; the forecast-rain arm is stage 17 (+0.051, one split). Texas only.
 - Fold differences are not independent (shared episodes' neighbours across years are not an issue, but weather regimes cluster by year); the pooled interval is event-clustered, not year-clustered.
+
+# Stage 20: learner convergence, Bayesian search per family (scripts 54, 55; run on Sol)
+
+Question: is classical ML exhausted on the pilot table (base + `hist00`, `prior3`) before deep learning is tried? One optuna study (TPE, multivariate) per learner family, 60 trials each, objective = mean within-event AUC over three rolling-origin folds (train ≤2011 → 2012-13, ≤2013 → 2014-15, ≤2015 → 2016); the best parameters are refitted on 2010-2016 and scored once on 2017-2023. Rows 2,996,576 (negatives subsampled to 5% in the search), 3,711 test positives. Output: `audit/learner_convergence.txt`.
+
+| Family | validation (best of 60) | test within-event AUC | overall AUC | AP | vs logistic [95%] | vs boosting [95%] |
+|---|---|---|---|---|---|---|
+| logistic | 0.8123 | 0.8076 | 0.9256 | 0.1424 | | -0.0070 [-0.0122, -0.0021] |
+| logistic, degree 2 | 0.8112 | 0.8120 | 0.9260 | 0.1308 | +0.0044 [-0.0001, +0.0089] | -0.0026 [-0.0074, +0.0020] |
+| boosting (HGB) | 0.8136 | 0.8146 | 0.9306 | 0.1281 | +0.0070 [+0.0021, +0.0122] | |
+| random forest | 0.8103 | 0.8080 | 0.9316 | 0.1374 | +0.0004 [-0.0048, +0.0059] | -0.0067 [-0.0105, -0.0020] |
+| extra trees | 0.8090 | 0.8112 | 0.9299 | 0.1491 | +0.0035 [-0.0021, +0.0091] | -0.0035 [-0.0067, +0.0005] |
+| MLP (sklearn) | 0.8177 | 0.8131 | 0.9281 | 0.1393 | +0.0055 [-0.0000, +0.0112] | -0.0015 [-0.0053, +0.0029] |
+| average of logistic, boosting, MLP | | **0.8162** | 0.9313 | 0.1524 | +0.0086 [+0.0050, +0.0123] | +0.0016 [-0.0008, +0.0045] |
+
+Convergence of the searches (best validation value after 10 / 20 / 40 / 60 trials): logistic 0.8123 flat from trial 10; logistic2 0.8111 → 0.8112; boosting 0.8085 → 0.8128 → 0.8128 → 0.8136; rf 0.8037 → 0.8080 → 0.8086 → 0.8103; extra trees 0.8054 → 0.8057 → 0.8090 → 0.8090; MLP 0.8114 → 0.8123 → 0.8165 → 0.8177. Learning curve (share of training episodes, test): logistic 0.8022 / 0.8060 / 0.8074 / 0.8075, boosting 0.8065 / 0.8119 / 0.8137 / 0.8146 at 10 / 25 / 50 / 100%.
+
+## Conclusions
+
+- **Every family lands in a band of 0.808-0.815 on test** (0.809-0.818 on validation). Tuning moved boosting only from 0.8120 (stage 19, default) to 0.8146; the logistic model is unchanged at 0.8076. The best single family is boosting, +0.007 over logistic with an interval above 0; the other families are not separable from it or from logistic at the 95% level.
+- The searches have flattened: logistic and extra trees stopped improving by trial 25-53 with a top-5 spread under 0.001; boosting gained 0.0008 in the last 40 trials. Random forest and the MLP were still creeping up at the end (+0.0017 and +0.0012 in trials 40-60), so their ranks are not final, but the size of the creep is below the test intervals.
+- The learning curve is flat from 50% to 100% of the training episodes (+0.0001 logistic, +0.0009 boosting): more rows of the same kind will not help these learners.
+- A plain average of three families gains +0.0016 over boosting [-0.0008, +0.0045]: no evidence that combining learners adds information.
+- **Decision**: classical tabular learners are converged on this feature set at about 0.81-0.815 within-event AUC. A deep model is only worth trying if it brings new input (spatial neighbourhoods, rain fields over time), not as another learner on the same columns. Keep S12 (linear default, boosting as a check).
+
+## Caveats
+
+- The validation folds end at 2016 and the search subsamples negatives to 5%; validation and test values differ by up to 0.005 (MLP 0.8177 vs 0.8131, logistic 0.8123 vs 0.8076), partly selection on the validation folds, partly year effects. Rank on the validation column and on the test column disagree (MLP first on validation, boosting on test).
+- 60 trials per family is a fixed budget, not a proof of the optimum; the search space was set by hand (e.g. HGB depth 2-10, MLP at most 128-64-32). MLP is sklearn's, with no early stopping or embeddings; this is not a test of deep learning.
+- The test set is one split (2017-2023), scored once. Intervals are event-clustered, not year-clustered, and nine comparisons are made without multiplicity correction; "vs logistic" for logistic2, extra trees and MLP touch zero.
+- The ceiling block printed by script 55 (0.8004 if the average's probabilities were true) is below the observed 0.8162, so the model's probabilities are under-confident or miscalibrated, and that number is not an upper bound on achievable AUC. It does not show how much signal is left.
+- Observed-rain table, Texas only; absolute probabilities do not transfer across years (AGENTS.md).
