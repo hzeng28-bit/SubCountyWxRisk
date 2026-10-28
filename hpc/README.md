@@ -15,6 +15,8 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
 
 Account `class_cse47267488fall2026` (course account) is associated with QOS `class` only: MaxWall 1 day, 2 running jobs, 10 submitted, no per-user resource cap (sacctmgr, 2026-10-27). `run.sbatch` and `fetch_gefs.sbatch` request `--qos=class`; `probe.sbatch` uses `debug`.
 
+Measured on a Sol node (job 66749407, `hpc/bench_threads.py`): AMD EPYC 7713, 128 cores per node, 1 thread per core; gradient boosting is fastest at 8 threads and 4x slower at 16, many small processes give the best throughput; reading the pilot tables from scratch takes about 30 s (1.4 s on the Mac).
+
 ## Order of work
 
 1. Put the code in `$HOME/nanoWxRisk` (backed up daily, 100 GiB); data, venv and caches stay on scratch (`hpc/env.sh`).
@@ -35,7 +37,7 @@ Account `class_cse47267488fall2026` (course account) is associated with QOS `cla
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.
 2b. Check that the bundle is complete: `sbatch hpc/run.sbatch scripts/49_information_audit.py`; its `$WXRISK_DATA/audit/information_audit.txt` must equal the Mac copy apart from the `fitted ... iterations` lines (verified on the Mac with a data directory holding bundle A only, 2026-10-27). Verified on Sol the same day: identical numbers and iteration counts (partition htc, QOS class).
 3. (Not used: `hpc/fetch_gefs.sbatch` downloads on Sol; kept for the case that it becomes useful.)
-3b. Learner search: two array tasks (hgb; the other five families in sequence), 6 cores / 48 GB each, 10 h; the 3 validation folds of a trial run as 3 processes, `public` + `class`, resumable from a journal file (resubmit `sbatch --array=<task> hpc/learner_sweep.sbatch` if a task runs out of time). `jid=$(sbatch --parsable hpc/learner_sweep.sbatch)` then `sbatch --dependency=afterok:$jid hpc/run.sbatch scripts/55_learner_convergence.py`. Queue advice from the Sol docs (fairshare page): a big request waits long even with a good score, split work into small jobs and use arrays, never a shell loop of `sbatch` calls; `htc` (4 h, never preempted, backfills easily) lists only `public` and `debug` QOS, so a class account cannot use it. `myfairshare` shows the score.
+3b. Learner search: two array tasks (hgb; the other five families in sequence), 6 cores / 64 GB each, 4 h; the 3 validation folds of a trial run as 3 processes, `public` + `class`, resumable from a journal file (resubmit `sbatch --array=<task> hpc/learner_sweep.sbatch` if a task runs out of time). `jid=$(sbatch --parsable hpc/learner_sweep.sbatch)` then `sbatch --dependency=afterok:$jid hpc/run.sbatch scripts/55_learner_convergence.py`. Queue advice from the Sol docs (fairshare page): a big request waits long even with a good score, split work into small jobs and use arrays, never a shell loop of `sbatch` calls; `htc` (4 h, never preempted, backfills easily) lists only `public` and `debug` QOS, so a class account cannot use it. `myfairshare` shows the score.
 4. Analysis jobs: `sbatch hpc/run.sbatch scripts/49_information_audit.py`. Override resources on the command line.
 
 ## Rules for jobs in this project
