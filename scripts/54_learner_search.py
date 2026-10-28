@@ -160,6 +160,10 @@ def main() -> None:
     ap.add_argument("--quick", action="store_true", help="15%% of the episodes (smoke test)")
     ap.add_argument("--fold-workers", type=int, default=3, help="processes that fit the validation folds of one trial side by side (1 = in turn)")
     a = ap.parse_args()
+    fin = out_dir(a.quick) / f"{a.family}.json"
+    if fin.exists() and json.loads(fin.read_text())["trials"] >= a.trials:  # finished search: a resubmitted job ends at once
+        print(f"{a.family}: search already finished ({fin.name})", flush=True)
+        return
     import optuna
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
