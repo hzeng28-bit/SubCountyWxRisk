@@ -15,6 +15,8 @@ items marked *check* are not verified yet and are what `hpc/probe.sbatch` is for
 
 Account `class_cse47267488fall2026` (course account) is associated with QOS `class` only: MaxWall 1 day, 2 running jobs, 10 submitted, no per-user resource cap (sacctmgr, 2026-10-27). `run.sbatch` and `fetch_gefs.sbatch` request `--qos=class`; `probe.sbatch` uses `debug`.
 
+Measured I/O on a Sol node (job 66750009, `hpc/io_probe.py`): big sequential reads from `/scratch` (BeeGFS) are fast (first read 200-300 MB/s, cached 2.5 GB/s, 8 readers 4.5 GB/s); small files are not (creating 189 files/s against 9866 on node-local disk, reading 2015 against 28104). The Python environment on scratch (46k files) makes a fresh `import numpy pandas scipy sklearn pyarrow` take 16 s cold and 4-5 s warm (0.65 s on the Mac), so every spawned worker pays that once; the sweep tolerates it (about a minute per learner family). Node-local `/tmp` is xfs, 336 GB, shared by all jobs on the node and not job-scoped (`SLURM_TMPDIR` is unset, `$TMPDIR=/tmp`), `/dev/shm` is a 252 GB tmpfs. Rule: do not put thousands of small files on scratch; tar them, or write them under a `/tmp/$USER/$SLURM_JOB_ID` directory and clean it up at the end of the job. The boosting slowdown at 16 threads is not an I/O effect (the benchmark times fits on data already in memory).
+
 Measured on a Sol node (job 66749407, `hpc/bench_threads.py`): AMD EPYC 7713, 128 cores per node, 1 thread per core; gradient boosting is fastest at 8 threads and 4x slower at 16, many small processes give the best throughput; reading the pilot tables from scratch takes about 30 s (1.4 s on the Mac).
 
 ## Order of work
