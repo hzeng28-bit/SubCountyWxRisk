@@ -33,7 +33,7 @@ Account `class_cse47267488fall2026` (course account) is associated with QOS `cla
 2. Move bundle A (`hpc/transfer_manifest.txt`, about 456 MB) with Globus into `/scratch/hzeng28/wxrisk_data/` keeping the relative paths.
    Raw data is fetched locally by the numbered fetch scripts and synced here (compute nodes do have outbound HTTPS, probe 66728864, but we do not use it); the lock file
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.
-2b. Check that the bundle is complete: `sbatch hpc/run.sbatch scripts/49_information_audit.py`; its `$WXRISK_DATA/audit/information_audit.txt` must equal the Mac copy apart from the `fitted ... iterations` lines (verified on the Mac with a data directory holding bundle A only, 2026-10-27).
+2b. Check that the bundle is complete: `sbatch hpc/run.sbatch scripts/49_information_audit.py`; its `$WXRISK_DATA/audit/information_audit.txt` must equal the Mac copy apart from the `fitted ... iterations` lines (verified on the Mac with a data directory holding bundle A only, 2026-10-27). Verified on Sol the same day: identical numbers and iteration counts (partition htc, QOS class).
 3. (Not used: `hpc/fetch_gefs.sbatch` downloads on Sol; kept for the case that it becomes useful.)
 4. Analysis jobs: `sbatch hpc/run.sbatch scripts/49_information_audit.py`. Override resources on the command line.
 
