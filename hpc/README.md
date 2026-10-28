@@ -35,6 +35,7 @@ Account `class_cse47267488fall2026` (course account) is associated with QOS `cla
    (`python scripts/32_data_lock.py verify`) tells whether the copy matches.
 2b. Check that the bundle is complete: `sbatch hpc/run.sbatch scripts/49_information_audit.py`; its `$WXRISK_DATA/audit/information_audit.txt` must equal the Mac copy apart from the `fitted ... iterations` lines (verified on the Mac with a data directory holding bundle A only, 2026-10-27). Verified on Sol the same day: identical numbers and iteration counts (partition htc, QOS class).
 3. (Not used: `hpc/fetch_gefs.sbatch` downloads on Sol; kept for the case that it becomes useful.)
+3b. Learner search: `jid=$(sbatch --parsable hpc/learner_sweep.sbatch)` then `sbatch --dependency=afterok:$jid hpc/run.sbatch scripts/55_learner_convergence.py`. Partition `public` with QOS `class` (the documented pair for class accounts); `htc` lists only `public` and `debug` QOS.
 4. Analysis jobs: `sbatch hpc/run.sbatch scripts/49_information_audit.py`. Override resources on the command line.
 
 ## Rules for jobs in this project

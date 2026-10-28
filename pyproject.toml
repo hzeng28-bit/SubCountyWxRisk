@@ -33,6 +33,7 @@ dependencies = [
     "polars>=2.0.0",
     "duckdb>=2.0.0",
     "dataretrieval>=1.4.0",
+    "optuna>=5.0.0",
 ]
 
 [project.optional-dependencies]

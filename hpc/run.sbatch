@@ -6,7 +6,7 @@
 # Partitions (docs.rc.asu.edu/partitions-and-qos): htc (default, 4 h, never preempted), public (7 days), lightwork (<= 8 cores),
 # highmem (1-2.2 TiB nodes). Scripts that finish in under 4 hours are best on htc.
 #SBATCH --job-name=wxrisk
-#SBATCH --partition=htc
+#SBATCH --partition=public
 #SBATCH --qos=class
 #SBATCH --time=0-04:00
 #SBATCH --cpus-per-task=16
