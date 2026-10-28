@@ -1273,3 +1273,37 @@ Data: api.waterdata.usgs.gov through the `dataretrieval` package with an API key
 - The gauge is the nearest eligible one within 25 km, not the stream reach of the block group; 24% of block groups have none (NaN handled by the tree learner), which is mostly arid west Texas and small-exposure areas.
 - Gauge peaks describe large rivers; NFIP claims in small urban basins (flash floods) are often unrelated to them. This does not say hydrology is uninformative, only that this link is.
 - One split, one learner (HistGradientBoosting depth 5), no multiplicity correction.
+
+
+# Stage 19: claim history in the pilot model, full evaluation (script 53)
+
+Stage 17 found +0.026 from `hist00` (claims 2000-2009 in the block group) and `prior3` (claims in the 3 years before the episode). Here the gain is checked against the evaluation rules: two learners, overall AUC and AP next to within-event AUC, and blocked cross-validation.
+
+| Main split (train 2010-2016, test 2017-2023) | within-event AUC | overall AUC | AP | difference to the same learner's base [95% interval] |
+|---|---|---|---|---|
+| boosting, base (L2 features) | 0.7857 | 0.9258 | 0.1169 | |
+| boosting + history | **0.8120** | 0.9307 | 0.1315 | +0.0262 [+0.0198, +0.0325] |
+| logistic on the scaling plan, base | 0.7856 | 0.9224 | 0.1354 | |
+| logistic + history | 0.8076 | 0.9257 | 0.1429 | +0.0219 [+0.0168, +0.0265] |
+
+Blocked cross-validation (boosting, 7 year-pair folds, training on the other 12 years), within-event AUC:
+
+| Held-out years | 2010-11 | 2012-13 | 2014-15 | 2016-17 | 2018-19 | 2020-21 | 2022-23 | pooled |
+|---|---|---|---|---|---|---|---|---|
+| base | 0.7908 | 0.7912 | 0.7572 | 0.8142 | 0.7505 | 0.7916 | 0.8113 | 0.7827 |
+| + history | 0.8087 | 0.8205 | 0.7800 | 0.8344 | 0.7878 | 0.8092 | 0.8291 | 0.8067 |
+| difference | +0.018 | +0.029 | +0.023 | +0.020 | +0.037 | +0.018 | +0.018 | **+0.0240** [+0.0172, +0.0322] |
+
+## Conclusions
+
+- **The history gain is robust**: positive in all 7 folds (+0.018 to +0.037), pooled +0.024 with an interval above 0, and +0.022 / +0.026 for the logistic and boosting learners on the main split. It is also positive on overall AUC and AP.
+- Boosting and the linear model are tied again on within-event AUC with history (0.8076 vs 0.8120 is within about twice the interval half-width of the difference to the base); the linear model has the better AP in both rows. Keep S12 (linear default, boosting as a check).
+- The gain does not fade in the latest folds (2022-23: +0.018), although `hist00` covers 2000-2009 only; `prior3` keeps the history current.
+- **Decision**: `hist00` and `prior3` enter the pilot feature set (add them to `PILOT_PLAN` as standardise-only columns when the pilot table is next rebuilt).
+
+## Caveats
+
+- Blocked CV trains on years after the held-out pair too; history features are ex ante for every row, but the fitted relation uses later data, as in every blocked-by-year CV here.
+- The history comes from the same NFIP claim file as the label: block groups with many claims 2000-2009 are partly the ones with many policies, so part of the gain is exposure and take-up history, not only physical flood-proneness (the model already has current policy counts).
+- Observed-rain arm only; the forecast-rain arm is stage 17 (+0.051, one split). Texas only.
+- Fold differences are not independent (shared episodes' neighbours across years are not an issue, but weather regimes cluster by year); the pooled interval is event-clustered, not year-clustered.
