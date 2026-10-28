@@ -133,12 +133,32 @@ def fit_score(fam, p, d, trm, sm):
     return logit_of(m.predict_proba(d.Z[sm])[:, 1])
 
 
+D = None  # the prepared data of a fold worker, loaded once by `init_worker`
+
+
+def init_worker(quick, thr):
+    global D
+    D = prepare(quick)
+    D.jobs = thr  # n_jobs of the forests inside a worker
+
+
+def fold_job(arg):
+    fam, p, i, thr = arg
+    from threadpoolctl import threadpool_limits
+
+    with threadpool_limits(limits=thr):
+        trm, vam = D.folds[i]
+        _, n, m = D.e48.per_episode(D.ep[vam], D.y[vam], fit_score(fam, p, D, trm, vam))
+    return n.sum(), m.sum()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--family", required=True, choices=FAMILIES)
     ap.add_argument("--trials", type=int, default=40)
     ap.add_argument("--timeout-h", type=float, default=18.0, help="stop the search after this many hours (the job limit is 24 h)")
     ap.add_argument("--quick", action="store_true", help="15%% of the episodes (smoke test)")
+    ap.add_argument("--fold-workers", type=int, default=3, help="processes that fit the validation folds of one trial side by side (1 = in turn)")
     a = ap.parse_args()
     import optuna
 
@@ -148,12 +168,25 @@ def main() -> None:
     print(f"{a.family}: rows {len(d.t):,}, positives {int(d.y.sum()):,}, features {len(d.cols)}", flush=True)
     t0 = time.time()
 
+    # One trial = three folds. Boosting does not scale past a few threads inside one process (bench_threads.py: 4 processes x 2 threads
+    # give 2.4x the fits per second of 1 process x 4 threads), so the folds run in separate processes while the sampler stays sequential.
+    # Workers are spawned and load the data themselves: a fork after BLAS or OpenMP has run can leave the children hanging (seen with
+    # logit2 and mlp on macOS), and nothing big has to be pickled.
+    global D
+    D = d
+    cpus = d.jobs if d.jobs > 0 else (os.cpu_count() or 1)
+    nw = min(a.fold_workers, len(d.folds))
+    thr = max(cpus // nw, 1)
+    if nw > 1:
+        import multiprocessing as mp
+
+        pool = mp.get_context("spawn").Pool(nw, initializer=init_worker, initargs=(a.quick, thr))
+
     def objective(trial):
         p = suggest(a.family, trial)
-        num = den = 0.0
-        for trm, vam in d.folds:
-            _, n, m = d.e48.per_episode(d.ep[vam], d.y[vam], fit_score(a.family, p, d, trm, vam))
-            num, den = num + n.sum(), den + m.sum()
+        jobs = [(a.family, p, i, thr) for i in range(len(d.folds))]
+        res = pool.map(fold_job, jobs) if nw > 1 else [fold_job(j) for j in jobs]  # without a pool the parent's own data is used
+        num, den = sum(r[0] for r in res), sum(r[1] for r in res)
         print(f"  trial {trial.number}: {num / den:.4f}  {p}  ({(time.time() - t0) / 60:.1f} min)", flush=True)
         return num / den
 
@@ -174,6 +207,8 @@ def main() -> None:
         print("budget not reached before the time limit: resubmit the same job to continue", flush=True)
         return
     best = study.best_params
+    if nw > 1:
+        pool.close()
     s = fit_score(a.family, best, d, d.tr, d.te)  # the only time the test years are scored
     o = out_dir(a.quick)
     np.save(o / f"{a.family}_test.npy", s.astype(np.float32))
