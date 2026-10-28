@@ -1339,3 +1339,32 @@ Convergence of the searches (best validation value after 10 / 20 / 40 / 60 trial
 - The test set is one split (2017-2023), scored once. Intervals are event-clustered, not year-clustered, and nine comparisons are made without multiplicity correction; "vs logistic" for logistic2, extra trees and MLP touch zero.
 - The ceiling block printed by script 55 (0.8004 if the average's probabilities were true) is below the observed 0.8162, so the model's probabilities are under-confident or miscalibrated, and that number is not an upper bound on achievable AUC. It does not show how much signal is left.
 - Observed-rain table, Texas only; absolute probabilities do not transfer across years (AGENTS.md).
+
+# Stage 21: neighbour-smoothed claim history, year split and year + region split (script 56)
+
+Question: does an ex ante spatial version of the stage 17 neighbour oracle add to the stage 19 model (base + `hist00`, `prior3`)? Features: `nbhist00` / `nbprior3` (log1p of the mean claim count of the 8 nearest block groups, 2000-2009 and the 3 years before the episode), `nb_dist` (mean distance to them), and `lat`/`lon` in the third arm. Boosting as in stage 19. Two evaluations: time split (train ≤2016, test later) and year + region split (train ≤2016 outside the test region, test later inside it; 5 k-means regions of county centroids held out in turn, predictions pooled). Output: `audit/spatial_features.txt`.
+
+Within-event AUC (difference to the stage 19 base, event-clustered 95% interval):
+
+| Rain arm / split | base | + neighbour history | + neighbour history + lat/lon |
+|---|---|---|---|
+| observed, time split (2017-2023) | 0.8120 | -0.0014 [-0.0043, +0.0010] | -0.0024 [-0.0051, +0.0006] |
+| observed, year + region split | 0.7841 | +0.0012 [-0.0042, +0.0063] | +0.0061 [-0.0029, +0.0162] |
+| forecast fcmean, time split (2017-2019) | 0.7184 | -0.0023 [-0.0115, +0.0051] | -0.0589 [-0.1367, +0.0061] |
+| forecast fcmean, year + region split | 0.6468 | **+0.0310 [+0.0068, +0.0709]** | +0.0151 [-0.0024, +0.0377] |
+
+## Conclusions
+
+- **Under observed rain, neighbour history adds nothing** in either split (intervals contain 0), consistent with the oracle bound of +0.022 and with the own-block-group history already carrying most of it.
+- **Holding out a region costs the base model 0.028 (observed) and 0.072 (forecast)**: part of the stage 19 history gain relies on having seen the same region in training. The time split overstates how the model transfers to a new area.
+- **The only interval above zero is forecast rain on unseen regions: +0.031 from neighbour history**, recovering about 40% of the region-split loss. Where the model has no training data for the region, the neighbours' claim record is the information it lacks. Under the time split the same feature is flat.
+- **Raw `lat`/`lon` hurt** with forecast rain (-0.059 in the time split, wide interval) and are no better than zero elsewhere: with 3 test years and 7 training years the trees memorise locations. Do not add coordinates.
+- **Decision**: keep `nbhist00`, `nbprior3`, `nb_dist` as an optional feature set for the forecast, new-region setting; do not add them to the observed-rain model. Adjacency / upstream graphs and a GNN are not supported by this result: the neighbourhood information is worth at most about +0.03 here, and only in the transfer setting.
+
+## Caveats
+
+- One significant cell out of eight comparisons, no multiplicity correction; the forecast arm has 3 test years (2,075 positives) and a wide interval ([+0.007, +0.071]). Treat it as a lead, to be repeated with more years (GEFS reforecast ends 2019).
+- Region-split predictions come from 5 different models and are pooled before the within-episode AUC; episodes crossing regions compare scores of different models, which can shift the level of both arms.
+- Regions are k-means on county centroids, not watersheds; flood-relevant neighbours (upstream) may lie in another region. K = 8 nearest by centroid distance, not adjacency or flow.
+- Neighbour features use all block groups' claim records, including those in held-out regions (ex ante, no label of the test episodes): that is the setting of a new region with a claim record, not one without.
+- Boosting only, one parameter set (stage 19); Texas only.
