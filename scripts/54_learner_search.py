@@ -162,8 +162,10 @@ def main() -> None:
     from optuna.storages.journal import JournalFileBackend
 
     storage = JournalStorage(JournalFileBackend(str(out_dir(a.quick) / f"{a.family}.journal")))
+    done = len(optuna.load_study(study_name=a.family, storage=storage).trials) if a.family in {x.study_name for x in optuna.get_all_study_summaries(storage)} else 0
+    # the seed follows the number of trials already in the journal: a fixed seed would replay the same random start points after a restart
     study = optuna.create_study(study_name=a.family, storage=storage, load_if_exists=True, direction="maximize",
-                                sampler=optuna.samplers.TPESampler(seed=0, multivariate=True))
+                                sampler=optuna.samplers.TPESampler(seed=done, multivariate=True))
     done = sum(x.state == optuna.trial.TrialState.COMPLETE for x in study.trials)
     print(f"  {done} trials already finished", flush=True)
     if done < a.trials:
