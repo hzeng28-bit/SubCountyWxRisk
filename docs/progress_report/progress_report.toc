@@ -1,0 +1,37 @@
+\contentsline {section}{\numberline {1}Overview and evaluation rules}{2}{section.1}%
+\contentsline {section}{\numberline {2}Datasets used}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Flood line (sub-county, Texas pilot)}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Severe-convective-storm line (CO/NM/AZ)}{3}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Data processing that was considered}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Pipeline structure}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Cleaning decisions}{3}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Scaling}{3}{subsection.3.3}%
+\contentsline {section}{\numberline {4}The sub-county spatial model (Texas flood pilot)}{3}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Motivation}{3}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Unit, label and sample}{4}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Spatial layer: how rain and exposure are attached to a block group}{4}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Model and feature ladder}{4}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Metric: within-event AUC}{5}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Results (test 2017--2023)}{5}{subsection.4.6}%
+\contentsline {paragraph}{Diagnostics.}{5}{section*.6}%
+\contentsline {subsection}{\numberline {4.7}What did not help}{5}{subsection.4.7}%
+\contentsline {subsection}{\numberline {4.8}Forecast mode (stage 16)}{5}{subsection.4.8}%
+\contentsline {subsection}{\numberline {4.9}Information audit (stage 17)}{5}{subsection.4.9}%
+\contentsline {subsection}{\numberline {4.10}Spatial interpolation test (stage 15)}{6}{subsection.4.10}%
+\contentsline {section}{\numberline {5}Data snippets}{6}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Pilot table: one episode, block groups of one county}{6}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Rows and positives by year}{6}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}NFIP claims (Texas, 2017, Harvey period)}{6}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}NFIP policies (Texas sample)}{7}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}Block-group crosswalk (2010 geography) and terrain}{7}{subsection.5.5}%
+\contentsline {section}{\numberline {6}Code snippets}{7}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Episode detection (\texttt {scripts/25\_build\_flood\_pilot\_table.py})}{7}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Per-episode spatial features and label}{7}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Exposure: policies in force per block group and day (\texttt {wxrisk.flood\_pilot})}{8}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Block-group geography crosswalk (\texttt {wxrisk.bg\_crosswalk})}{8}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Within-event AUC (\texttt {scripts/26\_flood\_pilot\_experiment.py})}{8}{subsection.6.5}%
+\contentsline {subsection}{\numberline {6.6}Learner and temporal split}{9}{subsection.6.6}%
+\contentsline {subsection}{\numberline {6.7}Scaling plan for linear learners (\texttt {wxrisk.prep.scaling\_plan}, excerpt)}{9}{subsection.6.7}%
+\contentsline {section}{\numberline {7}Caveats and next steps}{9}{section.7}%
+\contentsline {paragraph}{Caveats.}{9}{section*.9}%
+\contentsline {paragraph}{Next steps (in priority order).}{9}{section*.10}%

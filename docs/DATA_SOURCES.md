@@ -117,6 +117,8 @@ parquet/NetCDF files above 1 GB record only the byte hash and row count (a conte
 | gridMET precipitation | 4 km daily precipitation, Texas, 2000–2023 | `scripts/22` | `labels_extra/flood/pilot/gridmet/` | 1.5 GB | None (THREDDS) |
 | HURDAT2 | Tropical cyclone tracks, used for exclusion | `scripts/22` | `labels_extra/flood/pilot/hurdat2_nepac.txt` etc. | Small | None |
 | AWS Terrarium elevation tiles | About 150 m elevation, z=10 | `scripts/27` | `labels_extra/flood/pilot/terrain_tiles/` | Small | None |
+| FEMA NFHL flood hazard zones (Texas) | SFHA and shaded-X polygons per county (minimal-hazard X not kept), generalised ~30 m | `scripts/fetch/fetch_nfhl_tx.py` (FEMA public ArcGIS `NFHL/MapServer/28`; the msc.fema.gov state package needs a browser session) | `labels_extra/flood/nfhl/nfhl_<county>.geojson` | ~0.5 GB (254 counties) | None |
+| HAND (computed) | Height above nearest drainage from Terrarium z11, streams >= 1 and 10 km2 | `scripts/57_hand_raster.py` (the official 3 m Texas HAND at web.corral.tacc.utexas.edu refused connections) | `labels_extra/flood/pilot/hand_z11_t{1,10}.npy`, tiles in `terrain_tiles_z11/` | 1.5 GB tiles + 2 x 0.76 GB | None |
 
 **The direct link to the policy bulk file is not recorded in the repo.** It is on the OpenFEMA data page ("FIMA NFIP Policies"); we verified that the API
 endpoint `https://www.fema.gov/api/open/v3/NfipPolicies` works (filtering by state plus effective date is fast; an "in force during a window" filter returns 503),

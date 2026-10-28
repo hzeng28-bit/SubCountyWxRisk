@@ -1,0 +1,38 @@
+{
+ "claims_total": 151216,
+ "by_cause": {
+  "4": 70680,
+  "0": 38967,
+  "2": 34300,
+  "1": 4131,
+  "missing": 2523,
+  "3": 309,
+  "A": 192,
+  "D": 57,
+  "B": 36,
+  "9": 9,
+  "C": 7,
+  "8": 3,
+  "7": 2
+ },
+ "inland_cause": 105289,
+ "inland_named": 70300,
+ "inland_track": 71633,
+ "named_and_track": 70008,
+ "named_not_track": 292,
+ "track_not_named": 1625,
+ "track_not_named_without_event_name": 1622,
+ "inland_without_event_name": 16498,
+ "kept": 33364,
+ "kept_by_name_only": 34989,
+ "top_named_events": {
+  "Hurricane Harvey": 61311,
+  "Tropical Storm Imelda": 7531,
+  "Hurricane Hanna": 773,
+  "Tropical Storm Beta": 242,
+  "Tropical Storm Bill": 196
+ },
+ "tidal_track_share": 0.8818687969014767,
+ "trigger_county_days": 99445,
+ "trigger_county_days_tc": 6441
+}

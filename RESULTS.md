@@ -1368,3 +1368,30 @@ Within-event AUC (difference to the stage 19 base, event-clustered 95% interval)
 - Regions are k-means on county centroids, not watersheds; flood-relevant neighbours (upstream) may lie in another region. K = 8 nearest by centroid distance, not adjacency or flow.
 - Neighbour features use all block groups' claim records, including those in held-out regions (ex ante, no label of the test episodes): that is the setting of a new region with a claim record, not one without.
 - Boosting only, one parameter set (stage 19); Texas only.
+
+# Stage 22: FEMA NFHL flood-zone area shares and computed HAND (scripts 57, 58, 59; fetch_nfhl_tx)
+
+Question: does physical hazard geometry that the pilot table lacks (stage 8 terrain was a single centroid at 150 m) add to the stage 19 model? Features per 2010 block group: `nfhl_sfha`, `nfhl_x02` (area shares of the SFHA and of shaded X from FEMA NFHL polygons, county by county from FEMA's ArcGIS service), `nfhl_mapped` (county has NFHL polygons), and HAND statistics (`h1_*` streams ≥ 1 km², `h10_*` streams ≥ 10 km²) as zonal statistics over the block-group polygon of a HAND raster computed from AWS Terrarium z11 (about 70 m; pyflwdir D8, priority flood). The official Texas 3 m HAND (ORNL/TACC) was not reachable and would be hundreds of GB. The NFHL area share is only moderately related to the policy-based `sfha_share` (Spearman 0.54 across block groups), HAND median to `nfhl_sfha` -0.11.
+
+Within-event AUC, difference to the stage 19 base (event-clustered 95% interval):
+
+| Rain arm / split | base | + NFHL shares | + HAND | + NFHL + HAND |
+|---|---|---|---|---|
+| observed, time split | 0.8120 | -0.0011 [-0.0033, +0.0008] | -0.0023 [-0.0051, +0.0002] | -0.0034 [-0.0068, -0.0004] |
+| observed, year + region split | 0.7841 | +0.0005 [-0.0060, +0.0069] | +0.0017 [-0.0048, +0.0082] | -0.0021 [-0.0080, +0.0038] |
+| forecast, time split | 0.7184 | -0.0005 [-0.0046, +0.0025] | -0.0006 [-0.0036, +0.0033] | -0.0018 [-0.0072, +0.0039] |
+| forecast, year + region split | 0.6468 | -0.0014 [-0.0040, +0.0001] | **+0.0274 [+0.0039, +0.0625]** | -0.0032 [-0.0084, +0.0021] |
+
+## Conclusions
+
+- **Neither NFHL area shares nor HAND add information** in 11 of the 12 cells; the combined arm is slightly negative under observed rain with the time split (-0.0034 [-0.0068, -0.0004]).
+- The single positive cell (HAND, forecast rain, unseen regions, +0.027) is the same noisy cell in which neighbour history gave +0.031 (stage 21), and it disappears when NFHL is added next to HAND (-0.003). With the base at 0.647 in that cell, a 0.03 swing is within what one more feature can do by shifting the fit; it is not evidence of a HAND effect.
+- This extends the stage 8 and stage 18 pattern: static susceptibility, whether from a centroid, a flood-zone polygon, a streamgauge or a drainage-relative height, adds nothing once exposure, the block group's own rain and its claim history are known. Claim history (`hist00`, `prior3`) is the only static information that has helped (+0.026).
+- **Decision**: do not add NFHL or HAND columns to the pilot feature set. The features and scripts stay for later use (building-level work, other states).
+
+## Caveats
+
+- HAND at ~70 m cannot see storm drains, culverts, levees or road embankments, and block-group zonal statistics blur the contrast between a floodplain and the terrace beside it. The result does not show that high-resolution HAND, or HAND at building footprints, adds nothing.
+- NFHL maps are not complete (12% of block groups lie in counties with no NFHL polygons, where zero can mean unmapped), and maps date from different years; the `nfhl_mapped` column only partly absorbs this. Area shares by block group dilute small mapped floodplains inside large rural block groups.
+- The same-cell caveats of stage 21 apply: forecast arm has 3 test years, region-split predictions come from five models, no multiplicity correction (one of twelve intervals above zero, one below).
+- Boosting with the stage 19 parameter set only; Texas only; NFHL polygons were generalised on the server to about 30 m.
