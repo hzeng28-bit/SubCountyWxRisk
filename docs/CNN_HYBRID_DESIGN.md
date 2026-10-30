@@ -169,3 +169,8 @@ The labelled sample (Texas, 2,191 training days) limits every supervised model (
 ### 10.8 Status (stage 43)
 
 V0 passed (reconstruction of heavy rain, sub-cell content in the latent). V1 failed: the frozen latent in boosting is worse at the head of the list (top-5% capture -0.022 [-0.037, -0.008]), and as channels of the 0.25 degree CNN it recovers none of the 4 km gain (+0.004 [-0.009, +0.017] of +0.032), with a shuffled-latent control. Hence no diffusion model and no Transformer on this route for now. The learning curve of the supervised 4 km CNN is still rising at 100% of the training months (about 110 claim episodes): the next supported step is the data scale-up of 10.7 (candidate states), not a larger generative model. Untested variants: fine-tuning a VAE-initialised encoder end to end, a hierarchical latent, a forecast-side encoder.
+
+### 10.9 Status of the scale-up (stage 44)
+
+Step 1 done: block-group geography, policy extracts (LA, FL) and gridMET 2000-2023 for an LA + FL box exist; the crosswalk covers 100% of coded policies and claims. Open: clean-table specs for the new policy files, exposure matrices and episodes, county masks and tropical-cyclone flags for LA / FL, GEFS reforecast crops (the reforecast ends in 2019, so FL Ian and LA Ida are observed-rain only), generalised day tensors (script 80), and the state-held-out evaluation. The first modelling use is the observed-rain line (E1-type), which is not limited to 2019.
+
