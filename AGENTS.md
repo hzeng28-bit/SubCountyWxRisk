@@ -31,6 +31,8 @@ Ensemble-forecast-conditioned **meteorological hazard risk index** (video-codec 
 | `scripts/47_fetch_gefs_reforecast.py`, `scripts/48_flood_forecast_pilot.py` | GEFSv12 reforecast rain for the Texas pilot and the forecast-mode comparison (RESULTS stage 16); `scripts/49_information_audit.py`: strata, misses, label-randomness ceiling and added-information tests (stage 17); `scripts/50_usgs_gauge_history.py`: USGS annual-peak history via `dataretrieval`, null on top of claim history (stage 18); `scripts/56_spatial_features.py` / `59_flood_geometry_ablation.py`: neighbour history under year + region splits (stage 21), NFHL + HAND ablation (stage 22; features from `scripts/fetch/fetch_nfhl_tx.py`, `57_hand_raster.py`, `58_bg_flood_geometry.py`); `scripts/53_pilot_with_history.py`: claim history as a pilot feature with CV and two learners, robust (stage 19); `scripts/54_learner_search.py` / `55_learner_convergence.py`: optuna search per learner family and the convergence table (stage 20) |
 | `hpc/` | ASU Sol batch workflow: `env.sh`, `probe.sbatch` (what a compute node offers), `run.sbatch` (any script as a job), `learner_sweep.sbatch` (optuna search per learner family, scripts 54/55), `fetch_gefs.sbatch` (array), `transfer_manifest.txt` (what to move with Globus), `README.md` |
 | `docs/MODELING_DECISIONS.md` | synthesis of stages 0-15: what is settled, what was rejected, what each layer should be, open experiments in priority order |
+| `docs/MODEL_AUDIT.md` | audit of the flood pilot's assumptions (unit, trigger, label, features, metric) against the task in `Impact Forecasting.pdf` (rank units by forecast impact inside an event; the probability is an auxiliary product), with the target-metric specification and its first measurements; scripts 73-79 |
+| `scripts/60_*` to `scripts/79_*` | stages 23-40: label noise and scope (60, 61, 64), NFIP coverage by state and the state group TX + LA + FL (62, 63, 65, 67), regime and ingredient tests (66, 68, 69, 71, 72, 79), ERA5 Gulf-box fetch (70), assumption audit and task metrics (73-75), forecast-rain diagnosis and all-days forecast ranking (76-78) |
 | `tests/` | `pytest` (motion estimation only so far) |
 
 ## Setup and conventions
@@ -70,7 +72,7 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
   intervals.** Keep a feature or model step only if its gain exceeds the interval.
 - **Split by year, never randomly** (train ≤ 2016 / test 2017–2023 in the flood pilot; blocked-by-year CV as a check).
   Rows within a rain event or a year are strongly dependent.
-- Main flood metric is **within-event AUC** (county-level models are 0.5 by definition there). Also report overall AUC, AP.
+- The flood product is a **ranking of units inside an event** (`Impact Forecasting.pdf`, `docs/MODEL_AUDIT.md` section 5): report cross-county AUC, top-k capture of claim count and paid amount, NDCG, at block-group and county level (`scripts/75`), against a policies-only ranking, with event-clustered intervals. Within-county AUC (stage 8) is a secondary metric. The probability is an auxiliary product: expected / observed units per event, calibration, Brier skill reported separately. Forecast-mode features must be known at issue time (no `dur`, no observed rain), and the county set of an event must not be defined from observed rain (stage 37).
 - **Scaling is a pipeline step with rules** (`docs/SCALING_PLAN.md`): trees get raw features; logistic regression, K-means/GMM and BFGS fits get the plan's transforms + standardisation, fitted on training rows only; a model that fits a *transformed target* must go through `prep.scaling.TargetTransform` and be inverted (`Scaled`) before scoring; exp(coef) of a log-OLS is a ratio of geometric means, not of means.
 - Absolute event probabilities do **not** transfer across years (Texas claim counts swing from <500 to ~10k per year).
 
@@ -123,6 +125,4 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
 
 ## Current state and next steps
 
-Stage 8 (Texas flood pilot) is the live line. Next, in order (details in `docs/FLOOD_PRIORS.md`): block-group building
-exposure summaries (elevated share, known-foundation shares + unknown share) with an ablation on the pilot table;
-FEMA NFHL + HAND flood-zone features; basement analysis in basement-heavy states using absolute damage.
+The Texas flood line is live. Observed-rain ranking meets the task (stages 35, 36); forecast-mode ranking (GEFSv12, 5 members, 0.25 degrees) adds only a small increment over the exposure ranking and little in the largest events (stages 37-40: ensemble extremes and ERA5 moisture / wind ingredients did not help). Candidate group TX + LA + FL (stage 27), pipelines for LA and FL not built. Next: two-dimensional field inputs (CNN hybrid) instead of centroid and county summaries; see `docs/MODEL_AUDIT.md` section 5 for the metrics every new model is judged by.

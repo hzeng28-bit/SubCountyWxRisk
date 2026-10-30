@@ -1395,3 +1395,793 @@ Within-event AUC, difference to the stage 19 base (event-clustered 95% interval)
 - NFHL maps are not complete (12% of block groups lie in counties with no NFHL polygons, where zero can mean unmapped), and maps date from different years; the `nfhl_mapped` column only partly absorbs this. Area shares by block group dilute small mapped floodplains inside large rural block groups.
 - The same-cell caveats of stage 21 apply: forecast arm has 3 test years, region-split predictions come from five models, no multiplicity correction (one of twelve intervals above zero, one below).
 - Boosting with the stage 19 parameter set only; Texas only; NFHL polygons were generalised on the server to about 30 m.
+
+
+# Stage 23: noise in the flood label, cleaner / noise-aware targets, and other information (scripts 60, 61)
+
+Question: how noisy is the stage 8 label (a block group has an inland non-tropical NFIP claim in [start, end + 2 d] of a rain episode), does a cleaner or exposure-aware label help, and which other data could add information about the label. Same split as stage 8 (train 2010-2016, test 2017-2023), L2 features, boosting depth 5, within-event AUC, event-clustered paired bootstrap. Output `audit/label_noise_audit.txt`.
+
+## A. What the label is
+
+- **Coverage**: 88.8% of the 34,989 Texas claims fall in a pilot episode window (2010 0.47, 2011 0.55, 2017 0.65, 2020 0.66, other years 0.82-0.95). The uncovered claims sit mostly in tropical-cyclone windows that the pilot drops on purpose (their county rain is often 150-260 mm); only 48% have a county daily maximum >= 30 mm in the 4 days before.
+- **Payment**: 16.2% of claims have no building payment (12.3% missing, the rest 0): closed without payment, deductible, or not covered.
+- **Exposure**: the positive rate rises from 0.07% (<= 2 policies) to 0.74% (> 99). Rows with <= 2 policies are 19% of rows and 3.6% of positives, and have the lowest claims per policy at the top (0.0005 per policy-episode at 1 policy, 0.0001 above 99): a block group label is a Bernoulli draw whose probability depends on how many policies are there.
+- **Concentration**: 2,425 of 44,212 episodes have any positive; the top 1% of episodes hold 74% of positives and the top 5% 98%. 2015-2016 hold 46% of positives. The label is effectively about a few hundred events.
+- **Independent report** (script 61, NWS Storm Events county Flash Flood / Flood records overlapping the episode): P(report | episode has an NFIP positive) = 0.43, P(NFIP positive | report) = 0.38. Both rise together with county peak rain (positive share 1.7% below 50 mm to 44% above 150 mm; report share 1.4% to 54%). Of episodes with rain >= 75 mm and a report, 54% (965 of 1,773) have no NFIP positive. Stable across years (0.24-0.46). Each source misses roughly half of what the other sees: neither is the truth, both are incomplete detectors.
+
+## B. Label variants (trained on the variant, scored on the original label | on a strict paid > 0 label)
+
+| Variant | vs original label: within-event AUC, diff to orig [95%] | vs strict label |
+|---|---|---|
+| orig | 0.7857 | 0.8007 |
+| paid > 0 only | -0.0074 [-0.0166, +0.0016] | -0.0087 |
+| cause 4 only | -0.0006 [-0.0041, +0.0032] | -0.0001 |
+| window [start, end] | -0.0034 [-0.0072, +0.0007] | -0.0030 |
+| window [start, end + 5 d] | -0.0078 [-0.0167, +0.0015] | -0.0084 |
+| >= 2 claims positive | -0.0108 [-0.0173, -0.0050] | -0.0096 |
+| train on >= 3 policies only | -0.0019 [-0.0071, +0.0030] | -0.0025 |
+| event weights 1/sqrt(positives) | -0.0114 [-0.0246, +0.0009] | -0.0104 |
+| Poisson on claims / policies, weight policies | -0.0205 [-0.0401, -0.0037] | -0.0226 |
+
+## Conclusions
+
+- **No cleaning or reweighting of the label helps; the original is best or tied.** Even the strict label does not prefer its own training variant. Rule-based cleaning of this label is closed.
+- The exposure-aware Poisson target is worse (-0.02): the exposure effect is already in the features (log policies), and the occurrence indicator ranks better than a rate. Dropping the many small block groups from training loses nothing but gains nothing.
+- The noise is mainly **random under-detection** (insurance take-up and claim filing), not systematic misdating or mislabelled cause: cause, payment and window changes move the score by under 0.01. This agrees with stage 17 (the model is at the level its own probabilities imply, 0.791 against 0.784).
+- Where other information could matter is not the label construction but (a) **a second detector for the same flood** (episode level: Storm Events agrees on only ~40%), and (b) **sub-county ground truth** that does not depend on insurance. Within-episode ranking is what the main metric measures, and only sub-county sources inform it (see below).
+
+## Other sources (assessment, not run)
+
+| Source | Resolution | What it would do | Verdict |
+|---|---|---|---|
+| NWS flash flood warning polygons (IEM, storm-based, already used for CO/NM/AZ in stage 5) | polygon, minutes | forecaster's judgement of local hazard; a second label or a prior; ex ante in real time | cheap, TX download of the same product; subjective, issue habits drift (5x growth 2002-2022) |
+| Storm Events flood / flash flood (have 2000-2023) | county mostly, some points | episode-level second detector | agreement 0.4 above; usable only to flag episodes, not to rank block groups |
+| FEMA Individual Assistance housing registrations (OpenFEMA, ZIP) | ZIP, declared disasters only | take-up independent flood-loss indicator for the big events | covers the events that carry 74% of positives; does not need flood insurance; ZIP not block group |
+| FEMA Public / Hazard Mitigation (PA, HMGP) | project level | none for labels | skip |
+| USGS high-water marks and peak stages | points | validates large events | few points; gauge history was already null (stage 18) |
+| MRMS / Stage IV hourly QPE | 1-4 km, hourly | better hazard feature, not a label; stage 15 found no gain from sparse reconstruction | only for forecast mode |
+| Sentinel-1 GFM / Landsat flood extent | 20-30 m, 2021+ | physical inundation label independent of insurance | clouds and revisit gaps miss flash floods; only the last 3 years, too few events to train |
+| City 311 flood calls (Houston, Austin, San Antonio, Dallas) and Harris County FWS gauges | address / gauge | dense urban local ground truth, no insurance dependence | strongest sub-county candidate, but 4 cities, API work, and the reporting depends on population engagement |
+| Texas DOT road closures (DriveTexas) | road segment | flash flooding on roads | ephemeral, no archive found by me |
+| NWM reanalysis (v2.1, 1979-2020) | reach | modelled streamflow percentile as hazard feature | hazard side; a candidate for the susceptibility representation stage 22 asked for |
+
+Recommended order if the label is to be improved: (1) run script 61's join at block-group level using Storm Events point records and TX FF warning polygons to see whether positives located by an independent sub-county source are ranked better or worse than NFIP positives (test only, as extra evaluation labels, not training); (2) FEMA IA registrations for the largest events as a check that the NFIP positives of those events are representative; (3) 311 for Houston only as a pilot of a non-insurance label. Do not spend more effort on rule-based cleaning of NFIP.
+
+## Caveats
+
+- One split and one learner (boosting depth 5, L2 features), differences between variants are mostly inside the intervals; the only significant ones are negative (>= 2 claims, Poisson). No multiplicity correction over 8 variants.
+- Variants were scored on the original label, which is the noisy one; the strict label shares most positives with it, so the second column is not independent evidence.
+- "Random under-detection" is inferred from small effects of cleaning and from Storm Events agreement; take-up and filing were not modelled separately (see scripts 34-35 for take-up).
+- Episode-level agreement with Storm Events uses county records and a +-days window chosen by me; Storm Events itself under-reports and drifts (stage 6).
+- The table in "Other sources" is an assessment from documentation and earlier stages; nothing in it was downloaded or tested in this stage.
+
+
+# Stage 24: NFIP coverage by state (script 62)
+
+Question: is NFIP coverage (policies against insurable structures) uneven between states, so that the claim label means something different in different places? Penetration is FEMA's county table (contracts in force / residential structures, as of 2026-08-03, 3,159 counties); policy flow is the bulk policy file by effective year; claims are the national claim files. Output `audit/nfip_state_coverage.txt`.
+
+| State | penetration | in SFHA | share of counties < 1% | policies written 2023 (k) |
+|---|---|---|---|---|
+| Louisiana | 22.0% | 73% | 13% | 461 |
+| Florida | 13.7% | 67% | 7% | 1,751 |
+| South Carolina | 6.1% | 85% | 68% | 207 |
+| Texas | 5.8% | 48% | 55% | 677 |
+| New Jersey | 5.0% | 63% | 19% | 208 |
+| New York / North Carolina | 2.5% / 2.6% | 76% / 53% | 57% / 57% | 172 / 135 |
+| California | 1.3% | 31% | 45% | 197 |
+| Colorado / Arizona / New Mexico | 0.6% / 0.7% / 1.4% | 24% / 21% / 16% | 71% / 60% / 55% | |
+| Midwest (OH, IN, IL, MI, WI, MN, MO, IA, KS, OK) | 0.2-0.5% | 12-26% | 78-95% | |
+| national | 2.9% | | | |
+
+## Conclusions
+
+- **The between-state difference is very large.** Among the 51 states with at least 100k structures, 24 have penetration under 1% and 5 above 5%; the 90th to 10th percentile ratio is 10.5. Five states (FL, TX, LA, NJ, SC) hold 68% of policies and 21% of structures.
+- **It is the state, not only the county.** 30% of the variance of county log-penetration is between states; inside a state the spread is still large (Texas: 55% of counties under 1%, Louisiana: 13%).
+- **Even inside the flood zone coverage is incomplete outside the Gulf and Atlantic coast**: SFHA penetration is 73% (LA), 67% (FL), 48% (TX), 16% (NM), 12-19% (Midwest). Where a house is in the mapped floodplain, a claim can exist only if it was insured, so a zero label there is mostly "uninsured".
+- **The state ranking is stable in time** (Spearman of state policy counts 2010 vs 2023: 0.96; Florida 37% and Texas 12-14% of national policies throughout), and the policy counts have been falling in most states (CA 277k to 197k, MS 78k to 56k) while Texas rose to 810k in 2020.
+- **Inland claims per 1,000 policy-years differ by about 20x** (HI 1.2, CA 1.7, FL 2.5 ... TX 10.8, LA 9.6, NY 14.2, NJ 21.5, PA 22.6): they mix hazard and policy mix (Florida's policies are mostly coastal), so this is not a hazard map.
+- For the project: Texas is one of the few states where the label has enough coverage (stage 6 reached the same conclusion for CO/NM/AZ), but it is also a state with 55% of counties under 1% penetration, so the label's noise differs between counties of the same state. Models and metrics from Texas should not be carried to another state without its own coverage check; and a regional pooled model would learn penetration as much as hazard.
+
+## Caveats
+
+- The penetration table counts residential contracts and Census structures (as of 2026-08); the policy file has all occupancies and all effective years. Absolute levels do not agree (Florida 1.04 M in force against 1.7-1.8 M written per year), so use each table for rankings, not for combining.
+- Claims in part 3 are all inland-cause claims including named tropical events (Texas 105 k, against 64 k in the pilot label, which drops Harvey and similar), and the per-policy rate is claims per policy written, not per exposure-day.
+- Penetration is a ratio to all residential structures, not to structures in a flood hazard area outside the SFHA; low rates in dry states are partly low risk, not under-insurance.
+- No test of how coverage relates to the label noise inside a state (stage 34/35 have county take-up only for Texas block groups).
+
+
+# Stage 25: why some states have high NFIP coverage, and which states to study as a group (script 63)
+
+The project will not run on all of the US. This stage asks what explains high coverage (so that the choice is not arbitrary) and screens states on the properties the flood pilot needs: label coverage, inland non-tropical claim volume, and enough usable events in both the training and test periods. Output `audit/state_selection.txt`, `audit/state_screen.csv`.
+
+## 1. What makes penetration high (counterfactual decomposition: penetration = SFHA share x SFHA take-up + rest x non-SFHA take-up)
+
+| State | penetration | SFHA share of structures | SFHA take-up | non-SFHA take-up | gap to national: exposure share / SFHA take-up / non-SFHA take-up (points) |
+|---|---|---|---|---|---|
+| LA | 22.0% | 15.3% | 73% | 12.8% | +5.5 / +0.9 / **+11.1** |
+| FL | 13.7% | 13.3% | 67% | 5.6% | +4.6 / +0.7 / +4.2 |
+| SC | 6.1% | 3.9% | 85% | 2.9% | +0.2 / +1.3 / +1.6 |
+| TX | 5.8% | 4.1% | 48% | 4.0% | +0.3 / 0.0 / **+2.6** |
+| NJ | 5.0% | 6.7% | 63% | 0.8% | +1.5 / +0.5 / -0.4 |
+| NY | 2.5% | 2.0% | 76% | 1.0% | -0.7 / +1.0 / -0.3 |
+| WV | 1.0% | 8.1% | 10% | 0.2% | +2.1 / -1.3 / -1.0 |
+
+- Averaged over the six states above 4% (LA, FL, SC, TX, NJ, DE), the gap is **+3.2 points from voluntary take-up outside the mapped floodplain, +2.2 from a larger mapped floodplain, only +0.6 from take-up inside it**. Take-up inside the SFHA is near mandatory-purchase levels almost everywhere with a mapped floodplain (WV and the Midwest are the exceptions); what separates states is whether people outside it buy.
+- Large exposure alone is not enough: West Virginia has 8% of structures in the SFHA but 1.0% penetration; Mississippi 7.6% and 3.5%.
+
+## 2. Candidate drivers (county log-penetration, 2,900 counties with >= 1,000 structures)
+
+| Model | R2 |
+|---|---|
+| state effects only | 0.30 |
+| SFHA share of structures | 0.24 |
+| + earlier claims per structure (2000-2009) | 0.49 |
+| + share of policies in a CRS community | 0.55 |
+| state effects + SFHA share + earlier claims | 0.64 |
+| + CRS | 0.67 |
+
+Standardised coefficients (no state effects): earlier claims +0.67, CRS share +0.35, SFHA share +0.33.
+
+- **Earlier flood experience is the strongest single driver**: Louisiana 144 claims per 1,000 structures in 2000-2009 (Katrina, Rita), Mississippi 23, Florida and Texas 13, New Jersey 7, most others under 5.
+- **Community floodplain management matters** (CRS community share of policies: FL 97%, SC 94%, LA 81%, TX 63%, NJ 69%, against NY 10%, PA 20%, OH 8%), but it is not necessary for coverage (NY has high SFHA take-up with low CRS) and CRS discounts and take-up reinforce each other.
+- **Mandatory purchase is not what separates states**: the flagged share is 8% (TX) to 24% (KY) of 2022-23 policies, lowest in the high-coverage states, which fits "voluntary buying" as the difference.
+- A third of the county variance remains unexplained even with state effects, and state effects remain after the covariates (R2 rises from 0.30 to 0.67 only by adding both), so state-level factors outside this data (income, home value, mortgage share, state law and agencies, insurer and agent practice) are likely to matter.
+
+## 3. State screen (inland non-tropical claims 2010-2023; events = claim clusters with gaps <= 3 days in a county, >= 10 claims in >= 5 block groups)
+
+| State | penetration | SFHA take-up | inland non-tropical claims | share of all claims | usable events (train <= 2016 / test >= 2017) | claims in those events | counties >= 1% |
+|---|---|---|---|---|---|---|---|
+| LA | 22.0% | 73% | 42,617 | 48% | 225 (138 / 87) | 89% | 88% |
+| TX | 5.8% | 48% | 35,092 | 23% | 302 (194 / 108) | 83% | 34% |
+| FL | 13.7% | 67% | 17,563 | 13% | 143 (87 / 56) | 73% | 91% |
+| NJ | 5.0% | 63% | 13,073 | 11% | 117 (79 / 38) | 81% | 81% |
+| NY | 2.5% | 76% | 11,643 | 12% | 125 (66 / 59) | 71% | 41% |
+| SC | 6.1% | 85% | 6,465 | 31% | 50 (32 / 18) | 79% | 30% |
+| MS | 3.5% | 33% | 5,214 | 52% | 74 (36 / 38) | 51% | 37% |
+| PA | 0.7% | 23% | 8,013 | 37% | 153 (79 / 74) | 63% | 28% |
+| IL / MO / TN / KY | 0.4-0.8% | 17-25% | 6.7-11.8 k | 86-92% | 79-117 | 59-79% | 9-28% |
+
+## Recommendation
+
+- **Core group: Texas + Louisiana.** Highest combined label coverage with the most inland non-tropical events (527 usable events, 195 in the test period), the same Gulf climate and flood culture, adjacent, and Texas data and rain pipelines (gridMET, GEFS) already built. Louisiana's inland share is 48% of claims; its penetration is four times Texas', which makes it the natural test of whether a model transfers between a mid-coverage and a high-coverage state, and of what happens to the label noise when coverage changes.
+- **Optional third: Mississippi** (adjacent, 74 events, 38 in test) with lower coverage (3.5%) and a half-tropical claim mix.
+- **Not as training states for the inland label**: Florida (inland claims are 13% of the total; coastal and tropical regime, so a rain-episode label does not describe it), South Carolina and Delaware (too few events), New Jersey / New York (usable volume, but a nor'easter / snowmelt regime and no existing pipeline; consider a later northeast block).
+- **Low-coverage states with many claims (IL, MO, TN, KY, OH, PA)** have enough events but penetration under 1% and SFHA take-up under 25%: their zeros are mostly "uninsured". Use them as an out-of-region stress test of how the model degrades with coverage, not as a place to train.
+
+## Caveats
+
+- The drivers are county-level correlations from NFIP and FEMA fields only; no income, home value, mortgage share, state policy or insurer data was added, and FEMA disaster declarations are available locally only for CO/NM/AZ. Causal reading ("flood experience causes take-up") is not supported.
+- `exp0009` is claims in 2000-2009 per structure, including named tropical events, and policies and claims are not independent (claims need a policy); the CRS share is policy-weighted and CRS discounts feed back on take-up.
+- Penetration is a 2026 snapshot; policy flow is stable in time (stage 24), but a state that changed regime after the Risk Rating 2.0 transition (2021-22) would show it only in later years.
+- Event counts use my claim clustering (3-day gaps), not rain episodes; the usable events in a state also depend on the rain trigger (>= 30 mm) and need to be checked with each state's gridMET series.
+- Louisiana's block-group boundaries and 2010/2020 crosswalk, and its tropical-window exclusion, were not checked.
+
+
+# Stage 26: relaxing the filters that isolate storm-triggered floods (script 64)
+
+Question: nothing proves that the stage 8 filters (cause 2/3/4, no tropical event name, no episode inside a tropical-cyclone window) separate storm-triggered floods from the rest. How much does the label and the model move when they are loosened one at a time? Texas, 2010-2023; table rebuilt without the tropical exclusion (`table_notc.parquet`, 3.17 M rows, 46,659 episodes of which 3,270 in a TC window; built with `scripts/25 --tc-file tc_flag_none.npy`). Output `audit/label_scope_relaxation.txt`.
+
+## A. Do the filters separate rain-triggered claims? (share of claims with county 1-day maximum >= 30 mm in the 4 days up to the loss date)
+
+| Class | claims | rain >= 30 mm | rain >= 50 mm |
+|---|---|---|---|
+| inland, named tropical | 70,300 | 0.987 | 0.984 |
+| **inland, not tropical (stage 8 label)** | 33,364 | **0.944** | **0.899** |
+| inland, unnamed, in TC window | 1,625 | 0.890 | 0.859 |
+| other / missing cause, named tropical | 30,929 | 0.985 | 0.981 |
+| other / missing cause, not tropical | 10,500 | 0.823 | 0.754 |
+| tidal, not tropical | 475 | 0.686 | 0.600 |
+
+- The cause filter does what it should: claims dropped as tidal or "other" have clearly less rain support (0.69-0.82) than the kept class (0.94). But the separation is a gradient, not a switch: 5.6% of the kept claims have no 30 mm day nearby, and "other" non-tropical claims are still 82% rain-supported.
+- **The tropical filter is not removing non-storm floods; it removes the biggest storm floods.** Named tropical claims are as rain-supported as any (0.99). The stage 8 class holds only 22% of Texas claims 2010-2023 (Harvey alone is most of the rest).
+
+## B. Scope ladder (trained 2010-2016 on its own scope, tested 2017-2023)
+
+| Scope | episodes | label | positives train / test | share of positives in TC episodes | top-10 episodes' share |
+|---|---|---|---|---|---|
+| S0 (stage 8) | non-TC | inland, no tropical name | 7,519 / 3,673 | 0 | 0.22 |
+| S1 | all | inland, no tropical name | 8,223 / 3,837 | 0.07 | 0.21 |
+| S2 | all | inland, incl. named tropical | 8,361 / 8,237 | 0.33 | 0.28 |
+| S3 | all | every cause | 10,312 / 10,348 | 0.31 | 0.26 |
+
+Within-event AUC of each model on fixed evaluation sets (difference to the S0 model, event-clustered 95% interval):
+
+| Evaluation set | S0 model | S1 | S2 | S3 |
+|---|---|---|---|---|
+| E0: non-TC test episodes, stage 8 label (995 episodes) | 0.7858 | +0.0016 [-0.0025, +0.0054] | +0.0010 [-0.0033, +0.0045] | +0.0036 [-0.0007, +0.0077] |
+| E1: TC test episodes, label incl. named tropical (152 episodes, 4,561 positives) | 0.7652 | -0.0019 [-0.0060, +0.0063] | -0.0031 [-0.0080, +0.0055] | +0.0010 [-0.0025, +0.0093] |
+| E2: all test episodes, same label (1,149 episodes) | 0.7768 | +0.0001 [-0.0029, +0.0036] | -0.0008 [-0.0040, +0.0025] | +0.0025 [-0.0003, +0.0061] |
+
+Own scope (train and test on the same scope): S0 0.7858, S1 0.7865, S2 0.7760, S3 0.7666.
+
+## Conclusions
+
+- **The model's within-event ranking does not depend on these filters.** A model trained with the tropical episodes and the named tropical and tidal/other claims added ranks the stage 8 test set the same (+0.001 to +0.004, all intervals contain 0), and the stage 8 model ranks tropical-window episodes at 0.765, only 0.02 below its score outside them. Rain at the cell plus exposure ranks block groups within a tropical storm almost as well as within an ordinary storm.
+- **The label composition does depend on them.** Relaxing the tropical filter doubles the test positives (3,673 to 8,237), and 55% of the test positives (4,561 of 8,237) come from TC episodes, mostly one system (Harvey, 2017). The own-scope scores fall 0.01 (S2) and 0.02 (S3) because the test set then consists of those large systems, not because training was hurt.
+- So the unproven separation matters little for **ranking inside an event**, which is what the pilot measures, and a lot for **how many positives and which events dominate**, hence for absolute probabilities, event-level skill and any pooled score. The filter choice should be fixed by what the downstream use is (rain-only forecast vs a model with wind / surge), not by a test of ranking skill.
+- The cause code is the only filter with observed separating power (rain support 0.94 against 0.69-0.82); a hard test of "storm-triggered" would need an independent label (stage 23: warning polygons, Storm Events, FEMA IA).
+
+## Caveats
+
+- The tropical distinction is by the claim's event name and by an 800 km, +-2 day best-track window; 25% of claims have no event name, so "not tropical" is still not certain. Rain support uses the county daily maximum, which is high for big counties, and a rain-supported claim is not necessarily rain-caused.
+- E1 is 152 episodes dominated by few systems (Harvey 2017, Imelda 2019); the event-clustered bootstrap ignores correlation across counties of the same storm, so its intervals are too narrow.
+- Features contain only gridMET daily rain, antecedent rain and exposure; nothing about wind, surge, river routing or tides, so the model ranks tropical floods well only to the extent they are rain-driven. Tidal cause (475 non-tropical claims) is too small to test.
+- One split, one learner, no multiplicity correction over the 3 x 3 differences; Texas only (Louisiana, with more tropical flooding and a higher tidal share, may behave differently).
+
+
+# Stage 27: state group when tropical / extreme storm floods stay in the label (scripts 65, 66)
+
+Decision (user): model storm and tropical floods together as "extreme weather" floods, and choose the data group on that basis; the feature that separates ordinary from extreme weather may also be useful for extreme weather in general. Stage 26 showed that keeping them changes little in within-event ranking, so the screen of stage 25 is redone for the wider label. Outputs `audit/state_group_extreme.txt`, `audit/state_screen_extreme.csv`.
+
+## A. Screen (all inland-cause claims 2010-2023 incl. named tropical; events = county claim clusters with gaps <= 3 days, >= 10 claims in >= 5 block groups; regime `extreme` = at least half of the claims named tropical or inside a best-track window of 800 km, +-2 days, all 3,108 counties; train <= 2016 / test >= 2017)
+
+| State | penetration | claims | extreme share of claims | ordinary events train / test | extreme events train / test |
+|---|---|---|---|---|---|
+| TX | 5.8% | 105,410 | 0.68 | 177 / 96 | 24 / 58 |
+| LA | 22.0% | 67,028 | 0.39 | 131 / 68 | 24 / 56 |
+| FL | 13.7% | 66,659 | 0.79 | 66 / 32 | 63 / 117 |
+| PA | 0.7% | 19,566 | 0.61 | 80 / 69 | 39 / 36 |
+| NY | 2.5% | 36,010 | 0.69 | 62 / 51 | 54 / 19 |
+| NC | 2.6% | 24,509 | 0.85 | 39 / 12 | 64 / 53 |
+| NJ | 5.0% | 66,681 | 0.82 | 64 / 30 | 42 / 26 |
+| VA | 2.7% | 8,108 | 0.60 | 33 / 19 | 41 / 12 |
+| MS | 3.5% | 7,653 | 0.38 | 36 / 31 | 11 / 16 |
+| SC | 6.1% | 11,926 | 0.50 | 30 / 11 | 15 / 25 |
+| IL / MO / KY / OH / TN / IN / IA | 0.4-0.8% | 3-12 k | 0.01-0.05 | 42-69 / 15-48 | 0-5 / 0-6 |
+
+Pooled candidate groups:
+
+| Group | states | events | ordinary train / test | extreme train / test | extreme share of claims | penetration (weighted; min-max) |
+|---|---|---|---|---|---|---|
+| TX alone | 1 | 355 | 177 / 96 | 24 / 58 | 0.68 | 5.8% |
+| TX + LA | 2 | 634 | 308 / 164 | 48 / 114 | 0.57 | 8.3% (5.8-22) |
+| **TX + LA + FL** | 3 | **912** | 374 / 196 | 111 / 231 | 0.63 | 10.6% (5.8-22) |
+| TX + LA + MS + FL | 4 | 1,006 | 410 / 227 | 122 / 247 | 0.62 | 10.2% (3.5-22) |
+| TX LA MS AL FL GA SC NC | 8 | 1,359 | 517 / 278 | 210 / 354 | 0.63 | 7.3% (1.3-22) |
+| above + VA NJ NY | 11 | 1,812 | 676 / 378 | 347 / 411 | 0.67 | 6.3% (1.3-22) |
+
+## B. Conclusions on the group
+
+- With tropical floods in scope **Florida becomes a core state** (stage 25 rejected it for an inland-only label): 13.7% penetration, the most extreme events of any state (63 / 117) and enough ordinary ones (66 / 32).
+- **Recommended core: Texas + Louisiana + Florida.** 912 events, both regimes present in both periods (>= 24 events in each cell, >= 32 for Florida), the strongest and most varied coverage (5.8%, 13.7%, 22%), one broad Gulf climate, and the Gulf coast is where extreme events recur. TX + LA alone has only 48 extreme events in training.
+- **Second ring, as transfer tests**: New Jersey (5.0%, 64 / 30 ordinary, 42 / 26 extreme; Irene, Sandy, Ida, nor'easters) and New York as a different climate with both regimes; Mississippi as a cheap adjacent addition (11-16 extreme events); North Carolina (extreme-rich, only 12 ordinary events in test) and South Carolina (small).
+- **Low-coverage states with many events (PA, IL, MO, KY, OH)**: events are plentiful and Pennsylvania has both regimes, but penetration is under 1%; use as a coverage stress test, not for training. The Midwest has almost no extreme events in this definition (tropical remnants only), so it cannot teach the regime contrast.
+- The group choice reduces to **two axes**: coverage (label reliability) and the presence of both regimes. TX + LA + FL is the smallest set that has both on all four cells (train / test x ordinary / extreme) with meaningful counts.
+
+## C. Does a regime feature help? (script 66, Texas, episode level)
+
+Within-event AUC cannot show it, because a regime feature is constant inside an event; the test is between events: does a county rain episode have any claim (all inland claims), and how many (train <= 2016, test >= 2017, 20,248 / 26,411 episodes; 7.0% of episodes are in a tropical window and they hold 33% of positives; P(any positive) is 9.5% in TC episodes and 5.5% otherwise).
+
+| Features | AUC, any positive | Spearman, log positives | AUC in TC test episodes |
+|---|---|---|---|
+| county rain, duration, month, block groups | 0.9176 | 0.303 | 0.919 |
+| + TC-window flag | 0.9175 | 0.303 | 0.918 |
+| + extremeness percentile (county peak and 3-day sum against the county's own training distribution) | 0.9178 | 0.303 | 0.922 |
+| + both | 0.9175 | 0.303 | 0.920 |
+
+- **No gain from the TC flag or from the percentile feature once raw county rain is there** (differences of 0.0003 against a year-to-year spread of 0.906-0.928). Rain already carries the extremeness: the share of episodes with a claim rises smoothly with the county-relative percentile of the episode peak (1.9% below the median, 4.9%, 12%, 27.5%, 47% in the top 1%), and the top 1% of episodes (395) hold roughly three quarters of claims. Ordinary versus extreme is **a gradient, not two regimes** (the TC flag is only a rough marker of its upper end: tropical share 6% at the bottom, 20% at the top).
+- The size of an event (number of claimed block groups) is poorly predicted at the event level (Spearman 0.30) with this information; the within-event ranking (0.79) and the event-level occurrence (0.92) are the strong parts.
+
+## Caveats
+
+- "Extreme" here is tropical (name or best-track window). Non-tropical extremes (the 2015 Texas floods, Louisiana in August 2016) are counted as ordinary in part A; a rain-based extremeness (percentile of the county's own history) would cover both, but needs the rain series of every candidate state, which only Texas has.
+- The percentile feature is built from the county's own 2010-2016 episodes, so it is a county-normalised rain. Its value should appear when states are pooled (a millimetre of rain does not mean the same in Texas and Louisiana) and in forecast mode (where the rain is uncertain); neither is tested here, so the null above is Texas, observed rain, only.
+- Event counts use my 3-day clusters, penetration is a 2026 snapshot, and claims in overlapping episode windows can be counted twice in the bin table; 25% of claims have no event name, so the `extreme` regime relies on the best-track window for those.
+- Florida, with its coastal and tropical claims, needs its own check of the tidal cause (cause 1 is excluded here) and of block-group boundaries before it is added to a pipeline built for Texas.
+
+
+# Stage 28: NOAA regional definitions of the candidate states (literature lookup, nothing computed)
+
+Question: which climate / weather region does NOAA assign the candidate states to? Looked up on 2026-10-28 in NOAA/NCEI, NWS and the Fifth National Climate Assessment (NCA5, NOAA-led). NOAA has no scheme of "weather-phenomenon zones" for flooding; the available definitions are climate regions (NCEI), service regions (NWS, Regional Climate Centers) and assessment regions (NCA5).
+
+| State | NCEI climate region (9, Karl & Koss) | NCA5 region | NWS region | Regional Climate Center |
+|---|---|---|---|---|
+| TX | South | Southern Great Plains (KS, OK, TX) | Southern | Southern (TX A&M) |
+| LA | South | Southeast | Southern | Southern |
+| MS | South | Southeast | Southern | Southern |
+| FL | Southeast | Southeast | Southern | Southeast |
+| NC, SC | Southeast | Southeast | Eastern | Southeast |
+| NJ, NY, PA | Northeast | Northeast | Eastern | Northeast |
+
+- NCEI South = AR, KS, LA, MS, OK, TX; Southeast = AL, FL, GA, NC, SC, VA; Northeast = CT, DE, ME, MD, MA, NH, NJ, NY, PA, RI, VT (the dynamic NCEI page did not load; these lists come from search snippets of the archived NCEI page and a NOAA figure, not from a page read in full).
+- NCA5 Southeast (11 states): AL, AR, FL, GA, KY, LA, MS, NC, SC, TN, VA. NCA5 Northeast (13 incl. DC and WV). Texas is in the Southern Great Plains chapter, not with Louisiana and Florida.
+- NWS Southern Region (Fort Worth) holds NM, TX, OK, AR, LA, MS, TN, AL, GA, FL; Eastern Region holds NJ, NY, PA and the Carolinas.
+
+## What the sources say about the flood hazard
+
+- **Southern Great Plains (TX)**: rainfall falls from about 10-15 in/yr in the west to over 50 in at the eastern edge; days with >= 2 in have become more frequent, especially in the east; Houston flooded in 2016, 2017, 2019 and 2020; Texas had 19 named tropical storms 2000-2021, 8 hurricanes (Harvey, Ike, Rita). The chapter text read here did not address severe convective storms.
+- **Southeast (LA, MS, FL, ...)**: extreme rainfall is increasing; hurricanes are more likely to slow or stall near the coast, which increases rainfall flooding (link to climate change stated as uncertain); compound flooding (rain with tide or surge) already affects low-lying coastal plain; sea level rose about 6 in 1970-2020.
+- **Northeast (NJ, NY, ...)**: the wettest 1% of days increased by about 60%, the largest of any region; short intense urban downpours (Henri and Ida in 2021 set one-hour records in New York City); tropical systems and nor'easters raise surge; a tropical contribution reaches inland to West Virginia.
+
+## Implications for the group
+
+- TX + LA + FL do not share one NOAA region under any single scheme, but all three lie in the NWS Southern Region, and the NCEI South / Southeast regions are adjacent on the same humid-subtropical Gulf coast. The common flood mechanism in the NCA5 text is heavy rain from convective systems and tropical cyclones (including stalled ones) on a low coastal plain, with compound rain-surge flooding. That supports treating them as one "extreme weather" group (stage 27).
+- **Texas is internally heterogeneous** (an arid west, a humid east): its flood episodes come from the eastern half, which is the part that resembles Louisiana. A Texas-wide pilot mixes an arid and a humid climate; a precipitation-gradient stratum (or NCEI climate division as a grouping factor) is the natural way to control for it.
+- NJ and NY are a different regime (NCA5 Northeast): the second-ring transfer test of stage 27 is also a test across NOAA regions.
+- Louisiana and Mississippi are in the NCEI South with Texas but in the NCA5 Southeast with Florida, so the pairing TX + LA is not a NOAA unit by the NCA5 definition.
+
+## Caveats
+
+- NCEI's nine-region state lists were confirmed from search results, not from a full page read; the NCA5 chapters were read only in their first 100,000 characters (of about 230-290 k), so hazard statements are from the opening sections.
+- Regional schemes differ by purpose (climate monitoring, forecasting services, assessment), so no single "region of the candidate group" exists; the table shows all of them.
+- Nothing here was tested against the data; whether a region or climate-division factor explains label differences between states is open.
+
+
+# Stage 29: USGS and university sources for prior features of the candidate states (literature lookup + script 67)
+
+A first sweep of USGS reports and state-university studies (TX, LA, FL) for priors that could enter the model, plus one check against our own claims. Nothing was downloaded. Searches covered USGS regression-equation reports, USGS post-event data, NOAA Atlas 14 and university flood studies; the Florida university search found little (see caveats).
+
+## What was found
+
+| Source | Content | Prior feature it suggests |
+|---|---|---|
+| NOAA Atlas 14, Vol. 11 (Texas, 2018) and Vol. 9 (southeastern states, 2013; the state list of Vol. 9 was not confirmed in the search) | gridded rainfall depth by duration and return period; Texas 100-year 24-hour values changed from the older TP-40 by -40% to +152% (up to 13 in near Austin); Atlas 15 (trend-aware, national) is still in development | **rainfall as a return period at the block-group cell**: the same extremeness scale in every state, which the county-percentile feature of stage 27 cannot give when pooling states |
+| USGS SIR 2024-5031 (Louisiana Coastal Plain peak-flow equations, 211 gauges to 2016) | the retained predictors are only drainage area and channel slope (10-85% points of the longest flow path); precipitation, soil, land use were tested and dropped; basins above 10% impervious, and sites affected by backwater, surge or tide, are excluded; regional skew -0.17 | stream-network descriptors (drainage area, channel slope) rather than centroid terrain, which stage 22 found null; and an explicit statement that urban and tidal flooding is outside what peak-flow regressions describe |
+| USGS Texas equations (SIR 2009-5087, 559 stations in an older report) | undeveloped watersheds only | same: nothing for urban flooding |
+| USGS Harvey products (SIR 2018-5070; data release DOI 10.5066/F7VH5N3N) | 2,123 high-water marks in 22 Texas counties and 3 Louisiana parishes, 19 inundation maps | **independent sub-county flood label for the largest event**, not tied to insurance (the "second detector" asked for in stage 23). Louisiana August 2016 and Florida Ian marks were not found by this search |
+| Rice University / Texas A&M-Galveston (Armand Bayou, 1999-2009, 5 events, none reaching a 100-year rainfall) | about 75% of damage outside the mapped 100-year floodplain; reasons given: one-dimensional flow assumptions, neighbourhood-wide soil and surface classes, short intense storms below the 100-year threshold | prior on the **share of loss outside the mapped floodplain** and on imperviousness / flat terrain as reasons |
+| Rice Kinder Institute (modelled Harvey damage, Harris County); Nature 2022 (parcel-level Harvey) | about 73% of expected damaged homes outside the 100-year zone; 76.1% of flooded parcels outside the SFHA; 47% of Greater Houston claims outside it over three decades | same prior, three methods agreeing at 47-76% |
+| Louisiana recovery reports | August 2016: NWS called the rainfall a 1,000-year event; 91,628 households flooded; 45% of affected renter households outside the SFHA | LA 2016 as a non-tropical extreme case; state recovery data (FEMA IA, housing) as an independent label |
+| SWFWMD (Florida) | preliminary flood-prone-area maps not in the FIRMs | local layers, case by case |
+
+## Our own claims against that prior (script 67; ratedFloodZone of inland claims 2010-2023, share outside the SFHA)
+
+| State | named tropical | not tropical |
+|---|---|---|
+| TX | 54% | 52% |
+| NY | 33% | 46% |
+| NC | 21% | 38% |
+| MS | 36% | 35% |
+| SC | 24% | 33% |
+| FL | 16% | 32% |
+| LA | 26% | 28% |
+| NJ | 11% | 16% |
+| all states | 29% | 35% |
+
+- **The literature prior is reproduced by the claims**: about half of Texas claims (52-54%, 42-70% by year) sit in rated zones outside the SFHA (Kinder: 47% of Greater Houston claims), against 28% in Louisiana and 11-16% in New Jersey. National share outside is 32%.
+- **This ties to stage 25**: the states with high take-up outside the floodplain (Louisiana 12.8%) show fewer claims outside it than Texas (4.0%) because Louisiana's insured base is mostly inside it; a state's label reflects where insurance is, not only where water goes.
+- **Tropical vs not does not move Texas** (54% vs 52%) but does move Florida (16% vs 32%) and North Carolina (21% vs 38%), where tropical claims are mostly coastal zones. The "extreme" regime therefore has a different spatial footprint in different states, which a pooled model should not assume to be constant.
+
+## Candidate priors, in order of expected value for the pilot
+
+1. **Rainfall return period from Atlas 14** at the cell (24 h, 3 day), replacing or complementing raw mm and the county percentile; the cross-state scale for pooling and the extremeness gradient of stage 27.
+2. **Share of the block group inside the SFHA / outside it** (already in the table as `sfha_share`, from policies) with a state-level prior on the expected outside share (TX about half, LA about a quarter, FL and NJ lower).
+3. **USGS high-water marks (Harvey, then others)** as an independent test label for sub-county ranking.
+4. **Drainage area and channel slope of the nearest stream reach** (USGS StreamStats / NHDPlus), against the failed centroid terrain.
+5. Imperviousness / flat low-relief indicator (named in the Rice study; NLCD, not yet in the repository).
+
+## Caveats
+
+- Search-level reading: the Atlas 14 volume coverage for Louisiana, Mississippi and Florida was not confirmed; the Rice and Kinder figures are secondary descriptions; no university study from Louisiana or Florida on this topic was found by two searches (a narrower search of LSU, UL Lafayette, Tulane, UF, FIU is open). Not a systematic review.
+- `ratedFloodZone` is the zone used to rate the policy, not necessarily today's mapped hazard at the building; shaded-X and unmapped X are both "outside", and the share of claims outside is conditional on being insured.
+- None of the priors was tested against the pilot yet; the previous ablations (terrain, NFHL, HAND, gauges) were null, so the expectation for any new static layer should be low unless it carries information the claim history does not (stages 17-22).
+
+
+# Stage 30: what meteorological event reports add (NWS / NHC / NOAA reports, script 68)
+
+Question: can the meteorological analyses of the big events in the candidate states supply information the model can use? Sources: NHC tropical cyclone reports, NWS Service Assessments and office event summaries, NOAA-hosted papers (searches, partial reading of snippets; the full NOAA paper on the 2016 Louisiana rarity was not readable as a PDF here).
+
+## What the reports say (facts to use as event descriptors)
+
+| Event | Mechanism (from the reports) | Rain | Remarks |
+|---|---|---|---|
+| Harvey 2017 (TX, LA) | stalled and reversing hurricane, centre near the coast for four days | storm total 60.58 in (Nederland TX), a US record; NWS Service Assessment: about 57% of Harris County gauges at record flooding | WPC and models underpredicted the upper Texas coast and SW Louisiana; the heavy-rain centroid of the QPF was displaced about 110 miles |
+| Imelda 2019 (TX) | slow, looping tropical storm; a feeder band kept storms training over the same area | peak 44.29 in near Fannett, 31 in in 12 h | short, localized, training |
+| Louisiana August 2016 | slow upper-level low over deep tropical moisture (precipitable water roughly 2.0-2.9 in), continuous Gulf inflow, a non-tropical system | 20-30 in in 2-3 days; 48-hour total 31.39 in, a Louisiana record; Lafayette 22.89 in in two days | called a 1,000-year rainfall; 91,628 households flooded |
+| Fort Lauderdale April 2023 (FL) | stalled front plus an upper-level disturbance, non-tropical | over 25 in in under 24 h, about 20 in in 6 h | NWS: 1,000-year rainfall; the previous one-day record was 14.59 in |
+| Ian 2022 (FL) | landfall hurricane; worst flooding on rivers north of the track | peak 26.95 in (Grove City); second maximum 21.49 in at Daytona Beach; a dry slot kept totals lower south of the track | record river floods (Peace, Myakka, Alafia) |
+| Memorial Day 2015, Tax Day 2016 (TX) | mesoscale convective systems; Tax Day with extreme-rain cells and tornadoes embedded | Blanco headwaters 12-13 in in 4-6 h; Houston Tax Day cells | peer-reviewed analyses exist (Nielsen and Schumacher for Tax Day; a NOAA paper on the Blanco); return periods are in their figures, not retrieved |
+
+The reports agree on three ingredients: anomalous moisture (precipitable water), slow or stalled motion, and organised repeated rain over the same area (training). Four of the six events are not tropical or are only partly so; the difference between "tropical" and "other" is smaller than the difference in how organised and how long-lasting the rain was.
+
+## Check in the pilot table (Texas; within-event AUC of two single scores, pooled over the event's county episodes)
+
+| Event window | county episodes with an AUC | claimed share of block groups | county peak mm (p50 / p90 / max) | AUC cell rain | AUC policies |
+|---|---|---|---|---|---|
+| Memorial Day 2015 | 58 | 5.9% | 73 / 142 / 257 | 0.636 | 0.731 |
+| October 2015 | 27 | 1.2% | 132 / 213 / 645 | 0.654 | 0.598 |
+| Tax Day 2016 | 29 | 9.2% | 76 / 192 / 375 | 0.791 | 0.724 |
+| Harvey 2017 | 28 | 29.5% | 63 / 341 / 672 | **0.571** | **0.784** |
+| Imelda 2019 | 10 | 4.3% | 60 / 123 / 536 | **0.823** | 0.473 |
+
+- **Where the rain falls inside a county decides which information ranks block groups.** In Harvey the whole county was wet, so cell rain ranks almost nothing (0.57) and exposure ranks well (0.78); in the localized, training events (Imelda, Tax Day) cell rain ranks well (0.82, 0.79) and exposure little or modestly.
+- **Over all 2,570 episodes** the same holds as a gradient of the spread of cell rain inside the county (std / mean): cell-rain AUC rises from 0.559 in the quarter of episodes with the most uniform rain to 0.755 in the quarter with the most spread, while the exposure score stays at 0.67-0.70.
+- **The stage 8 model does not gain from being given the spread** (std, CV and range of cell rain in the episode: within-event AUC 0.7849 against 0.7857, difference -0.0008 [-0.0045, +0.0029]): the boosting model already sees the county maximum, the county mean and the cell's deviation from it, which carry the same information. The mechanism shows up in the table above but needs no new feature.
+
+## Conclusions
+
+- The meteorological reports give a **mechanism-based description of extreme events** (moisture anomaly, motion, organisation / training) that explains why "ordinary vs extreme" is not what separates skill: the spatial structure of the rain is. Within-event ranking depends on it; the existing features already encode it.
+- For the candidate group, the reports show the same three ingredients in Texas, Louisiana and Florida events, tropical or not, which supports one group model (stage 27, 28) and argues against a hard tropical / non-tropical switch (stage 26: no loss of skill when relaxed).
+- What the reports add that the data cannot: event-level **forecast guidance on missed placements** (Harvey: QPF centroid 110 miles off), the moisture and motion ingredients available before the event (precipitable water, storm speed, stall time), and return-period statements (1,000-year) that can be checked against Atlas 14 once the grids are in the repository.
+- Event-level ingredients (precipitable water, storm motion, duration of the stall) are constant inside an event, so they can improve between-event and forecast-mode discrimination, not within-event ranking; stage 27 found no gain from a TC flag or a county percentile at the event level, so the expectation for them should also be low unless they carry information beyond the rain amount.
+
+## Caveats
+
+- The reports were read through search results and a few pages; numbers are as reported (the NOAA site also quotes 51.88 in for Harvey in one place, against 60.58 in the NHC and NWS reports; I used the latter). The return-period figures of the Tax Day, Memorial Day and Louisiana papers were not retrieved.
+- Five Texas events, two of them tropical windows with few county episodes (Imelda has 10 episodes with an AUC); the event table is descriptive, with no interval.
+- Cell rain is a gridMET daily value at the block-group centroid; the stage 15 hourly MRMS test showed that sparse reconstruction does not improve on observations alone, so intra-day structure (training, short bursts) is not in the table.
+- Louisiana and Florida events were not placed in a table because only Texas has the pilot pipeline.
+
+
+# Stage 31: observation products that measure the three ingredients (lookup + script 69)
+
+The three ingredients of the event reports (stage 30) are anomalous moisture, slow or stalled motion, and organised repeated rain. Which operational products describe each, from which sensor (radiosonde, satellite, radar), and what does the repository already hold? Product descriptions come from searches (NOAA / NSSL / NCEI / NWS training pages); items I could not confirm are marked.
+
+## Product map
+
+| Ingredient | Sensor | Product | Resolution / period | Use here |
+|---|---|---|---|---|
+| Moisture (precipitable water, PW) | radiosonde | IGRA v2 derived parameters: PW from the surface to 500 hPa, from over 2,700 stations | station, twice a day (00 and 12 UTC); long record | few sites per state; a check, not a grid |
+| | GPS | NOAA GPS-Met integrated PW, hundreds of sites (mostly CONUS), 30 min, 2002-05 to 2016-11 at NCEI; a daily NOAA GPS-IPW series to 2025 at the NCAR RDA (d735000) | station | station anomaly series; coverage of TX / LA / FL not checked |
+| | satellite | MIMIC-TPW2 (CIMSS): hourly global composite of microwave retrievals, moved to the target time with GFS 1000-600 hPa winds; NESDIS blended TPW with a percent-of-normal anomaly against the NVAP 1988-1999 climatology | hourly, global, coarse | anomaly field over the Gulf, but the archive access and the start date were not confirmed |
+| | model / reanalysis | ERA5 total column water vapour; HRRR PWAT (archive on AWS `noaa-hrrr-bdp-pds` since 2014, Zarr copy at the University of Utah) | 0.25 deg hourly; 3 km hourly | the practical gridded choice; WPC / NAEFS standardised PW anomalies were not found in the searches |
+| Motion / stall | model winds / soundings | slow Corfidi up / downshear vectors (< 15 kt) listed as favourable in NWS flash-flood training; slow storms flood alone, fast storms need training | derived from sounding or model winds | a derived index, needs the wind profile |
+| | best track | HURDAT2 position and wind every 6 h (in the repository): dwell near a county, closest approach, translation speed | tropical cyclones only | script 69 below |
+| | radar / satellite | storm-motion tracking from MRMS or GOES cloud motion: no product description found in the searches | | unconfirmed |
+| Organisation, rain rate, training | radar | MRMS dual-pol QPE every 2 min; FLASH: 1 km, 5 min, QPE against flash-flood guidance and against average recurrence interval (ARI); CREST maximum unit streamflow (0.01 deg, 15 min in a 2015 draft description) | 1 km; MRMS on AWS since 2020-10 (stage 5) and at IEM; an archived MRMS-FLASH set was used by a lab for 2018-06 to 2019-05; no official archive portal found | the direct measure of rate x duration at a cell; short archive |
+| | satellite | GOES-R ABI Rainfall Rate / QPE: per-pixel rate (0-100 mm/h) from bands 8, 10, 11, 14, 15, every 10-15 min; IMERG: 0.1 deg, 30 min, about two decades | 2 km / 10 km | IMERG for the earlier years (Final Run start not confirmed) |
+| | framework | Doswell et al. (1996): heavy rain = sustained rate (ascent, moisture, precipitation efficiency) x duration (storm speed and size along the motion) | | how the three ingredients combine |
+
+**In the repository**: ERA5 pressure-level fields (t, q, u, v at 850, 700, 500 hPa) and single-level fields, 2000-2022 May-September, but only for the box 29-43 N, 120-99 W (the CO / NM / AZ line), so not the Gulf; GEFS reforecast rain (APCP only); hourly MRMS crops of 8 Texas events (stage 15); gridMET daily rain; HURDAT2. No moisture or wind field exists for Texas, Louisiana or Florida.
+
+## Test of the motion ingredient from the best track (script 69, Texas)
+
+3,270 county episodes inside a tropical-cyclone window, 1,566 with a track point within 500 km; 9.5% have a claim. Spearman with the number of claimed block groups: county peak rain +0.35, mean rain +0.34, hours within 500 km +0.26, closest approach -0.27, translation speed +0.15, maximum wind +0.23. Leave-one-year-out logistic models, any claim:
+
+| Features | AUC | Spearman with claimed block groups |
+|---|---|---|
+| county rain, duration, block groups | 0.9228 | 0.432 |
+| + dwell, closest approach, speed, wind | 0.9274 | 0.437 |
+| track features alone | 0.7226 | 0.230 |
+
+- The track features carry information on their own (0.72) but add only +0.005 AUC and +0.005 Spearman over observed county rain: the rain already reflects the stall. They are available days ahead from the NHC forecast track, so their value should be larger in forecast mode, where the rain is uncertain; this is not tested.
+- A speed of zero or a missing track within 500 km is coded as no dwell, which mixes "far away" and "fast"; the sign of speed is therefore not interpretable.
+
+## Conclusions
+
+- All three ingredients have operational products: PW (radiosonde, GPS, microwave satellite, reanalysis / HRRR), rain rate and organisation (MRMS radar QPE and FLASH, GOES RRQPE, IMERG), motion (derived from winds, and from the best track for cyclones). The gridded, long-record, multi-state choices are ERA5 (PW, winds) and IMERG / Stage IV (rain rate); radar products have short archives.
+- The cheapest new information is not in the repository for the Gulf: ERA5 total column water vapour and low-level winds over TX / LA / FL (a CDS request, as for the existing box).
+- Given stages 17, 22 and 27-30, expectations should be modest for within-event ranking (event-level ingredients are constant inside an event) and larger for between-event and forecast-mode use.
+
+## Caveats
+
+- Product descriptions are from search results; the archive start dates and access routes of MIMIC-TPW2, the NESDIS blended TPW, IMERG Final Run and GOES RRQPE were not confirmed; WPC / NAEFS standardised PW anomalies, SPC mesoanalysis, MRMS PrecipRate and satellite motion products were not found by the searches (not shown to be absent).
+- Script 69 is one state, 3,270 correlated episodes (a few storms), no interval, a linear model; track features at the county scale, not the cell.
+
+
+# Stage 32: ERA5 moisture and wind ingredients for the Gulf box (scripts 70, 71)
+
+Data: ERA5 total column water vapour and specific humidity, u, v at 500 / 700 / 850 hPa, 24-37 N, 107-79 W, 0.25 deg, 00/06/12/18 UTC, 2009-2023 (`cds_gulf/`, 75 files, 2.8 GB; registered in `docs/DATA_SOURCES.md`, manifest and lock updated). A whole year of pressure levels exceeds the CDS cost limit (HTTP 403 "cost limits exceeded"), so the pressure-level jobs were queued by quarter. All 75 files were read through without errors; no missing values.
+
+Question: do the moisture and wind ingredients of the event reports (stages 30, 31) explain differences between Texas rain episodes beyond the observed county rain? Per county episode (46,659; 5.8% with a claim; all inland claims including tropical): maximum tcwv and its z-score against the cell's own same-month climatology (2009-2016), mean 850 hPa humidity, speed and moisture flux q x |V|, mean 500 hPa speed (steering-flow proxy).
+
+## Results
+
+- **The ingredients describe the named events as the reports did.** Median tcwv and z-score of the county episodes: Harvey 58.4 kg/m2 (z +1.85, 90th percentile +3.10), Imelda 54.3 (+1.63), Memorial Day 2015 47.8 (+1.58), Tax Day 2016 42.3 (+1.56). The 500 hPa wind is weakest in the two stalled / slow tropical systems (Harvey 8.2 m/s, Imelda 7.6 m/s) and stronger in the convective events (Memorial Day 14.6, Tax Day 12.1 m/s), the stall signature the reports gave.
+- **Each ingredient correlates with the number of claimed block groups** (Spearman, all episodes | tropical-window episodes): county peak rain +0.24 | +0.35; tcwv +0.14 | +0.31; tcwv z-score +0.12 | +0.25; 850 hPa flux +0.07 | +0.23; 850 hPa wind +0.05 | +0.21; 500 hPa wind +0.02 | +0.11; 850 hPa humidity +0.03 | +0.08. The association is stronger inside tropical windows.
+- **None adds to the observed county rain** (leave-one-year-out boosting, AUC of any claim; all episodes | tropical-window episodes | the 500 episodes with the largest rain):
+
+| Features | all | tropical | top-500 rain |
+|---|---|---|---|
+| county rain, duration, month, block groups | 0.9145 | 0.9271 | 0.8137 |
+| + tcwv, z-score | 0.9140 | 0.9266 | 0.8079 |
+| + 850 hPa humidity, wind, flux | 0.9135 | 0.9259 | 0.8210 |
+| + 500 hPa wind | 0.9141 | 0.9263 | 0.8133 |
+| + all ERA5 ingredients | 0.9135 | 0.9264 | 0.8156 |
+
+Spearman of the predictions with the number of claimed block groups: 0.336 for the base, 0.335-0.336 with any addition.
+
+## Conclusions
+
+- The ingredients are real (they separate Harvey and Imelda from the convective events in the expected direction) but **the observed rain already contains them**: once the county rain is known, tcwv, low-level transport and steering wind add nothing at the episode level (differences of -0.001 in AUC, within the year-to-year spread; the top-500 column varies by +-0.007 on 500 episodes and is noise).
+- This repeats the pattern of stages 27 and 31 (TC flag, county percentile, best-track motion): event-level descriptors do not improve on observed rain for deciding **whether** an episode floods or how widely. Their expected use is **forecast mode**, where the rain is uncertain and the ingredients (available from the forecast model days ahead) carry the information that the rain forecast lacks; that test needs forecast-time ingredients (GEFS reforecast PWAT and winds, or the ERA5 fields shifted by a lead) and is open.
+- For the group (Texas, Louisiana, Florida) the same files cover all three states, so the features can be built for Louisiana and Florida once their pilot tables exist.
+
+## Caveats
+
+- One state, one learner, observed rain as the comparison (the strongest possible baseline); a county-scale value at the centroid, 6-hourly snapshots (the daily tcwv maximum can miss the peak between snapshots), no interval beyond the spread across held-out years.
+- tcwv z-scores use the 2009-2016 climatology of each cell and calendar month, with all episodes being rainy days, so the median z-score is +1.3 even for ordinary episodes.
+- Specific humidity at 850 hPa is a weak moisture proxy compared with the column; the flux uses the mean wind speed, not the component along the inflow.
+- CAPE (instability) and 700 hPa fields were not used; the 700 hPa data are in the files.
+
+
+# Stage 33: moisture and wind ingredients in forecast mode (script 72)
+
+Question (stage 32 left it open): when the rain is a forecast instead of an observation, do the ERA5 ingredients (tcwv and its z-score, 850 hPa moisture flux, 500 hPa wind) add what the rain forecast lacks? Setting of stage 16 (block group x rain episode, 2010-2019, train 2010-2016, test 2017-2019, 2,075 test positives, boosting depth 5, rain = GEFSv12 reforecast ensemble mean at 36-84 h). The ingredients are taken at two timings: **perfect-prog** (ERA5 over the episode window, as if a moisture / wind forecast were perfect; an upper bound) and **run init** (the 00Z ERA5 analysis of the day before the episode, the state the reforecast starts from; nothing from after the run time). Output `audit/forecast_mode_ingredients.txt`.
+
+## Within-event ranking (block groups inside an episode)
+
+| Rain input | within-event AUC | difference to the same rain without ingredients [95%] |
+|---|---|---|
+| fcmean | 0.6674 | |
+| fcmean + ERA5 perfect-prog | 0.6695 | +0.0021 [-0.0064, +0.0083] |
+| fcmean + ERA5 at run init | 0.6583 | -0.0091 [-0.0155, -0.0013] |
+| obsC (observed rain at the GEFS cell) | 0.7120 | |
+| obsC + ERA5 perfect-prog | 0.7085 | -0.0035 [-0.0099, +0.0011] |
+
+## Between episodes (does a county episode have a claim? leave-one-year-out, 30,362 episodes; AUC | Spearman with log claimed block groups)
+
+| Features | AUC | Spearman |
+|---|---|---|
+| forecast county rain (max, mean, spread, member vote), month, duration, block groups | 0.8627 | 0.305 |
+| + perfect-prog ingredients | 0.8702 | 0.311 |
+| + ingredients at run init | 0.8617 | 0.304 |
+| observed rain (GEFS cell) | 0.9039 | 0.339 |
+| observed rain + perfect-prog ingredients | 0.9031 | 0.338 |
+
+## Conclusions
+
+- **Inside an episode the ingredients do nothing**, even perfect ones (+0.002, interval across 0), and the run-init version loses 0.009 (more noise features for the same rows). This is expected: they are constant inside an episode.
+- **Between episodes there is a small gain, and only for perfect ingredients**: +0.0075 AUC over forecast rain (0.8627 to 0.8702), about 18% of the 0.041 gap between forecast and observed rain (0.8627 vs 0.9039); with observed rain the same ingredients add nothing (-0.0008). The initial moisture state alone does not help (-0.001).
+- So the ceiling for a forecast of moisture and wind is a gain of about 0.0075 in episode-level AUC; a real forecast of tcwv, flux and steering wind has errors and would deliver less. **A GEFS PWAT and wind download would be unlikely to repay its cost on this evidence** (the reforecast archive is tens of GB per variable). The larger lever in forecast mode remains the rain forecast itself (stage 16: 0.024 resolution, 0.045 forecast error) and claim history (stage 19).
+
+## Caveats
+
+- Texas, non-tropical episodes only (the stage 16 subset excludes the tropical windows); 3 test years, one learner; the episode-level differences have no interval (leave-one-year-out pooled AUC; +0.0075 is read against the year-to-year spread of earlier stages of about 0.01).
+- ERA5 stands in for the forecast model's own analysis; the perfect-prog run uses ERA5 values after the run time, so it is an upper bound, not a forecast skill.
+- The run-init ingredients use the 00Z step of the day before the episode start, whereas the episode window may begin on a later calendar day than the gridMET day alignment of stage 16 (12Z to 12Z); a one-day shift in either direction was not tested.
+- Tropical episodes, where stage 32 saw the strongest association of the ingredients with the outcome, are absent from this subset; a forecast-mode test for them needs the reforecast of tropical windows (not fetched).
+
+
+# Stage 34: audit of the flood pilot's model assumptions against the task (script 73, `docs/MODEL_AUDIT.md`)
+
+Question: before measuring the task's own metric, do the pilot's output definition (thresholds, sampling), input features and metric match the task in `DESIGN.md` (a probability issued from the forecast, judged by Brier skill against climatology, reliability, AUC-PR)? The full table of assumptions, the mismatches and the proposed metric specification are in `docs/MODEL_AUDIT.md`; output `audit/model_assumption_audit.txt`.
+
+## Results
+
+- **The pilot's metric is not the task's metric.** The stage 8 L2 model has Brier skill +0.005 against the training prevalence and -0.001 against the test prevalence; mean prediction 0.40% against a test rate of 0.22%, calibration intercept -0.97, every reliability decile about twice the observed rate. Rescaling only the mean to the test prevalence gives **+0.065**: the loss is the level (era drift), the ranking is good (overall AUC 0.926, AP 0.117 = 53x the base rate).
+- **The headline within-event AUC depends on how it is aggregated**: 0.786 pair-weighted, 0.736 mean of episodes, 0.765 weighted by positives. Only 1,015 of 24,963 test episodes (4.1%) enter (they hold 98.7% of positives); the 10 largest carry 41% of the pairs; episodes with >= 100 block groups 0.786, smaller ones 0.735.
+- **The episode is defined by the observed rain** (county 1-day maximum >= 30 mm): 5.3% of county-days 2010-2019. Forecast-mode rows exist only for county x observed episode, so false alarms and quiet days are not scored; 5.5% of episodes have any positive, a rate conditional on the weather.
+- **The trigger moves the metric**: within-event AUC 0.766 at 20 mm, 0.786 at 30 mm, 0.802 at 50 mm; 20 mm adds 40% more episodes but only 2.8% more positives and 1.5 points of claim coverage (88.8% to 90.3%).
+- **`dur`, the observed episode duration, is in the forecast pilot's feature set** and is not known at issue time. Without it the stage 16 forecast model loses 0.0097 within-event AUC ([-0.0257, +0.0021]) and 0.023 episode-level AUC (0.8627 to 0.8398). The episode-level forecast numbers of stage 33 contain the same leak, which is larger than the +0.0075 gain from perfect ingredients found there.
+- The label scope (tropical windows removed) contradicts the decision of 2026-10-28 to model storm and tropical floods together.
+
+## Conclusions
+
+- The validated part is the **shape** (ranking inside an episode). The **level** and the **unit** are not what the task asks for; the plan is an all-days block-group x forecast-day table, issue-time features only, and Brier skill against a training-period climatology with the level reported both as predicted and recentred (`docs/MODEL_AUDIT.md` section 5).
+- Stages 16, 17, 19 and 33 forecast-mode numbers should be read with the `dur` leak (about 0.01 within-event, 0.02 between episodes).
+
+## Caveats
+
+- One model (stage 8 L2, boosting) for the metric re-aggregation; the `dur` and trigger checks refit it once each. No interval on the trigger comparison.
+- Statements about the SCS line were not audited; the DESIGN p99-precipitation hazard class belongs to the coarse 64x32 ENS testbed, not to the flood pilot.
+- The 5.3% and the rates conditional on the weather are Texas gridMET statistics at county level.
+
+
+# Stage 35: the ranking product and its probability companion, against Impact Forecasting.pdf (script 74, `docs/MODEL_AUDIT.md` rewritten)
+
+**Correction to stage 34.** Stage 34 took `DESIGN.md` (a probability issued every day, judged by Brier skill) as the task. The slides `Impact Forecasting.pdf` define the task: rank units by forecast impact inside an event so that a limited number of resources go to the highest; the probability is kept as an **auxiliary product** (owner's decision, 2026-10-29) to show the level behind the ranking. Under that task the "unit conditions on observed rain" finding of stage 34 is weaker (the event is given), the stage 8 within-county metric is the wrong primary metric (it discards the between-county ranking), and the findings on `dur`, the trigger dependence, the aggregation of the AUC and the level of the probability stand. `docs/MODEL_AUDIT.md` is rewritten accordingly. Output `audit/ranking_and_probability_product.txt`.
+
+Setting: stage 8 L2 model, test 2017-2023; event = county episodes starting the same day; 1,331 events, 1,203 with >= 2 counties; 408 with a claim for the block-group metrics, 386 for the county metrics.
+
+## Ranking across counties inside an event
+
+| Score | block-group AUC across counties (pair weighted) | share of claimed block groups in the top 5% / 20% of block groups |
+|---|---|---|
+| model L2 | 0.865 | 0.41 / 0.69 |
+| cell rain only | 0.834 | 0.34 / 0.64 |
+| county peak rain only | 0.747 | 0.20 / 0.47 |
+| policy count only | 0.715 | 0.16 / 0.42 |
+
+Counties (score = expected claimed block groups, sum of p): AUC 0.922; the top 10% of counties hold 74% and the top 20% hold 89% of the event's claimed block groups; policies alone 0.855 / 58% / 75%, county peak rain alone 0.782 / 40% / 56%. The within-county metric of stage 8 is 0.786, so the product ranks better across counties than the metric reported so far.
+
+## The probability companion (146 events with >= 5 claimed block groups, medians)
+
+- The highest block group has p = 24%; the top 5% have mean p 4.8% and an observed rate of 3.2%. **The other 95%: mean p 0.31%, observed 0.22%; 40% sit below 0.1%.** The others are small, not zero. **64% of an event's claimed block groups lie outside its top 5%.**
+- Expected claimed block groups (sum of p) against observed: ratio 1.50 per event (pooled 1.58; 2.0 for the smallest events, 1.5 for the largest); Spearman of the event's expected with its observed count 0.66.
+- Level: as predicted, Brier skill +0.002 against the train prevalence; re-centred with the **trailing three-year prevalence (deployable) -0.018**; with the same-year prevalence (oracle) +0.057. The level follows the size of the events, which the calendar does not give (yearly prevalence 1.16% in 2015, 0.19% in 2017, 0.10% in 2020).
+
+## Conclusions
+
+- Ranking is the validated product, and on the task's own units it is stronger than the stage 8 figure: cross-county block-group AUC 0.865, county AUC 0.922. Exposure carries a large part of the county ranking (policies alone 0.855); the model adds 0.067 over exposure and 0.14 over county rain.
+- The answer to the emergency manager's doubt is quantitative: the others are not 0% (mean 0.3%), but a short list misses most of the event's claims (64% outside the top 5%). Show the probabilities as relative risk and expected number of affected units, with the 1.5x overprediction stated, until an event-level model of the level exists.
+
+## Caveats
+
+- One model, one split, Texas, observed-rain mode; no interval on these figures (events are the units for the bootstrap to come).
+- Events by same start day (a heuristic for "one system"); counties with few block groups and exposure confound the county ranking (policy count is partly the adaptation A of the slides).
+- The label is claim occurrence, not loss; graded relevance (claim count, paid amount) is not measured yet. The train prevalence of script 74 is the mean of the yearly rates, so the +0.002 differs slightly from the +0.005 of stage 34 (pooled rate).
+- The slides' evaluation also asks for a check of the impact model on simulated losses with a known answer; not done.
+
+
+# Stage 36: the task metrics measured (script 75, specification in `docs/MODEL_AUDIT.md` section 5)
+
+Decisions applied (2026-10-29): k = 5 / 10 / 20% of units (1% shown) and the top 3 / 5 / 10 counties; relevance = claim count and paid building amount, both reported; event = county episodes starting the same day; GEFS all-days data postponed. Units: block groups, and counties (score = expected claimed block groups, sum of p). Intervals: 500 bootstrap draws over events. Output `audit/task_metrics.txt`.
+
+## A. Observed rain, stage 8 L2 model, scope S0, test 2017-2023 (408 events scored at block-group level, 386 at county level)
+
+| Score | block-group AUC across counties [95%] | top 5% of block groups: share of claim count (paid) | county AUC [95%] | top 10% of counties: share of claim count (paid) | top 3 / 5 / 10 counties |
+|---|---|---|---|---|---|
+| model | 0.865 [0.852, 0.878] | 0.425 (0.471) | 0.922 [0.910, 0.934] | 0.740 (0.756) | 0.70 / 0.82 / 0.93 |
+| cell rain only | 0.834 | 0.353 (0.404) | 0.837 | 0.509 (0.575) | 0.47 / 0.62 / 0.80 |
+| county peak rain only | 0.747 | 0.206 (0.232) | 0.782 | 0.396 (0.448) | 0.36 / 0.50 / 0.73 |
+| policies only | 0.715 [0.688, 0.738] | 0.169 (0.134) | 0.855 | 0.580 (0.537) | 0.54 / 0.66 / 0.83 |
+
+Model minus policies only (95% over events): block-group AUC +0.151 [+0.126, +0.182]; top-5% capture of claim count +0.256 [+0.218, +0.294]; NDCG at 5% with paid amount +0.127 [+0.104, +0.150]; county AUC +0.066 [+0.052, +0.083]; top-10% county capture +0.160 [+0.124, +0.197]. By test year, block-group AUC 0.842-0.878, county AUC 0.910-0.943, top-5% capture 0.34-0.54. Paid-amount capture follows claim-count capture closely.
+
+## B. Forecast rain (GEFSv12 ensemble mean, 36-84 h, stage 16 setting) without `dur`, test 2017-2019 (187 / 174 events)
+
+| Score | block-group AUC across counties [95%] | top 5% of block groups: share of claim count | county AUC [95%] | top 10% of counties: share of claim count |
+|---|---|---|---|---|
+| forecast model | 0.650 [0.596, 0.690] | 0.165 | 0.852 [0.828, 0.874] | 0.593 |
+| observed-rain model (same days, reference) | 0.797 [0.751, 0.839] | 0.299 | 0.906 [0.890, 0.922] | 0.707 |
+| forecast cell rain only | 0.534 | 0.099 | 0.597 | 0.154 |
+| forecast county peak only | 0.525 | 0.100 | 0.591 | 0.157 |
+| policies only | 0.715 [0.667, 0.749] | 0.165 | 0.847 [0.815, 0.876] | 0.629 |
+
+Forecast model minus policies only: block-group AUC **-0.066 [-0.115, -0.014]**; top-5% capture -0.000 [-0.050, +0.051]; county AUC +0.005 [-0.013, +0.019]; county top-10% capture -0.037 [-0.086, +0.021].
+
+## C. Observed rain, scope S2 (tropical windows kept, named tropical claims included; model retrained), test 2017-2023 (447 / 421 events)
+
+Model: block-group AUC 0.886 [0.844, 0.912], top-5% claim-count capture 0.444, county AUC 0.924, top-10% county capture 0.764 (paid 0.775), top 3 / 5 / 10 counties 0.71 / 0.83 / 0.93. Policies only: 0.750 / 0.181 / 0.856 / 0.592. Model minus policies only: block-group AUC +0.137 [+0.096, +0.202], county AUC +0.068 [+0.055, +0.082].
+
+## Auxiliary probability product
+
+| Run | expected / observed claimed block groups (median per event) | others (outside the top 5%): mean p / observed | claimed block groups outside the top 5% | calibration slope | Brier skill vs the trailing 3-year prevalence: as predicted / re-centred on trailing 3 years / same year (oracle) |
+|---|---|---|---|---|---|
+| A (S0, observed) | 1.50 | 0.31% / 0.22% | 64% | 0.92 | +0.002 / -0.018 / +0.057 |
+| B (forecast) | 1.06 | 0.37% / 0.34% | **91%** | 0.69 | -0.033 / -0.070 / -0.005 |
+| C (S2, observed) | 1.37 | 0.32% / 0.28% | 60% | 0.98 | +0.220 / +0.188 / +0.286 |
+
+## Conclusions
+
+- **In observed-rain mode the ranking product meets its definition**: across counties inside an event the model beats the exposure-only ranking with intervals clear of zero; the top 10% of counties hold 74% of the claims (76% of the paid amount), the top 3 counties 70% in events with at least 10 counties, stable by year. Scope S2 (tropical kept) ranks as well or slightly better (0.886 / 0.924), so the extreme-weather scope costs nothing in ranking.
+- **In forecast mode the ranking has no skill beyond exposure across counties.** The GEFS ensemble-mean rain on its own is close to uninformative between counties (county AUC 0.597, block-group 0.534), and the trained forecast model equals the policies-only ranking at county level (+0.005 [-0.013, +0.019]) and is worse at block-group level (-0.066). The observed-rain model on the same days reaches 0.906 / 0.797: **the whole skill of the product is the hazard forecast**, which is the slides' warning about chained errors. Stage 16's gain (0.667 against 0.622 exposure only) was within a county; across counties it disappears.
+- **The probability companion matters most where the ranking is weakest**: in forecast mode 91% of an event's claimed block groups lie outside the top 5%, and the others carry a mean p of 0.37% against an observed 0.34% (calibrated at the event level, ratio 1.06, but over-high overall: slope 0.69, mean 0.50% against 0.28%). A bare short list would be nearly uninformative here; the probabilities say how flat the risk is.
+- **The level behaves differently by scope**: with the tropical systems kept (S2) the probabilities are close to calibrated (slope 0.98, ratio 1.37) and the Brier skill against the trailing prevalence is +0.22 (oracle +0.29); with S0 it is about 0. Part of this is that a few large tropical events dominate the Brier numerator.
+
+## Caveats
+
+- Forecast mode: 3 test years, 187 events, 5 of the 11 reforecast members, lead 36-84 h, the first two days of each episode only; the sample is conditional on an observed episode in the county; intervals are wide (the block-group AUC interval spans 0.60-0.69). The reference model shows the same days are rankable (0.797).
+- Events by same start day split multi-day systems; the bootstrap resamples events and ignores correlation between days of one storm, so intervals are too narrow, most for S2 where a few systems carry many claims.
+- Relevance is NFIP claims in [start, end + 2 d] on the block groups with a policy; paid amounts are building payments; scope S0 relevance for A and B, S2 for C. County ranking is partly exposure (policies alone 0.855 in A).
+- Brier skill is computed against a constant forecast at the trailing 3-year prevalence (deployable); an oracle re-centring uses the test year's own rate.
+
+
+# Stage 37: why the forecast rain ranks counties so weakly in the pilot (script 76)
+
+Stage 36 (run B): across counties inside an event the GEFS forecast county peak ranks counties at AUC 0.59, and the forecast model adds nothing to the exposure ranking (county AUC 0.852 against 0.847), while the observed-rain model reaches 0.906. Diagnosis on the 1,640 stored forecast days and the pilot's 30,362 county episodes (2010-2019). Output `audit/forecast_rain_diagnosis.txt`.
+
+## Results
+
+| Check | Result |
+|---|---|
+| **Day alignment** (ensemble mean against gridMET aggregated to the GEFS cells, pooled Pearson r over Texas cells) | forecast day S with gridMET day S: **0.594**; shifted by -1 / +1 day: 0.261 / 0.237. Forecast day S+1 with day S+1: **0.555**; shifted: 0.240 / 0.257. The alignment of stage 16 is right |
+| **Cut by observed duration** (`nd`: one forecast day if the observed episode lasted one day) | no effect on the agreement (Spearman 0.47 for both) or on the county ranking (0.559 / 0.567), but it is a use of the observed duration in a forecast feature |
+| Forecast vs observed county peak, pilot episodes | Spearman 0.50 pooled (0.41 against the 4 km value); **0.23 inside events**; median ratio forecast / observed 0.37; forecast peak below 10 mm in 42% of the episodes (observed: 4%) |
+| By longitude (west / middle / east) | ratio 0.34 / 0.37 / 0.40, Spearman 0.43 / 0.49 / 0.52: the bias is spatially homogeneous |
+| **Sample effect**, all 737,362 county-days of the stored days | Spearman forecast vs observed county peak **0.742** over all county-days, **0.286** among county-days whose observed peak reached 30 mm (the pilot's sample), 0.223 at 50 mm |
+| Forecast peak for "the observed peak reached 30 mm" | AUC **0.915** pooled, **0.795** across counties inside a day |
+| Bias correction, county AUC for any claim inside events (2017-2019) | raw 0.591; county scale factor 0.598; percentile within the county's own forecasts 0.571 |
+| Same, with exposure | forecast peak + log policies 0.852; observed peak + log policies 0.900; policies alone 0.847; observed peak alone 0.760 (4 km 0.804) |
+| **All counties inside a day** (dry ones included; label any claim in [S, S+3]; 132,826 test county-days) | forecast peak 0.662; observed peak 0.719; **policies only 0.881**; forecast peak + policies **0.889**; observed peak + policies **0.898** |
+| The same restricted to counties with an observed peak >= 30 mm | forecast 0.568; policies 0.818; observed 0.739 |
+
+## Conclusions
+
+- **The forecast has real skill where it matters for the weather, and the pilot's sample removes it.** Over all county-days the forecast county peak tracks the observed one at Spearman 0.74 and separates the county-days that reach 30 mm from the rest at AUC 0.92 (0.80 across counties inside a day). Among the counties that did reach 30 mm, it ranks them at 0.29 (0.22 for 50 mm): the sample was selected on the outcome the forecast predicts. The stage 36 forecast result (forecast = exposure across counties) is largely an effect of defining the event's county set from observed rain.
+- **Not the cause**: day alignment (right), the one-day cut by `nd` (no effect), and bias (homogeneous in space, ratio 0.34-0.40; county scale factors and percentiles do not help: 0.598 and 0.571 against 0.591).
+- **What the forecast loses is mostly the ensemble mean's damping and its misses**: median forecast / observed county peak 0.37, and 42% of the episodes forecast below 10 mm (the 5-member mean at 0.25 degrees; stage 16: 0.045 of within-county AUC lost to forecast error).
+- **With all counties of a day included, exposure dominates the county ranking whatever the rain**: policies alone 0.881; the forecast adds +0.008 (0.889) and the observed rain +0.017 (0.898). So at county level for "any claim in 4 days" the gap between forecast and observed mode is 0.009, not the 0.054 seen in stage 36 (0.852 against 0.906); the forecast recovers about half of what observed rain adds. The county label of an insured claim is mostly "where the insurance is"; rain information is worth more at finer scale (within a county, stage 16) and for the size of events.
+- Consequence for the specification: the **event's set of counties must be defined before the event** (a forecast footprint or a fixed region per day), not from observed rain; the forecast-mode ranking should be re-measured on that set.
+
+## Caveats
+
+- Stored days are the days before some county's episode (45% of days), so the all-county sample is not all days of the year, and the AUC of the forecast for 30 mm (0.915) is on those days.
+- Label for the all-county check: any claim in [S, S+3] in a county with a policy (1.7% of county-days), not the pilot's episode window; policies on day S from the clean exposure arrays. County rain is the peak of the ensemble mean; no block-group metric was repeated on the all-county set.
+- Five of 11 members, 0.25 degrees; the correction fits are per county from 2010-2016 episodes (counties with fewer than 8 episodes use the global factor). Single state, single split.
+
+
+# Stage 38: forecast-mode ranking on an ex-ante county set (script 77)
+
+Stage 37 showed that the pilot's county set (counties with an observed episode) hides the forecast's between-county skill. Re-measured with every unit of every forecast day as a row, whatever the rain turned out to be. The GEFS reforecast is now complete on disk (3,652 initialisation days, 913 MB). Output `audit/forecast_ranking_all_counties.txt`.
+
+## Design
+
+- **Rows**: every block group with >= 1 policy on day S, for each initialisation day (00Z of S-1, leads 36-84 h) 2010-2019, except county-days inside a tropical-cyclone window (scope S0 as before): 41.7 M rows on 3,486 forecast days (about 11,960 block groups and 221 counties per day). Test 2017-2019: 11.0 M rows, 938 days, 9,814 claimed block groups. Training 2010-2016 with negatives subsampled 1 in 10 (weight 10); every test row scored.
+- **Features at issue time only**: forecast cell rain (peak and sum over S, S+1, ensemble mean), forecast county peak and mean, exposure (log policies, SFHA share, single-family share, mean coverage), block groups in the county, month. No `dur`, no observed rain. Reference model: the same with the observed rain on the GEFS cells.
+- **Label / relevance**: claim count and paid building amount in [S, S+3]. **Event** = the forecast day, all counties ranked together; second view = the counties with a forecast county peak >= 10 mm (an ex-ante footprint: 52 counties a day, 19% of the rows, 57% of the claim count).
+
+## Results (point [95% over days])
+
+| All counties of a day (705 days scored) | block-group AUC across counties | top 5% of block groups: share of claim count | county AUC | top 10% of counties: share of claim count (paid) |
+|---|---|---|---|---|
+| forecast model | 0.713 [0.682, 0.742] | 0.196 | **0.891** [0.883, 0.900] | **0.796** (0.771) |
+| observed-rain model (reference) | 0.794 [0.769, 0.817] | 0.234 | 0.902 [0.894, 0.909] | 0.819 (0.806) |
+| policies only | 0.747 [0.728, 0.764] | 0.164 | 0.881 [0.872, 0.889] | 0.767 (0.731) |
+| forecast cell rain only | 0.587 | 0.101 | 0.664 | 0.265 |
+| forecast county peak only | 0.595 | 0.099 | 0.658 | 0.260 |
+
+Forecast model minus policies only: block-group AUC **-0.033** [-0.057, -0.008]; top-5% claim-count capture **+0.032** [+0.010, +0.058]; NDCG at 5% with paid amount **+0.009** [+0.003, +0.015]; county AUC **+0.010** [+0.005, +0.014]; top-10% county capture **+0.029** [+0.014, +0.044]. Top 3 / 5 / 10 counties: 0.37 / 0.45 / 0.61 (forecast), 0.34 / 0.42 / 0.62 (policies), 0.40 / 0.47 / 0.60 (observed rain).
+
+Forecast footprint (322 days): forecast model county AUC 0.847 [0.827, 0.865] against policies 0.838 (+0.009 [+0.001, +0.017]); block-group AUC 0.700 against 0.737 (-0.036 [-0.065, -0.008]); top-5% and top-10%-of-counties capture equal to policies (-0.000); observed-rain reference 0.886 / 0.802.
+
+| Probability companion | expected / observed claimed block groups (median per event) | others (outside the top 5%): mean p / observed | claimed block groups outside the top 5% | share of units with p < 0.1% | calibration slope | Brier skill vs the trailing 3-year prevalence: as predicted / trailing re-centred / same-year |
+|---|---|---|---|---|---|---|
+| all counties | 0.91 | 0.09% / 0.10% | 86% | 67% | 0.78 | -0.013 / -0.039 / -0.000 |
+| footprint | 1.02 | 0.26% / 0.26% | 88% | 17% | 0.71 | -0.026 / -0.000 / -0.001 |
+
+## Conclusions
+
+- **The stage 36 verdict on forecast mode is revised.** On an ex-ante county set the forecast model beats the exposure ranking at county level with intervals clear of zero (AUC +0.010, top-10% capture +0.029) and recovers about half of the gain the observed-rain model gets over exposure (county AUC 0.881 to 0.891 to 0.902). Stage 36's gap to the observed-rain model (0.852 against 0.906) was mostly the selected sample.
+- **The increment is small and sits in the head of the list**: at block-group level the pooled AUC across counties stays below the exposure ranking (-0.033), while the top-5% capture and the paid-amount NDCG improve slightly (+0.032, +0.009). Exposure dominates the county ranking for an insured claim in 4 days (policies alone 0.881).
+- **Probabilities are calibrated in aggregate when trained on the unit of use** (events: expected / observed 0.91 for all counties, 1.02 for the footprint; others 0.09% vs 0.10%, 0.26% vs 0.26%), unlike the 1.5x of run A in stage 36, which was trained on observed episodes. The calibration slope is still below 1 (0.71-0.78) and the Brier skill against the trailing prevalence is about 0 (-0.013, -0.026); trailing re-centring does not help. The short list is thin: 86-88% of an event's claimed block groups lie outside its top 5%.
+- Whether the forecast's hazard increment is larger where it matters (big events) is not shown here; this table pools 705 days, most of them with few claims.
+
+## Caveats
+
+- Daily windows [S, S+3] overlap, so consecutive days share claims and the bootstrap over days is too narrow; totals of claims or paid amounts over all rows count each claim up to four times (the raw totals printed by the script, 121,535 claims and $4.5 B, are about four times the real figures).
+- The observed-rain reference stopped at 15 iterations (validation Brier on weighted, subsampled rows) and may be under-trained against the forecast model (83 iterations); its gap to the forecast model is a lower bound.
+- Five of the 11 reforecast members, 0.25 degrees, ensemble mean at the cell; tropical-window county-days removed (scope S0); Texas only; test = 3 years. The scoring days contain many dry days (705 of 938 scored), so averages are dominated by small events.
+- Not comparable one to one with runs A-C of stage 36: different unit (a forecast day, all counties) and label window.
+
+
+# Stage 39: the forecast model's gain over exposure, by size of the event (script 78; script 77 rerun on the complete archive)
+
+Question left by stage 38: is the forecast model's small gain over the exposure ranking larger in big events? Script 77 was rerun after the GEFS archive was completed (3,639 forecast days, 43.3 M rows; test 2017-2019: 1,091 days, 12.7 M rows, 10,075 claimed block groups, 778 days scored) and now saves its test predictions (`pilot/ranking_test_rows.parquet`); script 78 stratifies the test days. **The overall numbers of stage 38 are superseded with shifts of at most 0.005**: forecast model county AUC 0.890 [0.881, 0.897] against policies only 0.880 (+0.010 [+0.005, +0.014]) and the observed-rain model 0.901; block-group AUC 0.711 against 0.742 (-0.032 [-0.057, -0.008]); top-5% claim-count capture +0.034 [+0.011, +0.059]; NDCG at 5% with paid amount +0.009 [+0.003, +0.015]; top-10% county capture +0.030 [+0.018, +0.044]; probabilities: expected / observed 0.92, calibration slope 0.78, others 0.08% against 0.10%. Output `audit/ranking_by_event_size.txt`.
+
+## A. By observed size of the day (claimed block groups; the outcome is used, so this is descriptive)
+
+| Stratum | days (scored) | share of the test claim count | county AUC: forecast model minus policies [95%] | same, observed-rain model | top-10% county capture: forecast | observed | block-group top-5% capture: forecast | observed |
+|---|---|---|---|---|---|---|---|---|
+| 1-2 claimed block groups | 323 | 2.2% | +0.009 [+0.003, +0.015] | +0.007 | +0.027 [+0.002, +0.051] | +0.033 | +0.068 [+0.022, +0.112] | +0.057 |
+| 3-9 | 245 | 6.1% | +0.011 [+0.005, +0.017] | +0.013 | +0.044 [+0.024, +0.065] | +0.052 | +0.006 | +0.054 |
+| 10-29 | 134 | 14.2% | +0.012 [+0.003, +0.021] | +0.024 | +0.037 [+0.009, +0.067] | +0.057 | -0.003 | +0.064 |
+| >= 30 | 76 | **77.6%** | **+0.006 [-0.003, +0.015]** | **+0.030 [+0.017, +0.044]** | -0.016 [-0.067, +0.027] | **+0.073 [+0.026, +0.126]** | +0.047 [-0.005, +0.103] | **+0.159 [+0.076, +0.247]** |
+
+(313 days with no claimed block group are not scored.) Block-group AUC across counties, forecast model minus policies only: +0.003, -0.012, +0.026, **-0.058 [-0.094, -0.023]** for the four strata; observed-rain model +0.019, +0.016, +0.052, +0.052.
+
+## B. By the day's largest forecast county peak (known at issue time)
+
+| Stratum | days (scored) | share of claim count | county AUC: forecast minus policies [95%] | observed-rain model | NDCG at 5% with paid amount: forecast | observed |
+|---|---|---|---|---|---|---|
+| < 10 mm | 426 (243) | 6.1% | +0.000 [-0.004, +0.005] | -0.006 | +0.001 | +0.003 |
+| 10-25 mm | 362 (264) | 16.4% | +0.004 [-0.001, +0.010] | +0.004 | +0.004 | +0.022 |
+| 25-50 mm | 216 (185) | 37.7% | **+0.014 [+0.006, +0.021]** | +0.028 | **+0.022 [+0.010, +0.038]** | +0.056 |
+| >= 50 mm | 87 (86) | 39.9% | **+0.018 [+0.006, +0.031]** | +0.052 | **+0.017 [+0.001, +0.032]** | +0.064 |
+
+## Conclusions
+
+- **The forecast model's gain does not grow with the size of the event; the potential gain does.** With observed rain the improvement over exposure rises with event size (county AUC +0.007, +0.013, +0.024, +0.030; top-5% block-group capture +0.057 to +0.159). The forecast model recovers it fully in the smallest events and less and less in the bigger ones: share of the observed-rain county-AUC gain recovered about 100%, 85%, 50%, **20%**. In the 76 largest days, which hold 78% of the claims, it does not beat the exposure ranking at county level (+0.006 [-0.003, +0.015]) and is worse at block-group level (-0.058).
+- **Ex ante, the model helps where the forecast is large**: on days with a forecast county peak of 25 mm or more it improves county AUC by +0.014 and +0.018 and paid-amount NDCG by +0.022 and +0.017 (intervals above zero); below 25 mm it equals exposure. These days hold 78% of the claim count. The observed-rain model gains +0.028 and +0.052 there, so the forecast recovers half to a third.
+- So the shortfall of the ranking product in forecast mode sits in the extreme events the forecast underestimates (stage 37: ensemble mean about 0.37 of the observed county peak, 42% of episodes forecast below 10 mm), not in the small ones.
+
+## Caveats
+
+- Stratum A uses the outcome (claimed block groups of the day); more positives also make each day's AUC easier, but the comparison is paired within a stratum. Stratum B is ex ante.
+- 76 and 87 days in the top strata, overlapping four-day windows (consecutive days share claims), so the intervals over days are narrow; the biggest strata contain few distinct storms.
+- The observed-rain reference stopped at 15 iterations and may be under-trained (stage 38); the observed gain in the large strata is a lower bound.
+- Texas, scope S0 (tropical-window county-days removed), five of 11 members, 0.25 degrees, three test years.
+
+
+# Stage 40: ensemble extremes in the all-days forecast model (script 79)
+
+Hypothesis from stage 39: the five-member mean damps the rain in the biggest events, so ensemble extremes should lift the forecast ranking there. Test: the all-days model of script 77 plus the member maximum, the share of members >= 25 mm and >= 50 mm, the member spread and the 3x3 mean of the 25 mm share at the cell, and the county maximum of the member maximum, the county maximum and mean of the 25 mm share and the county maximum of the 50 mm share (19 features against 10). Same rows (43.3 M, 3,639 forecast days), split, subsampling and metrics; the extremes model needed 214 iterations against 83. Output `audit/ensemble_extremes.txt`, predictions in `pilot/ranking_test_rows_ext.parquet`.
+
+## Results (extremes minus mean model [95% over days])
+
+| Stratum | county AUC | county top-10% capture | block-group top-5% capture | block-group NDCG at 5% (paid) |
+|---|---|---|---|---|
+| all test days (778 scored) | **-0.003 [-0.004, -0.001]** | -0.010 [-0.018, -0.002] | **-0.026 [-0.044, -0.009]** | -0.004 [-0.008, -0.002] |
+| 1-2 claimed block groups | -0.004 [-0.006, -0.002] | -0.019 [-0.036, -0.003] | -0.051 [-0.084, -0.019] | -0.005 |
+| 3-9 | -0.001 | -0.014 [-0.025, -0.001] | -0.001 | -0.003 |
+| 10-29 | -0.002 | +0.004 | -0.022 [-0.044, -0.003] | -0.006 |
+| >= 30 (77.6% of the claims) | -0.005 [-0.008, -0.001] | +0.015 [-0.009, +0.043] | -0.019 [-0.040, -0.001] | -0.006 |
+| forecast peak < 10 mm | -0.000 | -0.018 [-0.041, -0.003] | -0.019 | -0.005 |
+| 10-25 mm | -0.001 | -0.008 | -0.025 | +0.000 |
+| 25-50 mm | -0.003 [-0.006, -0.001] | -0.008 | -0.029 [-0.057, -0.002] | -0.005 |
+| >= 50 mm | -0.006 [-0.010, -0.002] | +0.006 | **-0.055 [-0.098, -0.021]** | **-0.014 [-0.026, -0.003]** |
+
+Against the exposure ranking, the extremes model gives county AUC +0.007 [+0.003, +0.010] overall (the mean model: +0.010) and +0.002 [-0.007, +0.012] in the days with >= 30 claimed block groups (the mean model +0.006); the observed-rain reference stays at +0.030 there. Block-group AUC across counties: extremes 0.704, mean 0.711, policies 0.742, observed 0.791.
+
+## Conclusions
+
+- **The hypothesis is refuted: ensemble extremes do not recover the big-event loss, and they slightly hurt.** Overall county AUC -0.003 and top-5% block-group capture -0.026 (intervals below zero); in the strata where the mean model fails (>= 30 claimed block groups, forecast peak >= 50 mm) the differences are zero or negative (county AUC -0.005 and -0.006; top-5% capture -0.019 and -0.055). The only positive signs (top-10% county capture +0.015, +0.006 in the largest strata) have intervals spanning zero.
+- This matches stage 16 (member votes, spread and neighbourhood tied the ensemble mean in the episode sample): with five members at 0.25 degrees and leads of 36-84 h the extreme members add noise about where the heavy rain falls, not information. The missing information is not in the spread of this ensemble.
+- The extremes model also fitted longer (214 against 83 iterations), a sign of fitting noise in the extra features.
+
+## Caveats
+
+- Five of the 11 reforecast members (the 11-member Wednesday runs are cut to 5); with 11 members the exceedance shares and the member maximum would be better defined, but only for about one day in seven.
+- One lead range (the 00Z run of the day before, 36-84 h), 0.25 degrees, ensemble members of one model (GEFSv12), Texas, scope S0, three test years; the observed-rain reference stopped at 20 iterations.
+- Overlapping four-day windows and the few distinct storms in the largest strata make the intervals over days narrow.
