@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from .spec import Col, TableSpec
 
 POLICIES_TX = TableSpec(
@@ -79,4 +81,8 @@ CLAIMS_NFIP = TableSpec(
     ),
 )
 
-SPECS = {s.name: s for s in (POLICIES_TX, CLAIMS_NFIP)}
+# Same cleaning rules for the candidate states (extracts of scripts/24); the name differs, so the sidecars and clean files do too.
+POLICIES_LA = replace(POLICIES_TX, name="policies_la", source="labels_extra/flood/pilot/policies_la.parquet")
+POLICIES_FL = replace(POLICIES_TX, name="policies_fl", source="labels_extra/flood/pilot/policies_fl.parquet")
+
+SPECS = {s.name: s for s in (POLICIES_TX, POLICIES_LA, POLICIES_FL, CLAIMS_NFIP)}

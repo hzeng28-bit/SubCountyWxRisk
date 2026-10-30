@@ -2336,3 +2336,48 @@ Decision (user): go to the data scale-up of docs/CNN_HYBRID_DESIGN.md 10.7 (TX +
 - gridMET starts at 25.07 N: Florida Keys block groups south of it have no rain, they must be dropped or flagged.
 - No clean-table specs exist yet for `policies_la` / `policies_fl` (`prep` is built for `policies_tx`), so exposure matrices for the new states are not built.
 - Not done: GEFS reforecast crops for the new boxes, ERA5 for the Gulf box beyond what script 70 fetched, county masks, tropical-cyclone flags, day tensors, a state-held-out evaluation.
+
+# Stage 45: observed-rain day products for LA and FL, boosting baseline pooled over TX + LA + FL, state-held-out check (scripts 84, 85)
+
+Decision (user): start the scale-up with the observed-rain line. Scope S0 (rows inside a tropical-cyclone window dropped, label without tropical-named claims; S2 not yet run). Train 2010-2016, test 2017-2023 (gridMET reaches 2023). No CNN was trained.
+
+## A. Inputs built
+
+- Clean policy tables `policies_la`, `policies_fl` (same cleaning rules as Texas; `prep/specs.py`); `flood_pilot.exposure_matrices(table, crosswalk)`, `bg_geometry(zip)`, `load_precip(tag)`, `claims_state(abbr)` take the state as argument, Texas defaults unchanged.
+- Script 84 writes per state `cnn_<st>/`: 5,109 days (2010-01-01 .. 2023-12-27) of 4 km peak / 2-day-sum maps, rows (block groups with >= 1 policy on the day: LA 16.7 M, FL 56.2 M, TX 63.8 M) with tabular features, a tropical-cyclone flag per row, claim counts in [S, S+3] for scope S0 and with tropical-named claims, and paid amount. In the rows' windows: LA 168.8 k claims in S0 (266.5 k with tropical-named), FL 70.0 k (266.1 k), TX 140.0 k (421.2 k); rows inside a cyclone window: LA 8.5%, FL 13.4%, TX 6.0%.
+- Florida: 3 of 128,967 claims lie on block groups that the cartographic 2010 file lacks and were dropped.
+
+## B. Boosting baseline (script 85; test rows of days with >= 1 claimed block group; days: TX 1,738, LA 1,487, FL 1,735)
+
+Fit "own" = the test state alone, "tx" = Texas only, "pool" = TX + LA + FL, "loso" = the two other states. Differences from "own" with a bootstrap over days.
+
+| Test state | metric | policies only | own | pool - own | loso - own |
+|---|---|---|---|---|---|
+| TX | block-group AUC | 0.732 | 0.822 | -0.036 [-0.056, -0.017] | -0.036 [-0.049, -0.024] |
+| TX | BG top-5% capture | 0.183 | 0.295 | -0.002 [-0.013, +0.010] | -0.022 [-0.035, -0.010] |
+| TX | BG NDCG5 paid | 0.027 | 0.082 | -0.002 [-0.006, +0.002] | -0.011 [-0.015, -0.006] |
+| TX | county AUC | 0.885 | 0.911 | +0.002 [+0.001, +0.003] | -0.001 [-0.002, +0.001] |
+| LA | block-group AUC | 0.646 | 0.748 | -0.046 [-0.082, -0.016] | +0.015 [+0.003, +0.026] |
+| LA | BG top-5% capture | 0.123 | 0.210 | +0.018 [+0.007, +0.030] | +0.021 [+0.006, +0.038] |
+| LA | BG NDCG5 paid | 0.027 | 0.074 | -0.008 [-0.015, -0.001] | -0.005 [-0.012, +0.003] |
+| LA | county AUC | 0.783 | 0.801 | +0.006 [+0.003, +0.009] | +0.006 [+0.003, +0.009] |
+| FL | block-group AUC | 0.746 | 0.830 | -0.028 [-0.046, -0.012] | -0.019 [-0.029, -0.009] |
+| FL | BG top-5% capture | 0.158 | 0.283 | -0.002 [-0.015, +0.010] | -0.022 [-0.035, -0.009] |
+| FL | BG NDCG5 paid | 0.020 | 0.074 | +0.005 [+0.001, +0.010] | -0.000 [-0.005, +0.005] |
+| FL | county AUC | 0.831 | 0.852 | -0.003 [-0.005, -0.002] | -0.007 [-0.009, -0.005] |
+
+(LA "tx - own": BG AUC +0.012, top-5% -0.004, NDCG -0.009, county AUC +0.004; FL "tx - own": top-5% -0.022, county AUC -0.007. Full table: `audit/state_group_baseline.txt`.)
+
+## Conclusions
+
+- **Pooling more states does not lift the boosting baseline.** Against the state's own fit the pooled fit is inside the noise or worse on most metrics (the block-group AUC drops by 0.03-0.05 in all three states); the only clear gains are LA top-5% capture (+0.018) and county AUC (+0.006), and one FL NDCG (+0.005). This agrees with stage 43: boosting on summary features is feature-limited, not data-limited, so more rows do not help it. The data hunger sits in the CNN, which has not been trained on the pooled rows yet.
+- **The summaries transfer between states.** A model trained on the other two states is within a few hundredths of the own fit (LA even above it on AUC and top-5% capture), and every state is far above the policies-only ranking (top-5% capture 0.12-0.18 to 0.21-0.30). What the boosting learns is a property of the rain-exposure relation, not of Texas.
+- Louisiana has the weakest signal (policies-only county AUC 0.78, top-5% capture 0.21): its claims sit in a few large floods (2016, 2012) over a flat landscape.
+
+## Caveats
+
+- Boosting only, one seed, observed rain, scope S0; S2 (tropical windows kept) is where Florida's claims are, and was not run. The S0 label removes 74% of Florida's claims (266 k to 70 k).
+- Test days keep only days with a claimed block group, as before; the metrics are conditional on an event having happened.
+- The block-group AUC falls with pooling because the pooled model fits a different base rate per state; it is a cross-county AUC inside a day of a single state, so a calibration shift between states should not matter, but the boosting does not know the state either.
+- LA's own fit stops at 25 iterations (about 800 k training rows, few events), so "own" is a weak reference there.
+- No forecast rain: the test years run to 2023 only because gridMET does; the GEFS reforecast (2019) and ERA5 for the new boxes are not used.

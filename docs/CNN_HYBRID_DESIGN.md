@@ -174,3 +174,5 @@ V0 passed (reconstruction of heavy rain, sub-cell content in the latent). V1 fai
 
 Step 1 done: block-group geography, policy extracts (LA, FL) and gridMET 2000-2023 for an LA + FL box exist; the crosswalk covers 100% of coded policies and claims. Open: clean-table specs for the new policy files, exposure matrices and episodes, county masks and tropical-cyclone flags for LA / FL, GEFS reforecast crops (the reforecast ends in 2019, so FL Ian and LA Ida are observed-rain only), generalised day tensors (script 80), and the state-held-out evaluation. The first modelling use is the observed-rain line (E1-type), which is not limited to 2019.
 
+Stage 45: observed-rain day products exist for TX, LA, FL (script 84). Pooled boosting does not beat the own-state fit, but cross-state transfer is close to the own fit (script 85). Next supported test of the data-scale hypothesis: the 4 km CNN trained on pooled rows (E1 format, scope S0, then S2) against the own-state CNN and a state-held-out CNN, with the same learning-curve protocol as stage 43.
+
