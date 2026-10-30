@@ -2301,3 +2301,38 @@ The real latent beats the shuffled one (so it carries information) but adds noth
 - Not tested: initialising the 4 km CNN's encoder from the VAE and fine-tuning end to end, a larger latent, a hierarchical latent with a 12 km level, other KL weights. The negative result is for a frozen 8-channel code at the forecast-cell scale.
 - Learning curve: 2 seeds per fraction, no intervals, month subsets chosen by a hash; the CNN rows are the mean of two seeds (the 100% row uses seeds 0 and 1, so 0.313 differs from the 3-seed 0.319 of stage 42).
 - The V1c baseline is 3 seeds of the 0.25 degree CNN (stage 42 used 5); validation losses of the two VAEs are not comparable (different validation months); Texas, scope S0, three test years.
+
+# Stage 44: candidate-state scale-up, step 1 (inventory and inputs for LA and FL; scripts 22 `--box`, 24 `LA FL`, 83, `fetch_state_geography`)
+
+Decision (user): go to the data scale-up of docs/CNN_HYBRID_DESIGN.md 10.7 (TX + LA + FL, stage 27) after the latent route failed (stage 43). This step builds the inputs; no model was trained.
+
+## A. What was added
+
+- `wxrisk.states` (state FIPS, box, file names); Texas files keep their old names, so every Texas output is unchanged.
+- Block-group geography: TIGER 2010 and 2020 block groups and the Census 2020-to-2010 relationship file for LA and FL (`scripts/fetch/fetch_state_geography.py`); `bg_crosswalk.build(path)` takes a state's relationship file.
+- Policies: `scripts/24 LA FL` extracted 8.46 M (LA) and 22.38 M (FL) policy records from the bulk file (Texas: 11.6 M) into `policies_la.parquet`, `policies_fl.parquet`.
+- gridMET 4 km rain 2000-2023 for one LA + FL box (24.3-33.2 N, -94.2 to -79.8 E), `pr_lafl_<year>.nc`, 1.2 GB (`scripts/22 --box ... --tag lafl`). Verified for 2017: 365 x 196 x 346, 52% of the values are missing (ocean outside the gridMET land mask).
+- `scripts/83_state_inventory.py` (output `audit/state_inventory.txt`).
+
+## B. Inventory (inland claims = cause 2/3/4, any flood event name)
+
+| | TX | LA | FL |
+|---|---|---|---|
+| 2010 block groups | 15,503 | 3,407 | 11,210 |
+| policy records | 11.6 M | 8.46 M | 22.38 M |
+| policy records with a block group; on a known crosswalk code | 99.7%; 100% | 99.7%; 100% | 99.7%; 100% |
+| inland claims with a block group | 193,216 | 230,449 | 129,018 |
+| claims, largest years | 2017: 62.3 k | 2016: 27.5 k, 2021: 14.8 k, 2012: 11.4 k | 2022: 23.9 k, 2017: 12.8 k, 2020: 6.6 k |
+
+## Conclusions
+
+- The block-group codes of LA and FL map through the Census relationship file as completely as Texas' (100% of coded policies and claims), so the label side has no new geography problem.
+- **Claims concentrate in a few tropical years** (LA 2016 / 2012 / 2021; FL 2017 Irma / 2022 Ian). The GEFSv12 reforecast ends in 2019: the forecast-mode test years 2017-2019 hold the LA flood of 2016 only as training and, for FL, only Irma; Ida (2021) and Ian (2022) are outside the reforecast. Hence the forecast-mode data of the new states is thin in exactly the events that dominate their claims, while the observed-rain line (gridMET, to 2023) is not limited.
+- Florida holds 22.4 M policy records (more than Texas): exposure tables need the same column-wise streaming as Texas, not a pandas read.
+
+## Caveats
+
+- Counts are before the tropical-name and tropical-window filters (scope S0 vs S2 is not applied yet), so the claim totals overstate the S0 labels.
+- gridMET starts at 25.07 N: Florida Keys block groups south of it have no rain, they must be dropped or flagged.
+- No clean-table specs exist yet for `policies_la` / `policies_fl` (`prep` is built for `policies_tx`), so exposure matrices for the new states are not built.
+- Not done: GEFS reforecast crops for the new boxes, ERA5 for the Gulf box beyond what script 70 fetched, county masks, tropical-cyclone flags, day tensors, a state-held-out evaluation.

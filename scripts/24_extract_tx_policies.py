@@ -1,14 +1,16 @@
-"""Extract Texas rows of the OpenFEMA NFIP policy bulk file (74.7M rows) into a small parquet.
+"""Extract one state's rows (default Texas) of the OpenFEMA NFIP policy bulk file (74.7M rows) into a small parquet.
 
 Kept: block-group code, ZIP, policy term dates, count, flood zone, a few building and coverage
 fields, and the new-business fields (originalNBDate, rolloverTransferCode, propertyPurchaseDate).
-Output: $WXRISK_DATA/labels_extra/flood/pilot/policies_tx.parquet
+Output: $WXRISK_DATA/labels_extra/flood/pilot/policies_<st>.parquet
 
-    python scripts/24_extract_tx_policies.py
+    python scripts/24_extract_tx_policies.py            # Texas
+    python scripts/24_extract_tx_policies.py LA FL      # candidate states (wxrisk.states)
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -18,10 +20,9 @@ import pyarrow.parquet as pq
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from wxrisk import fetch, wb2  # noqa: E402
+from wxrisk import fetch, states, wb2  # noqa: E402
 
 SRC = wb2.cache_path("labels_extra") / "flood" / "nfip_policies_v3.parquet"
-OUT = wb2.cache_path("labels_extra") / "flood" / "pilot" / "policies_tx.parquet"
 COLS = ["propertyState", "censusGeoid", "reportedZipCode", "policyEffectiveDate", "policyTerminationDate",
         "cancellationDateOfFloodPolicy", "policyCount", "ratedFloodZone", "floodZoneCurrent", "occupancyType",
         "totalBuildingInsuranceCoverage", "buildingReplacementCost", "elevationDifference",
@@ -49,21 +50,30 @@ def check_bulk_file() -> None:
         print(f"WARNING bulk file has {rows:,} rows, MORE than the catalog's {want:,}")
 
 
-def main() -> None:
-    check_bulk_file()
+def extract(st: states.State) -> None:
+    out = st.policies
     dset = ds.dataset(SRC, format="parquet")
-    sc = dset.scanner(columns=COLS, filter=ds.field("propertyState") == "TX", batch_size=500_000)
-    tmp = OUT.with_suffix(".part")  # atomic: a crash must not leave a partial 'done' file
+    sc = dset.scanner(columns=COLS, filter=ds.field("propertyState") == st.abbr, batch_size=500_000)
+    tmp = out.with_suffix(".part")  # atomic: a crash must not leave a partial 'done' file
     w, n = None, 0
     for b in sc.to_batches():
         t = pa.Table.from_batches([b])
         w = w or pq.ParquetWriter(tmp, t.schema)
         w.write_table(t)
         n += t.num_rows
-        print(f"{n:,} Texas rows", flush=True) if n % 2_000_000 < 500_000 else None
+        print(f"{n:,} {st.name} rows", flush=True) if n % 2_000_000 < 500_000 else None
     w.close()
-    tmp.replace(OUT)
-    print(f"done: {n:,} Texas policy records -> {OUT}")
+    tmp.replace(out)
+    print(f"done: {n:,} {st.name} policy records -> {out}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("states", nargs="*", default=["TX"])
+    a = ap.parse_args()
+    check_bulk_file()
+    for s in a.states:
+        extract(states.get(s))
 
 
 if __name__ == "__main__":

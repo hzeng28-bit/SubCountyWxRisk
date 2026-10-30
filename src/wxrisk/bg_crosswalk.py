@@ -22,18 +22,19 @@ REL = wb2.cache_path("labels_extra") / "flood" / "pilot" / "rel_bg20_bg10_st48.t
 PERSIST = 0.8  # same code counts as the same place if this much of the smaller block overlaps
 
 
-def load_relationship() -> pd.DataFrame:
+def load_relationship(path=None) -> pd.DataFrame:
     cols = {"GEOID_BLKGRP_20": "bg20", "GEOID_BLKGRP_10": "bg10", "AREALAND_BLKGRP_20": "a20",
             "AREALAND_BLKGRP_10": "a10", "AREALAND_PART": "part"}
     # usecols returns file order, not list order, so rename by name rather than by position
-    r = pd.read_csv(REL, sep="|", dtype=str, encoding="utf-8-sig", usecols=list(cols)).rename(columns=cols)
+    r = pd.read_csv(path or REL, sep="|", dtype=str, encoding="utf-8-sig", usecols=list(cols)).rename(columns=cols)
     for c in ("a20", "a10", "part"):
         r[c] = pd.to_numeric(r[c], errors="coerce").fillna(0.0)
     return r[(r.part > 0)]
 
 
-def build() -> pd.DataFrame:
-    r = load_relationship()
+def build(path=None) -> pd.DataFrame:
+    """`path`: the relationship file of another state (wxrisk.states); default Texas."""
+    r = load_relationship(path)
     # 2020 block group -> the 2010 block group that holds most of its land
     best = r.sort_values("part", ascending=False).drop_duplicates("bg20")
     to10 = best.assign(share=best.part / best.a20.where(best.a20 > 0)).set_index("bg20")[["bg10", "share"]]

@@ -34,8 +34,20 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--years", type=int, nargs=2, default=[2000, 2023])
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--box", type=float, nargs=4, metavar=("SOUTH", "NORTH", "WEST", "EAST"),
+                    help="gridMET box and file tag instead of the Texas one, see --tag")
+    ap.add_argument("--tag", default="tx", help="file tag of the gridMET years, pr_<tag>_<year>.nc")
     a = ap.parse_args()
     (PILOT / "gridmet").mkdir(parents=True, exist_ok=True)
+    if a.box:  # another region: only the gridMET years (block groups come from scripts/fetch/fetch_state_geography.py)
+        s, n, w, e = a.box
+        url = NCSS.replace("north=36.6&west=-106.7&east=-93.4&south=25.8", f"north={n}&west={w}&east={e}&south={s}")
+        jobs = [fetch.Job(PILOT / "gridmet" / f"pr_{a.tag}_{y}.nc", url=url.format(y=y), probe=False, size_hint=100 << 20)
+                for y in range(a.years[0], a.years[1] + 1)]
+        res = fetch.fetch_many(jobs, workers=a.workers)
+        if bad := {k: v for k, v in res.items() if v.startswith("FAIL")}:
+            sys.exit(f"{len(bad)} downloads failed: {bad}")
+        return
     jobs = [fetch.Job(PILOT / n, url=u) for n, u in OTHER.items()]
     # NCSS builds each subset on request: no HEAD probe (it would do the work twice), size is only a hint
     jobs += [fetch.Job(PILOT / "gridmet" / f"pr_tx_{y}.nc", url=NCSS.format(y=y), probe=False, size_hint=100 << 20)
