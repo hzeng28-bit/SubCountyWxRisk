@@ -2381,3 +2381,58 @@ Fit "own" = the test state alone, "tx" = Texas only, "pool" = TX + LA + FL, "los
 - The block-group AUC falls with pooling because the pooled model fits a different base rate per state; it is a cross-county AUC inside a day of a single state, so a calibration shift between states should not matter, but the boosting does not know the state either.
 - LA's own fit stops at 25 iterations (about 800 k training rows, few events), so "own" is a weak reference there.
 - No forecast rain: the test years run to 2023 only because gridMET does; the GEFS reforecast (2019) and ERA5 for the new boxes are not used.
+
+# Stage 46: why the 4 km CNN beats boosting with so little data (script 86; script 81 `--variant`)
+
+Question (user): a 55 k-parameter CNN with a best validation epoch of 2-3 and a quarter of the months already above boosting looks like it reads sub-pixel structure; what does it actually do? Setting as stage 42: Texas, observed rain, scope S0, train 2010-2016, test 2017-2019 (778 test days with >= 1 claimed block group), the 4 km model retrained for 5 epochs, 2 seeds per variant (`full` = the stage-42 model). Metrics as scripts 75 / 81; differences against `full` with a bootstrap over days. `audit/cnn_mechanism*.txt`.
+
+## A. One-change retrainings (seed means)
+
+| Variant | BG AUC | BG top-5% | BG NDCG5 | county AUC | AUC inside a county-day |
+|---|---|---|---|---|---|
+| policies only | 0.742 | 0.159 | 0.026 | 0.880 | 0.668 |
+| **full** | 0.843 | 0.322 | 0.098 | 0.912 | 0.763 |
+| nocoord (lat / lon channels zeroed) | 0.842 | 0.318 | 0.093 | 0.911 | 0.759 |
+| nostatic (exposure maps zeroed; tabular branch kept) | 0.849 | 0.323 | 0.101 | 0.915 | 0.762 |
+| bce (no listwise term) | 0.848 | 0.312 | 0.095 | 0.913 | 0.762 |
+| coarse_rain (rain = 6 x 6 block means, train and test) | 0.841 | 0.305 | 0.086 | 0.911 | 0.757 |
+| shuffle_rain (rain of another day, same month) | 0.779 | 0.204 | 0.044 | 0.885 | 0.732 |
+
+Differences from `full` with intervals: nocoord top-5% -0.004 [-0.015, +0.008]; nostatic +0.002 [-0.010, +0.013] (NDCG +0.003 [+0.000, +0.005]); bce -0.010 [-0.019, -0.001] top-5%, +0.005 [+0.002, +0.009] BG AUC; coarse_rain -0.017 [-0.027, -0.007] top-5%, -0.012 [-0.016, -0.008] NDCG; shuffle_rain -0.118 [-0.140, -0.097]. Seed spread of `full`: top-5% 0.320 / 0.323.
+
+## B. Boosting given what the CNN has (feature ladder; same rows as stage 42; iterations on blocked validation months, cap 600)
+
+| Boosting | BG AUC | BG top-5% | BG NDCG5 | county AUC | inside a county-day | iterations |
+|---|---|---|---|---|---|---|
+| stage-42 summaries (base) | 0.813 | 0.272 | 0.076 | 0.905 | 0.742 | 600 (cap) |
+| + pixel coordinates | 0.814 | 0.276 | 0.080 | 0.911 | 0.733 | 310 |
+| + multi-scale neighbourhood mean / max (3-33 px) | 0.793 | 0.282 | 0.072 | 0.907 | 0.720 | 241 |
+| + day context (domain max, rank among the day's rows, peak minus county mean, rows > 25 mm) | 0.797 | 0.288 | 0.079 | 0.907 | 0.736 | 154 |
+| + all three | 0.822 | 0.284 | 0.083 | 0.908 | 0.727 | 56 |
+| + all three, day-normalised weights | 0.832 | 0.289 | 0.084 | 0.912 | 0.749 | 109 |
+| no rain, tabular rows | 0.748 | 0.204 | 0.041 | 0.882 | 0.718 | |
+| no rain, tabular rows + coordinates | 0.717 | 0.202 | 0.041 | 0.884 | 0.700 | |
+
+All the enrichment together closes about 34% of the top-5% gap to the CNN (0.272 to 0.289 against 0.322), 36% of the NDCG gap, 63% of the BG AUC gap, 33% of the within-county AUC gap.
+
+## C. Test-time probes of the trained full CNN (seed 0)
+
+- **Blur is free, shift is graded.** Gaussian blur of the rain channels with sigma 1-2 px (4-8 km) changes nothing (top-5% 0.322 / 0.315 against 0.320); sigma 4 px -0.012. Shifting the rain field by 1 / 2 / 4 / 8 / 16 px moves top-5% by -0.009 / -0.022 / -0.051 / -0.067 / -0.092: a smooth decay over 10-60 km, no collapse at one pixel. Block mean 6 x 6 at test time -0.014. Rain removed: top-5% 0.207, BG AUC 0.774.
+- **Where the head reads.** Zeroing the head inputs: own-pixel embedding -0.101 top-5% (BG AUC -0.058), the tabular branch -0.108 (BG AUC -0.160); the county mean and maximum of the embedding change nothing (dropping the county maximum even helps the county top-10%, +0.015 [+0.008, +0.023]).
+- **Gradient footprint** of a claimed block group's logit on the two rain channels (278 block groups, share of |gradient| by distance, 1 px = 4 km): < 1 px 0.03, 1-2 px 0.18, 2-4 px 0.14, 4-8 px 0.15, 8-16 px 0.17, 16-32 px 0.13, 32-64 px 0.03, beyond 0.18. The signed share is positive inside 4 px (+0.17 of 0.35) and almost cancels from 4 px outwards (+0.03 of 0.47).
+
+## Conclusions
+
+1. **It does not read sub-pixel structure.** gridMET is itself a 4 km product, and a 4-8 km blur of the input does not move the score. The fine detail that matters lies between 4 km and the 0.25 degree cell: training on 6 x 6 block means costs 0.017 of top-5% capture (5%), and that coarse-rain CNN (0.305) is still above every boosting variant (best 0.289). Sub-0.25 degree structure is worth about a third of the CNN's lead over boosting; the rest is how the rain is read.
+2. **It is not memorised geography.** Dropping the coordinate or the exposure channels does not hurt, and the CNN with shuffled rain (static knowledge only, top-5% 0.204) equals boosting without rain (0.204): the static part is the same for both. The whole difference is in the use of rain (+0.118 for the CNN, +0.07-0.09 for boosting).
+3. **It is not the loss and not the county pooling.** A plain binary loss gives the same ranking quality (-0.010 top-5%, +0.005 BG AUC); the county mean / max of the embedding carry no skill.
+4. **What it does is a learned neighbourhood read at the block group**: one embedding per pixel from a receptive field of tens of kilometres, sensitive to rain 10-60 km away in a graded way, positive close by and of mixed sign further out (a local-contrast signature: rain here relative to the surroundings), plus the tabular branch. The hand-built version (multi-scale means / maxima, day context, coordinates, day-normalised weights) recovers about a third of the gap at the head of the list and most of the BG AUC gap, but not the within-county ordering.
+5. **Why it is data-efficient (partly inferred).** The 55 k parameters are shared over all positions, so the 2,191 training days supply about 180 million pixel-days to the same filters while the labels act only at claimed block groups; with 5 epochs it stops early. Boosting with more features gets worse on the test years while its validation loss improves (+multi-scale: validation loss 0.0141 to 0.0115, test BG AUC 0.813 to 0.793; +all three stops at 56 iterations): its extra freedom fits year-specific structure that the convolution prior does not.
+
+## Caveats
+
+- Texas, S0, observed rain, three test years (778 days), two seeds per variant (seed spread of the top-5% is about 0.003-0.017, comparable to the smaller differences above), one architecture; nothing here concerns forecast rain.
+- The test-time probes feed the trained network inputs it never saw (shifted or blurred fields); part of their degradation is out-of-distribution. The coarse-rain retraining is the clean version of that test.
+- The gradient footprint is a local linearisation of a nonlinear network on 278 samples; the mixed-sign reading (contrast detection) is an interpretation, not tested by constructing a contrast feature.
+- Boosting was not tuned beyond the iteration count (depth 5, leaf 300, base hit the cap of 600), and the hand-built multi-scale features are one choice of filters; "boosting cannot" is not shown, only "these features recover a third". Whether boosting on the CNN's own embedding reproduces its skill (representation versus learning procedure) was not run.
+- The explanation of data efficiency in conclusion 5 is an inference from parameter sharing, early stopping and the boosting overfitting pattern, not a controlled test (the learning curve of stage 43 shows the CNN still rising and boosting flat).
