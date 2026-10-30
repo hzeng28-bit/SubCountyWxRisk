@@ -20,12 +20,12 @@ TX = "48"
 YEARS = range(2000, 2024)
 
 
-def bg_geometry() -> pd.DataFrame:
-    """2010 Texas block groups: code, county, centroid, land area (km2)."""
+def bg_geometry(zip_path: Path | None = None) -> pd.DataFrame:
+    """2010 block groups (default Texas; `zip_path`: another state, see wxrisk.states): code, county, centroid, land area (km2)."""
     import shapefile
     from shapely.geometry import shape
 
-    z = zipfile.ZipFile(PILOT / "bg2010_tx.zip")
+    z = zipfile.ZipFile(zip_path or PILOT / "bg2010_tx.zip")
     stem = [n for n in z.namelist() if n.endswith(".shp")][0][:-4]
     rd = shapefile.Reader(shp=io.BytesIO(z.read(stem + ".shp")), shx=io.BytesIO(z.read(stem + ".shx")),
                           dbf=io.BytesIO(z.read(stem + ".dbf")))
@@ -39,16 +39,16 @@ def bg_geometry() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["bg10", "cty", "lon", "lat", "area_km2"])
 
 
-def load_precip(cache: Path | None = None, meta: Path | None = None):
+def load_precip(cache: Path | None = None, meta: Path | None = None, tag: str = "tx"):
     """days, lat (descending), lon, P[day, lat, lon] in mm, memory-mapped from a .npy built on first use."""
     import xarray as xr
 
-    cache = cache or PILOT / "pr_tx_2000_2023.npy"
-    meta = meta or PILOT / "pr_tx_meta.npz"
+    cache = cache or PILOT / f"pr_{tag}_2000_2023.npy"
+    meta = meta or PILOT / f"pr_{tag}_meta.npz"
     if cache.exists() and meta.exists():
         m = np.load(meta, allow_pickle=True)
         return pd.DatetimeIndex(m["days"]), m["lat"], m["lon"], np.load(cache, mmap_mode="r")
-    files = [PILOT / "gridmet" / f"pr_tx_{y}.nc" for y in YEARS]
+    files = [PILOT / "gridmet" / f"pr_{tag}_{y}.nc" for y in YEARS]
     with xr.open_dataset(files[0], engine="netcdf4") as d0:
         lat, lon = d0.lat.values, d0.lon.values
     # write year by year into a memmap, so the 3 GB array is never held in RAM; .part keeps a crash from
@@ -162,6 +162,27 @@ def claims_tx() -> pd.DataFrame:
     return s[s.bg10.notna()]
 
 
+def claims_state(abbr: str, crosswalk=None) -> pd.DataFrame:
+    """Inland claims (cause 2/3/4) of one state with a block group (2010 vintage), paid building amount and a flag for a tropical-named event.
+
+    Unlike `claims_tx` the tropical-named claims are kept and flagged (`tc_named`), so one table serves both label scopes."""
+    import polars as pl
+
+    from .prep import build as prep
+
+    s = (prep.scan("claims_nfip")
+         .filter((pl.col("state") == abbr) & pl.col("cause").is_in(["2", "3", "4"]) & pl.col("geoid").is_not_null())
+         .select("id", pl.col("geoid").alias("bg"), pl.col("loss_date").alias("date"), pl.col("paid_building").alias("paid"),
+                 pl.col("flood_event").fill_null("").str.contains(TC_PATTERN).alias("tc_named"))
+         .collect().to_pandas())
+    s["date"] = pd.to_datetime(s["date"])
+    cw = bg_crosswalk.build(crosswalk).set_index("code")
+    s["bg10"] = s.bg.map(cw.bg10)
+    s["cty"] = s.bg10.str[:5]
+    s["paid"] = s.paid.fillna(0.0).clip(lower=0)
+    return s[s.bg10.notna()]
+
+
 def claims_tx_raw() -> pd.DataFrame:
     """(Original, from the intermediate file of scripts/21; kept for the parity check.)"""
     s = pd.read_parquet(wb2.cache_path("nfip_inland_nontropical.parquet"))
@@ -181,17 +202,21 @@ def expo_days() -> pd.DatetimeIndex:
     return pd.date_range(EXPO_START, EXPO_END)
 
 
-def exposure_matrices(bg_ids: list[str]) -> dict[str, np.ndarray]:
+def exposure_matrices(bg_ids: list[str], table: str = "policies_tx", crosswalk=None) -> dict[str, np.ndarray]:
     """In-force policy statistics per block group and day, float32[bg, day] for 2010-2023, from the CLEAN policies table.
 
     n_pol policies in force, n_sfha in a special flood hazard area (zone A*/V*), n_single single-family occupancy,
     cov_sum building coverage ($ millions). In force on day d means eff <= d < coverage_end, the earlier of the
     provider's termination date and a mid-term cancellation (a policy without either runs open-ended).
+    `table` / `crosswalk`: another state's clean policy table and relationship file (wxrisk.states).
     """
     from . import policies
+    from .prep import build as prep
+    from .prep.specs import SPECS
 
-    pol = policies.frame(extra=("occupancy", "cov_building"), occupancy=None).to_pandas()
-    cw = bg_crosswalk.build().set_index("code")
+    path = None if table == "policies_tx" else prep.paths(SPECS[table])[1]
+    pol = policies.frame(extra=("occupancy", "cov_building"), occupancy=None, path=path).to_pandas()
+    cw = bg_crosswalk.build(crosswalk).set_index("code")
     bi = pol.geoid.map(cw.bg10).map({b: i for i, b in enumerate(bg_ids)})
     keep = bi.notna().to_numpy()
     pol, bi = pol[keep], bi[keep].astype(np.int64).to_numpy()
