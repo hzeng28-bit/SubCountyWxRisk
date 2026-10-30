@@ -94,6 +94,7 @@ parquet/NetCDF files above 1 GB record only the byte hash and row count (a conte
 |---|---|---|---|---|---|
 | WeatherBench-2 IFS ENS / ERA5 | Ensemble forecasts and reanalysis (64×32) | `scripts/01`, `03` | `ens_*.npz`, `seq*.npz` | ~0.5 GB | None (public GCS bucket) |
 | ERA5 (CDS) | Convective environment fields, CO/NM/AZ, May–Sep | `scripts/09` | `cds/` | 1.5 GB | Needs `~/.cdsapirc` |
+| Day tensors for the CNN hybrid (derived, stage 41) | 3,647 forecast days 2010-2019: 18 channels on the GEFS grid (forecast rain, exposure, observed rain, ERA5 maps), gridMET 4 km peak and sum, block-group rows (43.3 M) with tabular features and claim counts, grid and mask indices | `scripts/80` | `cnn/` | 3.5 GB | Derived from GEFS, gridMET, ERA5 Gulf box, clean exposure and claims; rebuilt in about 3 minutes |
 | ERA5 (CDS), Gulf box | Total column water vapour (single levels) and specific humidity, u, v at 500/700/850 hPa (pressure levels, requested by quarter because a whole year exceeds the CDS cost limit), 24–37 N, 107–79 W, 0.25°, 00/06/12/18 UTC, 2009–2023 (stage 32) | `scripts/70` (submit, then `--download`) | `cds_gulf/` (15 single + 60 plev files) | 2.8 GB | Needs `~/.cdsapirc`; jobs are queued first, files read and checked after download |
 | NOAA Storm Events | Event reports (hail / wind / tornado / flood) | `fetch_raw.py storm_events` | `storm_events/` | 0.23 GB | None |
 | SPC storm reports | Hail, wind, tornado point reports | `fetch_raw.py spc` | `labels_extra/spc/` | 21 MB | None |

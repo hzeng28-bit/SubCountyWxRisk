@@ -2185,3 +2185,73 @@ Against the exposure ranking, the extremes model gives county AUC +0.007 [+0.003
 - Five of the 11 reforecast members (the 11-member Wednesday runs are cut to 5); with 11 members the exceedance shares and the member maximum would be better defined, but only for about one day in seven.
 - One lead range (the 00Z run of the day before, 36-84 h), 0.25 degrees, ensemble members of one model (GEFSv12), Texas, scope S0, three test years; the observed-rain reference stopped at 20 iterations.
 - Overlapping four-day windows and the few distinct storms in the largest strata make the intervals over days narrow.
+
+
+# Stage 41: E0 of the CNN hybrid, day tensors and registration checks (script 80)
+
+E0 of `docs/CNN_HYBRID_DESIGN.md`: the two-dimensional inputs, the block-group indices and the rows of the all-days unit, built and checked. Output `$WXRISK_DATA/cnn/` (3.5 GB, registered in `docs/DATA_SOURCES.md`), checks in `audit/e0_day_tensors.txt`, maps in `cnn/e0_maps.png`. Build time about three minutes.
+
+## What was built
+
+- **3,647 forecast days** (2010-01-02 .. 2019-12-27): `gefs_day_tensors.npy`, float16 [day, 18, 53, 61] (424 MB): forecast mean peak and sum, the five member peaks sorted, log policies, SFHA share and `hist00` per cell, observed gridMET peak and sum on the GEFS cells, ERA5 tcwv, q850, u850, v850, u500, v500 (daily means over S and S+1). `obs4k_day_maps.npy`, float16 [day, 2, 260, 320] (1.2 GB): the gridMET 4 km peak and sum.
+- **Rows in CSR form**: 43,337,315 block-group-day rows (the same number as script 77; the 8 days that script 77 does not count have no rows), tabular features [log policies, SFHA share, single-family share, mean coverage, block groups in the county, `hist00`, `prior3`, month, policies], claim count and paid amount in [S, S+3]; `static.npz` holds the grids, the masks, the block-group cell indices at 0.25 degrees and at 4 km, and the county index.
+
+## Checks
+
+| Check | Result |
+|---|---|
+| ERA5 registration | ERA5 coordinates equal the GEFS coordinates shifted by two rows and two columns (assertion); the outer two rows (north) and columns (west) of the GEFS grid lie outside the ERA5 box and are masked. 320 block-group comparisons of the tensor value against a direct nearest-point read of the ERA5 file: max difference 0.016 kg/m2, median 0.004, all within 0.1 |
+| Consistency with script 77 | 12 random test days: the same block groups on 12 of 12, the same claim counts on 12 of 12, forecast peak at the cell equal within 0.014 mm (float16 storage) |
+| Channels | no NaN over the valid Texas cells; fc mean peak mean 3.3 mm (maximum 243), observed peak 3.6 mm (440), ERA5 tcwv 24 kg/m2 (2.6-70.5); the member channels are ordered (member 1 mean 6.5 mm, member 5 mean 1.1 mm) |
+| Geometry | Texas occupies 789 of 3,233 cells of the grid (24%), ERA5 covers 3,009 cells; every block group has a cell index inside the grid |
+| **Observed-rain coverage** | gridMET covers only 1,637 of the 3,233 cells fully (72% of the 4 km pixels); 27 Texas cells (coast, border) are partly covered. The observed channels are zero outside the mask, and the cell averages of the partly covered cells are biased low (the same holds for `oc_f1` of scripts 77-79). The masks `obs_cover` and `obs4_valid` are saved; E1 must use them |
+
+The maps (four days: Memorial Day 2015, Tax Day 2016, Harvey, Imelda) look right: the forecast mean peak and the observed peak show the same systems, the tcwv field has its maximum under the storms, and the policy map follows the cities. The Harvey panel shows the position error that motivates H3: the forecast spiral is centred near 28.8 N 97 W while the observed maximum lies near 30 N 95 W.
+
+## Conclusions
+
+- The inputs of E0 are ready and reproduce the rows and labels of script 77; E1 (the gate: two-dimensional reading with complete information) can start from `cnn/`.
+- For E1 the observed channels need the coverage masks; cells outside gridMET (mostly outside Texas: the northern and eastern edges of the box, Mexico and the Gulf, as the maps show) carry no observed rain.
+
+## Caveats
+
+- Float16 storage rounds values (error up to about 0.01 mm at the checked cells, more at 200 mm and above); the 4 km maps are zero-filled where gridMET is missing.
+- The rows exclude tropical-cyclone county-days (scope S0) while the tensors contain all days, so a model fed a tropical day sees the field but has no rows for the counties in the window.
+- ERA5 maps are valid-time fields (E3 ceiling only); the GEFS fields are the forecast. No model has been trained.
+
+
+# Stage 42: E1 of the CNN hybrid, two-dimensional reading with the observed rain field (scripts 81, `src/wxrisk/cnn.py`)
+
+E1 is the gate of `docs/CNN_HYBRID_DESIGN.md`: with complete (observed) information, does a network that reads the field beat boosting on point and county summaries of the same field? Same rows, split and metrics as stages 38-40 (all block groups of every day of the day tensors of stage 41, scope S0, train 2010-2016, test 2017-2019: 1,091 days, 778 scored, 10,075 claimed block groups); events are days; differences are paired, bootstrapped over days. Output `audit/e1_cnn_observed.txt`; predictions and test frame in `cnn/e1_*`.
+
+## Models
+
+- **Boosting baseline** (strongest summaries): the 9 tabular rows (log policies, SFHA share, single-family share, mean coverage, block groups in the county, `hist00`, `prior3`, month, policies) + the observed rain at the 0.25 degree cell and at the 4 km pixel, each with the county peak and mean (17 features). Negatives sampled 1 in 10 with weight 10. Iterations by weighted log loss on blocked validation months (**150**; the Brier score picks 2, a straw man) and a version with 200: the two agree to 0.001-0.012 on every metric.
+- **CNN hybrid** (46 k parameters at 0.25 degrees, 55 k at 4 km): fully convolutional encoder (stem, four or five residual dilated 3x3 blocks, 16-channel embedding), read at the block group's pixel, over its county (mean and maximum) and with the tabular features; one day per batch (all claimed rows and 2,000 others, weights restoring the normaliser), listwise loss + 0.3 x binary cross entropy, AdamW with one-cycle schedule, best epoch on blocked validation months (about 1 in 7; the model trains on the other 2,191 days). Inputs: observed peak and sum (gridMET averaged to the GEFS cells and masked where gridMET covers < 50% of the cell; or the 4 km maps) + log policies, SFHA share, `hist00` as image channels + coordinates + masks. 5 seeds at 0.25 degrees (20 epochs), 3 seeds at 4 km (8 epochs); the seed mean of p is the CNN's score.
+- Tests of the module (`tests/test_cnn.py`): shapes, determinism, gradients reach the image, padding does not change the county pooling, loss ordering.
+
+## Results (CNN minus boosting with validation iterations; point value [95% over days])
+
+| Metric (all test days) | policies only | boosting | CNN 0.25 deg | CNN 4 km |
+|---|---|---|---|---|
+| block-group AUC across counties | 0.742 | 0.821 | +0.015 [+0.009, +0.021] | **+0.025 [+0.019, +0.031]** |
+| block-group top-5% capture of claim count | 0.160 | 0.296 | -0.011 [-0.028, +0.006] | **+0.023 [+0.005, +0.040]** |
+| block-group NDCG at 5%, paid amount | 0.026 | 0.079 | -0.006 [-0.011, -0.000] | **+0.017 [+0.011, +0.023]** |
+| county AUC | 0.880 | 0.909 | +0.000 [-0.002, +0.002] | **+0.004 [+0.002, +0.006]** |
+| county top-10% capture | 0.770 | 0.824 | +0.014 [+0.004, +0.024] | +0.008 [-0.001, +0.018] |
+
+In the days with >= 30 claimed block groups (77.6% of the claims) the 4 km network gains **+0.049 [+0.015, +0.080]** in block-group top-5% capture and **+0.054 [+0.031, +0.077]** in NDCG with paid amount (block-group AUC +0.029), and nothing at county level (county AUC +0.004 [-0.000, +0.008], top-10% capture +0.015 [-0.004, +0.045]). By the day's largest observed county peak, the gain concentrates in the strata >= 50 mm (block-group top-5% capture +0.031 and +0.037; NDCG +0.023 and +0.051). Seed spread: 0.25 degrees county AUC 0.904-0.909 (sd 0.0016), top-5% capture 0.276-0.289; 4 km county AUC 0.908-0.914 (sd 0.0027), top-5% capture 0.300-0.318 (every seed above the boosting 0.296).
+
+## Conclusions
+
+- **Gate: passed at 4 km, at block-group level; not passed at 0.25 degrees.** With the observed field at 4 km the network beats the boosting baseline with intervals above zero in the block-group metrics (AUC, top-5% capture, NDCG with paid amount) and, small, in county AUC; the gain is largest in the big events. At 0.25 degrees, the resolution of the forecast fields, it ties boosting (county AUC +0.000) and is worse at the head of the list (top-5% capture -0.011, NDCG -0.006).
+- So two-dimensional structure at fine scale carries information that the pixel value and the county peak and mean do not: the gain does not come from the coarse field. It is a gain in **where inside the county** the claims fall, not in which county.
+- **What this implies for the forecast mode (E2):** the forecast fields are 0.25 degrees; the 0.25 degree network found nothing over boosting, so a gain from the GEFS fields is not expected unless the fine-scale structure is recovered some other way (the learning-stage route E4: a model trained on 4 km observed fields applied to the forecast, which needs a downscaling of the forecast, or a finer forecast).
+
+## Caveats
+
+- The CNN score is the mean of 3-5 seeds and the baseline a single boosting model; an ensemble gains by itself. Single seeds at 4 km give county AUC 0.908-0.914 against boosting 0.909 (no gain beyond the spread at county level) and top-5% capture 0.300-0.318 against 0.296 (above in every seed). A boosting ensemble was not run.
+- Early stopping on blocked validation months picked epochs 1-8 (validation loss 10.48-10.59): the networks overfit after a few epochs (2,191 training days, few distinct storms); learning rate, regularisation and size were not tuned.
+- Seeds: 5 at 0.25 degrees, 3 at 4 km (the design asks for 5); intervals over days, windows overlapping, few distinct storms in the large strata.
+- Observed mode with gridMET (which also underlies the labels' era only through the same weather); the 4 km and 0.25 degree runs use different encoders' dilations; the exposure channels are in the image for H1 but H1 was not isolated (no run without them).
+- Texas, scope S0, three test years; the validation months are blocked by month, not by year.

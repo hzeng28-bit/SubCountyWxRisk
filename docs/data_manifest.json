@@ -1,13 +1,19 @@
 {
  "entries": {
   ".lock_cache.json": {
-   "bytes": 947520
+   "bytes": 3017174
   },
   "audit/building_attrs.txt": {
    "bytes": 5879
   },
   "audit/cleaning_evidence.json": {
    "bytes": 9319
+  },
+  "audit/e0_day_tensors.txt": {
+   "bytes": 2494
+  },
+  "audit/ensemble_extremes.txt": {
+   "bytes": 8123
   },
   "audit/flood_definition_diag.txt": {
    "bytes": 2871
@@ -32,6 +38,15 @@
   },
   "audit/flood_sources.txt": {
    "bytes": 3292
+  },
+  "audit/forecast_mode_ingredients.txt": {
+   "bytes": 1238
+  },
+  "audit/forecast_rain_diagnosis.txt": {
+   "bytes": 3864
+  },
+  "audit/forecast_ranking_all_counties.txt": {
+   "bytes": 7417
   },
   "audit/information_audit.txt": {
    "bytes": 3841
@@ -138,6 +153,9 @@
   "audit/mesh_vs_reports.txt": {
    "bytes": 1134
   },
+  "audit/model_assumption_audit.txt": {
+   "bytes": 3114
+  },
   "audit/mrms_sparse.json": {
    "bytes": 5540
   },
@@ -161,6 +179,12 @@
   },
   "audit/qpe_vs_flood.txt": {
    "bytes": 1682
+  },
+  "audit/ranking_and_probability_product.txt": {
+   "bytes": 3011
+  },
+  "audit/ranking_by_event_size.txt": {
+   "bytes": 6556
   },
   "audit/raw_report/cluster.json": {
    "bytes": 11642
@@ -200,6 +224,9 @@
   },
   "audit/stderr.txt": {
    "bytes": 388
+  },
+  "audit/task_metrics.txt": {
+   "bytes": 10165
   },
   "audit/usgs_gauge_history.txt": {
    "bytes": 1254
@@ -340,6 +367,33 @@
   },
   "clean/policies_tx.prep.json": {
    "bytes": 2720
+  },
+  "cnn/e0_maps.png": {
+   "bytes": 219650
+  },
+  "cnn/gefs_day_tensors.npy": {
+   "bytes": 424467164
+  },
+  "cnn/obs4k_day_maps.npy": {
+   "bytes": 1213721728
+  },
+  "cnn/rows_bg.npy": {
+   "bytes": 173349388
+  },
+  "cnn/rows_n.npy": {
+   "bytes": 173349388
+  },
+  "cnn/rows_paid.npy": {
+   "bytes": 173349388
+  },
+  "cnn/rows_ptr.npy": {
+   "bytes": 29312
+  },
+  "cnn/rows_tab.npy": {
+   "bytes": 1560143468
+  },
+  "cnn/static.npz": {
+   "bytes": 1128262
   },
   "ens_tp24_2018_lead72h_00z.npz": {
    "bytes": 140003913
@@ -564,13 +618,13 @@
    "bytes": 483
   },
   "labels_extra/flood/gefs/apcp_#.npy": {
-   "bytes": 424379520,
+   "bytes": 945020736,
    "collapsed": true,
-   "example": "apcp_20100119.npy",
-   "files": 1640
+   "example": "apcp_20100101.npy",
+   "files": 3652
   },
   "labels_extra/flood/gefs/gefs_meta.npz": {
-   "bytes": 22815
+   "bytes": 48975
   },
   "labels_extra/flood/mrms_hourly/ev_31275.npy": {
    "bytes": 6307328
@@ -1207,6 +1261,43 @@
   "labels_extra/flood/pilot/pr_tx_meta.npz": {
    "bytes": 75506
   },
+  "labels_extra/flood/pilot/ranking_test_rows.parquet": {
+   "bytes": 118341512,
+   "columns": {
+    "bg": "INT32",
+    "cty": "BYTE_ARRAY",
+    "day": "INT64",
+    "fc_cty_max": "DOUBLE",
+    "fc_f1": "FLOAT",
+    "n": "FLOAT",
+    "n_pol": "FLOAT",
+    "p_fc": "DOUBLE",
+    "p_oc": "DOUBLE",
+    "paid": "FLOAT",
+    "sysid": "BYTE_ARRAY",
+    "year": "INT32"
+   },
+   "rows": 12690079
+  },
+  "labels_extra/flood/pilot/ranking_test_rows_ext.parquet": {
+   "bytes": 165552635,
+   "columns": {
+    "bg": "INT32",
+    "cty": "BYTE_ARRAY",
+    "day": "INT64",
+    "fc_cty_max": "FLOAT",
+    "fc_f1": "FLOAT",
+    "n": "FLOAT",
+    "n_pol": "FLOAT",
+    "p_ext": "FLOAT",
+    "p_mean": "FLOAT",
+    "p_obs": "FLOAT",
+    "paid": "FLOAT",
+    "sysid": "BYTE_ARRAY",
+    "year": "INT32"
+   },
+   "rows": 12690079
+  },
   "labels_extra/flood/pilot/rel_bg20_bg10_st48.txt": {
    "bytes": 3443384
   },
@@ -1218,6 +1309,49 @@
   },
   "labels_extra/flood/pilot/sens_tc1200.csv": {
    "bytes": 432
+  },
+  "labels_extra/flood/pilot/table_T20.parquet": {
+   "bytes": 110848150,
+   "columns": {
+    "area_km2": "DOUBLE",
+    "bg": "INT64",
+    "bg10": "BYTE_ARRAY",
+    "bg_a14": "FLOAT",
+    "bg_f1": "FLOAT",
+    "bg_f3": "FLOAT",
+    "bg_s": "FLOAT",
+    "cty": "BYTE_ARRAY",
+    "cty_a14_mean": "DOUBLE",
+    "cty_f1_max": "DOUBLE",
+    "cty_f1_mean": "DOUBLE",
+    "cty_nbg": "INT64",
+    "cty_s_mean": "DOUBLE",
+    "dur": "INT64",
+    "end": "INT64",
+    "ep": "INT64",
+    "f1_vs_cty": "DOUBLE",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "mean_cov": "FLOAT",
+    "month": "INT32",
+    "n_claims": "INT32",
+    "n_pol": "FLOAT",
+    "nb15_max": "FLOAT",
+    "nb15_mean": "FLOAT",
+    "nb3_mean": "FLOAT",
+    "nb7_max": "FLOAT",
+    "nb7_mean": "FLOAT",
+    "nep15_25": "FLOAT",
+    "nep15_50": "FLOAT",
+    "nep7_25": "FLOAT",
+    "nep7_50": "FLOAT",
+    "sfha_share": "FLOAT",
+    "single_share": "FLOAT",
+    "start": "INT64",
+    "y": "INT32",
+    "year": "INT32"
+   },
+   "rows": 3977344
   },
   "labels_extra/flood/pilot/table_T50.parquet": {
    "bytes": 52299845,
@@ -1815,6 +1949,6 @@
    "rows": 25902
   }
  },
- "n_entries": 243,
+ "n_entries": 264,
  "root": "$WXRISK_DATA"
 }
