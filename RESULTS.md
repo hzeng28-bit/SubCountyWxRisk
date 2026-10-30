@@ -2255,3 +2255,49 @@ In the days with >= 30 claimed block groups (77.6% of the claims) the 4 km netwo
 - Seeds: 5 at 0.25 degrees, 3 at 4 km (the design asks for 5); intervals over days, windows overlapping, few distinct storms in the large strata.
 - Observed mode with gridMET (which also underlies the labels' era only through the same weather); the 4 km and 0.25 degree runs use different encoders' dilations; the exposure channels are in the image for H1 but H1 was not isolated (no run without them).
 - Texas, scope S0, three test years; the validation months are blocked by month, not by year.
+
+
+# Stage 43: V0/V1 of the latent route and data-sufficiency diagnostics (script 82, `scripts/81 --frac / --z`)
+
+Question of `docs/CNN_HYBRID_DESIGN.md` section 10: is a pretrained latent code of the observed 4 km field feasible, does it carry what the labelled sample cannot teach, and how far is the labelled sample from sufficient? Setup: convolutional VAE (609 k parameters, stride 6 = one GEFS cell, 8 latent channels per cell, KL weight 1e-4, log rain, loss weighted towards heavy rain) on gridMET two-day windows (peak and sum, identical to `obs4k_day_maps`, checked on 20 days), pretrained on 2000-2016 (5,325 windows) or 2010-2016 (2,192), validation on blocked months, test years 2017-2019 never used. Trained on Colab (T4, 168 s per epoch, slower than the Mac MPS at 112 s) with checkpoint and resume; probes, V1 and the CNN runs on the Mac. Outputs `audit/latent_v0_*.txt`.
+
+## Results
+
+**V0, reconstruction on the test windows (1,095 windows)**
+
+| | pretrained 2000-2016 | pretrained 2010-2016 |
+|---|---|---|
+| reconstructed / observed, pixels >= 25 mm | 0.990 | 0.994 |
+| same, pixels >= 100 mm (mean absolute error) | 0.976 (9.0 mm) | 0.983 (13.1 mm) |
+| reconstructed / observed county peak, >= 100 mm (correlation) | 0.936 (0.967) | 0.945 (0.957) |
+
+County peaks are reconstructed 5-6% low (smoothing). Scale probe (R2 for the sub-cell maximum and standard deviation of log rain per 0.25 degree cell, test windows split in half): the cell mean alone gives 0.957 and 0.574 (boosting); mean + latent gives 0.985 and 0.898 / 0.901. Linear read-out differs by pretraining set (sub-cell standard deviation 0.428 with 2000-2016, 0.237 with 2010-2016). **The latent holds sub-cell structure beyond the cell mean.**
+
+**V1, frozen latent (own cell + county mean, 16 features) added to the 17 observed summaries in the boosting model**: block-group top-5% capture -0.022 [-0.037, -0.008] (2010 version -0.020 [-0.033, -0.006]), NDCG with paid amount -0.009 [-0.014, -0.005], block-group AUC -0.002 [-0.010, +0.006], county AUC -0.001 [-0.003, +0.000]. **Gate failed as written**: no gain, and worse at the head of the list.
+
+**V1c, the 8 latent channels as extra inputs of the 0.25 degree CNN** (3 seeds, against the same CNN without them; 2 seeds with shuffled latents of another day of the month as negative control):
+
+| metric | CNN 0.25 deg | + latent | + shuffled latent | CNN 4 km |
+|---|---|---|---|---|
+| block-group AUC | 0.834 | -0.004 [-0.009, -0.000] | -0.007 [-0.010, -0.004] | +0.012 [+0.008, +0.017] |
+| BG top-5% capture | 0.287 | +0.004 [-0.009, +0.017] | -0.002 [-0.015, +0.011] | +0.032 [+0.019, +0.046] |
+| BG NDCG5 paid | 0.074 | +0.004 [-0.000, +0.008] | -0.005 [-0.009, -0.001] | +0.022 [+0.018, +0.027] |
+| county AUC | 0.909 | -0.001 [-0.002, +0.001] | -0.004 [-0.005, -0.003] | +0.004 [+0.003, +0.005] |
+
+The real latent beats the shuffled one (so it carries information) but adds nothing to the model without it, and recovers about 12% of the 4 km gain in top-5% capture (+0.004 of +0.032), inside the noise.
+
+**Data sufficiency** (training sample 2010-2016 minus validation months: 2,191 days, 1,612 with a claim, about 110 claim episodes with gaps >= 3 days, 26,561 claimed block-group days in overlapping windows, 174 days with >= 30 claimed block groups). Supervised 4 km CNN trained on 25 / 50 / 100% of the training months (2 seeds, mean): top-5% capture 0.280 / 0.301 / 0.313, NDCG with paid amount 0.085 / 0.089 / 0.096, block-group AUC 0.831 / 0.833 / 0.845, county AUC 0.907 / 0.910 / 0.913: **still rising at 100%**, about +0.012 to +0.021 of top-5% capture per doubling. With a quarter of the months the CNN already exceeds the full-sample boosting model in NDCG (0.085 vs 0.079) and block-group AUC (0.831 vs 0.821). The boosting models are flat in the number of months (0.275 / 0.269 / 0.296, not monotone): they are limited by features, not by data. Training of the 0.25 degree network with latent channels overfits strongly (training loss 7.2, best validation loss 10.49 at an early epoch, validation 12.6 at epoch 20).
+
+## Conclusions
+
+- **The autoencoder is feasible but its code is not useful as built.** V0 passes (heavy-rain pixels within 1-2.4%, county peaks 5-6% low, sub-cell structure present in the latent), but the frozen code added to boosting hurts the head of the list (V1), and as channels of the 0.25 degree CNN it recovers none of the 4 km gain beyond noise (V1c). By the gate of section 10.6, V1 failed: **no diffusion model and no Transformer on this route for now.**
+- **Likely reason (not tested):** the 4 km gain is position-specific: the block group reads its own pixel and neighbours. A latent that describes a 0.25 degree cell tells the model what fine structure exists in the cell, not where. For the forecast mode this is worse: where inside the cell the heavy rain falls is the part a 0.25 degree forecast cannot know, so a generator conditioned on the forecast would spread it, and the expected gain in the forecast mode stays small (consistent with stage 42 and E2 expectations).
+- **Data are binding for the supervised network**: about 110 training episodes, the learning curve still rising and strong overfitting. More states (the group TX + LA + FL of stage 27) is the supported next step; the expected size of the gain is roughly +0.01 to +0.02 of top-5% capture per doubling of the sample, judged by two seeds and an extrapolation.
+- Pretraining on more years (2000-2016) helps the reconstruction of the extremes (mean absolute error at >= 100 mm 9.0 vs 13.1 mm), with no effect on V1.
+
+## Caveats
+
+- The latent is the observed field's code (a ceiling); a forecast-side encoder was not trained. The link from latent cells to GEFS cells is approximate (the 6 x 6 gridMET blocks are offset from the GEFS cells by up to 0.08 degrees in longitude; each cell takes the latent cell holding its centre).
+- Not tested: initialising the 4 km CNN's encoder from the VAE and fine-tuning end to end, a larger latent, a hierarchical latent with a 12 km level, other KL weights. The negative result is for a frozen 8-channel code at the forecast-cell scale.
+- Learning curve: 2 seeds per fraction, no intervals, month subsets chosen by a hash; the CNN rows are the mean of two seeds (the 100% row uses seeds 0 and 1, so 0.313 differs from the 3-seed 0.319 of stage 42).
+- The V1c baseline is 3 seeds of the 0.25 degree CNN (stage 42 used 5); validation losses of the two VAEs are not comparable (different validation months); Texas, scope S0, three test years.

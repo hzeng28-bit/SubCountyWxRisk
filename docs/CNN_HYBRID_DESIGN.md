@@ -165,3 +165,7 @@ Risks: reconstruction dominated by light rain (tail weighting, or contrastive pr
 ### 10.7 Next step if V0/V1 pass: candidate states for data scale
 
 The labelled sample (Texas, 2,191 training days) limits every supervised model (best validation epochs 1-8). The group TX + LA + FL (stage 27) multiplies the storms and, with the same 0.25 degree grid, the day tensors extend for free once block-group tables exist. Needed: NFIP policy and claim extraction for LA and FL, block-group crosswalk, GEFS reforecast and gridMET crops over the Gulf box (ERA5 Gulf box already fetched, script 70), tropical-cyclone handling (scope S0 vs S2), and a state-held-out check so the gain is not a Texas artefact. Not started; it is conditional on the V0/V1 gates.
+
+### 10.8 Status (stage 43)
+
+V0 passed (reconstruction of heavy rain, sub-cell content in the latent). V1 failed: the frozen latent in boosting is worse at the head of the list (top-5% capture -0.022 [-0.037, -0.008]), and as channels of the 0.25 degree CNN it recovers none of the 4 km gain (+0.004 [-0.009, +0.017] of +0.032), with a shuffled-latent control. Hence no diffusion model and no Transformer on this route for now. The learning curve of the supervised 4 km CNN is still rising at 100% of the training months (about 110 claim episodes): the next supported step is the data scale-up of 10.7 (candidate states), not a larger generative model. Untested variants: fine-tuning a VAE-initialised encoder end to end, a hierarchical latent, a forecast-side encoder.

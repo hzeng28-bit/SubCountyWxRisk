@@ -85,6 +85,30 @@ class Data:
         self.cell4 = (py[:, None] * self.W + px[None, :]).ravel()  # GEFS cell of every 4 km pixel
         self.valid4 = self.st["obs4_valid"]
         self.pools = {}
+        self.z = None
+
+    def attach_latent(self, tag: str, shuffle: bool = False) -> None:
+        """Frozen VAE latent (script 82) as extra channels on the GEFS grid: each cell takes the latent cell (6 x 6 gridMET pixels) that holds its centre.
+        shuffle=True pairs every day with the latent of another day of the same calendar month (negative control)."""
+        Z = np.load(D / f"z_{tag}.npy").astype(np.float32)  # [day, C, 44, 54]
+        r = np.abs(self.st["glat"][:, None] - self.lat4[None, :]).argmin(1) // 6
+        c = np.abs(self.st["glon"][:, None] - self.lon4[None, :]).argmin(1) // 6
+        r, c = np.minimum(r, Z.shape[2] - 1), np.minimum(c, Z.shape[3] - 1)
+        inside = (np.abs(self.st["glat"][:, None] - self.lat4[None, :]).min(1) < 0.15)[:, None] & (np.abs(self.st["glon"][:, None] - self.lon4[None, :]).min(1) < 0.15)[None, :]
+        G = Z[:, :, r][:, :, :, c]  # [day, C, 53, 61]
+        G = G * inside[None, None]
+        mu = G[self.is_train].mean((0, 2, 3), keepdims=True)
+        sd = G[self.is_train].std((0, 2, 3), keepdims=True) + 1e-6
+        G = ((G - mu) / sd) * inside[None, None]
+        if shuffle:
+            rng = np.random.default_rng(0)
+            perm = np.arange(self.D)
+            mo = self.days.month.to_numpy()
+            for m in range(1, 13):
+                ix = np.flatnonzero(mo == m)
+                perm[ix] = rng.permutation(ix)
+            G = G[perm]
+        self.z = G.astype(np.float32)
 
     def pool(self, res: str):
         """Padded county pooling indices at the resolution of the encoder input."""
@@ -119,6 +143,8 @@ class Data:
             ok = self.obs_ok
             ch = [np.log1p(np.nan_to_num(peak)) / 3, np.log1p(np.nan_to_num(ssum)) / 3, np.asarray(g[7], np.float32) / 12, np.asarray(g[8], np.float32),
                   np.asarray(g[9], np.float32) / 9, self.lat_map025, self.lon_map025, self.st["valid_tx"].astype(np.float32), ok.astype(np.float32)]
+            if self.z is not None:
+                ch = ch + list(self.z[n])
             return np.stack(ch).astype(np.float32)
         o = np.asarray(self.O[n], np.float32)
         v = self.valid4.astype(np.float32)
@@ -231,12 +257,20 @@ def run_hgb() -> None:
 
 # ------------------------------------------------------------------ cnn
 
-def run_train(res: str, seed: int, epochs: int) -> None:
+def month_subset(days: pd.DatetimeIndex, frac: float) -> np.ndarray:
+    """Deterministic subset of calendar months (storms stay whole) for the learning curves: month ym is kept when its hash falls below frac."""
+    ym = days.year.to_numpy().astype(np.int64) * 12 + days.month.to_numpy()
+    return ((ym * 2654435761) % 1000) / 1000.0 < frac
+
+
+def run_train(res: str, seed: int, epochs: int, frac: float = 1.0, z: str = "", z_shuffle: bool = False) -> None:
     import torch
 
     from wxrisk import cnn, compute
 
     d = Data()
+    if z:
+        d.attach_latent(z, z_shuffle)
     dev = compute.device()
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -272,7 +306,8 @@ def run_train(res: str, seed: int, epochs: int) -> None:
         return model(b[0], b[1], b[2], b[3], pool_idx, pool_ok)
 
     has_pos = np.array([(d.rn[d.ptr[n]:d.ptr[n + 1]] > 0).any() for n in range(d.D)])
-    train_days = np.flatnonzero(d.is_train)
+    train_days = np.flatnonzero(d.is_train & month_subset(d.days, frac))
+    say(f"training days after the month subset ({frac:.0%}): {len(train_days)}")
     val_days = np.flatnonzero(d.is_val & (has_pos | (np.random.default_rng(1).random(d.D) < 0.2)))
     steps = epochs * int(((has_pos[train_days]).sum() + 0.25 * (~has_pos[train_days]).sum()) // ACCUM)
     opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
@@ -312,9 +347,9 @@ def run_train(res: str, seed: int, epochs: int) -> None:
             b = day_batch(int(n), False, rng)
             preds.append(torch.sigmoid(day_logit(b)).cpu().numpy())
     p = np.concatenate(preds).astype(np.float32)
-    np.save(D / f"e1_pred_cnn{res}_s{seed}.npy", p)
+    np.save(D / (f"z1_pred_cnn{res}_{z}{'shuf' if z_shuffle else ''}_s{seed}.npy" if z else f"e1_pred_cnn{res}_s{seed}.npy" if frac >= 1 else f"lc{int(round(frac * 100))}_pred_cnn{res}_s{seed}.npy"), p)
     say(f"saved test predictions ({len(p):,} rows, mean {p.mean() * 100:.3f}%), best validation loss {best:.4f}")
-    (wb2.cache_path("audit") / f"e1_train_{res}_s{seed}.txt").write_text("\n".join(OUT) + "\n")
+    (wb2.cache_path("audit") / (f"z1_train_{res}_{z}{'shuf' if z_shuffle else ''}_s{seed}.txt" if z else f"e1_train_{res}_s{seed}.txt" if frac >= 1 else f"lc{int(round(frac * 100))}_train_{res}_s{seed}.txt")).write_text("\n".join(OUT) + "\n")
 
 
 # ------------------------------------------------------------------ eval
@@ -397,12 +432,15 @@ def main() -> None:
     ap.add_argument("--res", choices=["025", "4km"], default="025")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--epochs", type=int, default=10)
+    ap.add_argument("--z", default="", help="tag of a frozen VAE latent (script 82) added as channels (0.25 deg only)")
+    ap.add_argument("--z-shuffle", action="store_true", help="negative control: latent of another day of the same month")
+    ap.add_argument("--frac", type=float, default=1.0, help="fraction of training months (learning curve)")
     a = ap.parse_args()
     if a.mode == "hgb":
         run_hgb()
         (wb2.cache_path("audit") / "e1_hgb.txt").write_text("\n".join(OUT) + "\n")
     elif a.mode == "train":
-        run_train(a.res, a.seed, a.epochs)
+        run_train(a.res, a.seed, a.epochs, a.frac, a.z, a.z_shuffle)
     else:
         run_eval()
 
