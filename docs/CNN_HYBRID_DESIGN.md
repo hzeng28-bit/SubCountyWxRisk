@@ -176,3 +176,5 @@ Step 1 done: block-group geography, policy extracts (LA, FL) and gridMET 2000-20
 
 Stage 45: observed-rain day products exist for TX, LA, FL (script 84). Pooled boosting does not beat the own-state fit, but cross-state transfer is close to the own fit (script 85). Next supported test of the data-scale hypothesis: the 4 km CNN trained on pooled rows (E1 format, scope S0, then S2) against the own-state CNN and a state-held-out CNN, with the same learning-curve protocol as stage 43.
 
+Stage 46 (why the 4 km CNN wins): no sub-pixel reading, no memorised geography, not the loss, not the county pooling. It reads rain over a neighbourhood of tens of kilometres with a contrast-like sign pattern; sub-0.25 degree structure is about a third of its lead over boosting. The candidate-state CNN experiment therefore tests whether more storms improve that learned neighbourhood read, and the forecast-side version (E2) must be expected to lose the sub-0.25 degree third.
+

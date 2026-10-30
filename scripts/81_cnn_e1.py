@@ -43,6 +43,20 @@ def _load(name, file):
 D = wb2.cache_path("cnn")
 OUT: list[str] = []
 NNEG, LAM, ACCUM = 2000, 0.3, 4
+# ablation variants of the 4 km input / loss (script 86): "" = the model of stage 42; the others change ONE thing
+VARIANT = ""
+VARIANTS = ("full", "nocoord", "nostatic", "shuffle_rain", "coarse_rain", "bce")
+
+
+def coarse(a: np.ndarray, v: np.ndarray, k: int = 6) -> np.ndarray:
+    """Mean of the valid pixels over k x k blocks, put back on the 4 km grid (what a 0.25 degree product would show)."""
+    H, W = a.shape
+    pad = ((0, -H % k), (0, -W % k))
+    x, w = np.pad(a * v, pad), np.pad(v, pad)
+    bs = x.reshape(x.shape[0] // k, k, x.shape[1] // k, k).sum((1, 3))
+    bw = w.reshape(w.shape[0] // k, k, w.shape[1] // k, k).sum((1, 3))
+    m = np.repeat(np.repeat(bs / np.maximum(bw, 1), k, 0), k, 1)[:H, :W]
+    return (m * v).astype(np.float32)
 
 
 def say(s=""):
@@ -86,6 +100,13 @@ class Data:
         self.valid4 = self.st["obs4_valid"]
         self.pools = {}
         self.z = None
+        self.rain_perm = np.arange(self.D)
+        if VARIANT == "shuffle_rain":  # every day gets the rain map of another day of the same calendar month
+            rng = np.random.default_rng(0)
+            mo = self.days.month.to_numpy()
+            for m in range(1, 13):
+                ix = np.flatnonzero(mo == m)
+                self.rain_perm[ix] = rng.permutation(ix)
 
     def attach_latent(self, tag: str, shuffle: bool = False) -> None:
         """Frozen VAE latent (script 82) as extra channels on the GEFS grid: each cell takes the latent cell (6 x 6 gridMET pixels) that holds its centre.
@@ -146,10 +167,15 @@ class Data:
             if self.z is not None:
                 ch = ch + list(self.z[n])
             return np.stack(ch).astype(np.float32)
-        o = np.asarray(self.O[n], np.float32)
+        o = np.asarray(self.O[self.rain_perm[n]], np.float32)
         v = self.valid4.astype(np.float32)
+        if VARIANT == "coarse_rain":
+            o = np.stack([coarse(o[0], v), coarse(o[1], v)])
         exp = [np.asarray(g[i], np.float32).ravel()[self.cell4].reshape(self.H4, self.W4) for i in (7, 8, 9)]
-        ch = [np.log1p(o[0]) / 3, np.log1p(o[1]) / 3, v, exp[0] / 12, exp[1], exp[2] / 9, self.lat_map4, self.lon_map4]
+        if VARIANT == "nostatic":
+            exp = [np.zeros_like(e) for e in exp]
+        lat, lon = (np.zeros_like(self.lat_map4), np.zeros_like(self.lon_map4)) if VARIANT == "nocoord" else (self.lat_map4, self.lon_map4)
+        ch = [np.log1p(o[0]) / 3, np.log1p(o[1]) / 3, v, exp[0] / 12, exp[1], exp[2] / 9, lat, lon]
         return np.stack(ch).astype(np.float32)
 
     @property
@@ -263,6 +289,17 @@ def month_subset(days: pd.DatetimeIndex, frac: float) -> np.ndarray:
     return ((ym * 2654435761) % 1000) / 1000.0 < frac
 
 
+def day_loss(cnn, logit, b):
+    """The listwise + binary loss of stage 41; variant "bce" keeps only the weighted binary cross entropy (no within-day ranking term)."""
+    if VARIANT == "bce":
+        import torch
+
+        pos = b[4] > 0
+        bce = torch.nn.functional.binary_cross_entropy_with_logits(logit, pos.to(logit.dtype), reduction="none")
+        return (b[5] * bce).sum() / pos.sum().clamp(min=1)
+    return cnn.day_loss(logit, b[4], b[5], LAM)
+
+
 def run_train(res: str, seed: int, epochs: int, frac: float = 1.0, z: str = "", z_shuffle: bool = False) -> None:
     import torch
 
@@ -322,7 +359,7 @@ def run_train(res: str, seed: int, epochs: int, frac: float = 1.0, z: str = "", 
         tot, k = 0.0, 0
         for i, n in enumerate(order):
             b = day_batch(int(n), True, rng)
-            loss = cnn.day_loss(day_logit(b), b[4], b[5], LAM) / ACCUM
+            loss = day_loss(cnn, day_logit(b), b) / ACCUM
             loss.backward()
             tot += float(loss) * ACCUM
             k += 1
@@ -335,7 +372,7 @@ def run_train(res: str, seed: int, epochs: int, frac: float = 1.0, z: str = "", 
         model.eval()
         vr = np.random.default_rng(123)
         with torch.no_grad():
-            vl = np.mean([float(cnn.day_loss(day_logit(b), b[4], b[5], LAM)) for b in (day_batch(int(n), True, vr) for n in val_days)])
+            vl = np.mean([float(day_loss(cnn, day_logit(b), b)) for b in (day_batch(int(n), True, vr) for n in val_days)])
         say(f"  epoch {ep + 1}: train loss {tot / k:.4f}, validation loss {vl:.4f} ({time.time() - t0:.0f} s)")
         if vl < best:
             best, best_state = vl, {k_: v.detach().clone() for k_, v in model.state_dict().items()}
@@ -347,6 +384,12 @@ def run_train(res: str, seed: int, epochs: int, frac: float = 1.0, z: str = "", 
             b = day_batch(int(n), False, rng)
             preds.append(torch.sigmoid(day_logit(b)).cpu().numpy())
     p = np.concatenate(preds).astype(np.float32)
+    if VARIANT:
+        torch.save(best_state, D / f"w_{VARIANT}_s{seed}.pt")
+        np.save(D / f"v_{VARIANT}_s{seed}.npy", p)
+        say(f"saved {VARIANT} predictions ({len(p):,} rows), best validation loss {best:.4f}")
+        (wb2.cache_path("audit") / f"v_{VARIANT}_train_s{seed}.txt").write_text("\n".join(OUT) + "\n")
+        return
     np.save(D / (f"z1_pred_cnn{res}_{z}{'shuf' if z_shuffle else ''}_s{seed}.npy" if z else f"e1_pred_cnn{res}_s{seed}.npy" if frac >= 1 else f"lc{int(round(frac * 100))}_pred_cnn{res}_s{seed}.npy"), p)
     say(f"saved test predictions ({len(p):,} rows, mean {p.mean() * 100:.3f}%), best validation loss {best:.4f}")
     (wb2.cache_path("audit") / (f"z1_train_{res}_{z}{'shuf' if z_shuffle else ''}_s{seed}.txt" if z else f"e1_train_{res}_s{seed}.txt" if frac >= 1 else f"lc{int(round(frac * 100))}_train_{res}_s{seed}.txt")).write_text("\n".join(OUT) + "\n")
@@ -435,7 +478,10 @@ def main() -> None:
     ap.add_argument("--z", default="", help="tag of a frozen VAE latent (script 82) added as channels (0.25 deg only)")
     ap.add_argument("--z-shuffle", action="store_true", help="negative control: latent of another day of the same month")
     ap.add_argument("--frac", type=float, default=1.0, help="fraction of training months (learning curve)")
+    ap.add_argument("--variant", choices=VARIANTS, default="", help="one-change ablation of the 4 km model (script 86)")
     a = ap.parse_args()
+    global VARIANT
+    VARIANT = a.variant
     if a.mode == "hgb":
         run_hgb()
         (wb2.cache_path("audit") / "e1_hgb.txt").write_text("\n".join(OUT) + "\n")
