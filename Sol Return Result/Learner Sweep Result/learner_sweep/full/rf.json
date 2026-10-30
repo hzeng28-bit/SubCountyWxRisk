@@ -1,0 +1,11 @@
+{
+ "family": "rf",
+ "best_params": {
+  "min_samples_leaf": 10,
+  "max_features": 0.10701794838317832,
+  "max_depth": null
+ },
+ "best_validation": 0.8103288616403412,
+ "trials": 60,
+ "minutes": 13.956161002318064
+}

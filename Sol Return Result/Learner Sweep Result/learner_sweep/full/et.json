@@ -1,0 +1,11 @@
+{
+ "family": "et",
+ "best_params": {
+  "min_samples_leaf": 5,
+  "max_features": 0.11969279427123786,
+  "max_depth": 12
+ },
+ "best_validation": 0.8089657909433084,
+ "trials": 60,
+ "minutes": 6.13744334379832
+}

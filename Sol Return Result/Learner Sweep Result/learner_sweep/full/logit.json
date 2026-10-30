@@ -1,0 +1,9 @@
+{
+ "family": "logit",
+ "best_params": {
+  "C": 0.06815219067096034
+ },
+ "best_validation": 0.8123330264713627,
+ "trials": 60,
+ "minutes": 2.554546622435252
+}

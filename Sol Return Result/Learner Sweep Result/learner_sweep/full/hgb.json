@@ -1,0 +1,14 @@
+{
+ "family": "hgb",
+ "best_params": {
+  "max_depth": 2,
+  "min_samples_leaf": 2197,
+  "learning_rate": 0.04869139954730878,
+  "l2": 26.081447439691676,
+  "max_iter": 569,
+  "max_leaf_nodes": 63
+ },
+ "best_validation": 0.813629689360592,
+ "trials": 60,
+ "minutes": 35.64613651037216
+}
