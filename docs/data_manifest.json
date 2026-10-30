@@ -1,7 +1,7 @@
 {
  "entries": {
   ".lock_cache.json": {
-   "bytes": 946470
+   "bytes": 947520
   },
   "audit/building_attrs.txt": {
    "bytes": 5879
@@ -17,6 +17,9 @@
   },
   "audit/flood_forecast_pilot.txt": {
    "bytes": 1175
+  },
+  "audit/flood_geometry_ablation.txt": {
+   "bytes": 5214
   },
   "audit/flood_pilot_diag.txt": {
    "bytes": 3919
@@ -51,6 +54,87 @@
   "audit/label_comparison_warn.txt": {
    "bytes": 2408
   },
+  "audit/label_noise_audit.txt": {
+   "bytes": 2041
+  },
+  "audit/label_scope_relaxation.txt": {
+   "bytes": 2765
+  },
+  "audit/learner_convergence_quick.txt": {
+   "bytes": 2296
+  },
+  "audit/learner_sweep/quick/et.journal": {
+   "bytes": 7032
+  },
+  "audit/learner_sweep/quick/et.json": {
+   "bytes": 212
+  },
+  "audit/learner_sweep/quick/et_test.npy": {
+   "bytes": 1033360
+  },
+  "audit/learner_sweep/quick/et_trials.csv": {
+   "bytes": 914
+  },
+  "audit/learner_sweep/quick/hgb.journal": {
+   "bytes": 12036
+  },
+  "audit/learner_sweep/quick/hgb.json": {
+   "bytes": 285
+  },
+  "audit/learner_sweep/quick/hgb_test.npy": {
+   "bytes": 1033360
+  },
+  "audit/learner_sweep/quick/hgb_trials.csv": {
+   "bytes": 1129
+  },
+  "audit/learner_sweep/quick/logit.journal": {
+   "bytes": 3968
+  },
+  "audit/learner_sweep/quick/logit.json": {
+   "bytes": 158
+  },
+  "audit/learner_sweep/quick/logit2.journal": {
+   "bytes": 4299
+  },
+  "audit/learner_sweep/quick/logit2.json": {
+   "bytes": 161
+  },
+  "audit/learner_sweep/quick/logit2_test.npy": {
+   "bytes": 1033360
+  },
+  "audit/learner_sweep/quick/logit2_trials.csv": {
+   "bytes": 903
+  },
+  "audit/learner_sweep/quick/logit_test.npy": {
+   "bytes": 1033360
+  },
+  "audit/learner_sweep/quick/logit_trials.csv": {
+   "bytes": 822
+  },
+  "audit/learner_sweep/quick/mlp.journal": {
+   "bytes": 8215
+  },
+  "audit/learner_sweep/quick/mlp.json": {
+   "bytes": 213
+  },
+  "audit/learner_sweep/quick/mlp_test.npy": {
+   "bytes": 1033360
+  },
+  "audit/learner_sweep/quick/mlp_trials.csv": {
+   "bytes": 1138
+  },
+  "audit/learner_sweep/quick/rf.journal": {
+   "bytes": 7032
+  },
+  "audit/learner_sweep/quick/rf.json": {
+   "bytes": 212
+  },
+  "audit/learner_sweep/quick/rf_test.npy": {
+   "bytes": 1033360
+  },
+  "audit/learner_sweep/quick/rf_trials.csv": {
+   "bytes": 914
+  },
   "audit/mesh_vs_reports.txt": {
    "bytes": 1134
   },
@@ -63,8 +147,14 @@
   "audit/nfip_granularity.txt": {
    "bytes": 6121
   },
+  "audit/nfip_state_coverage.txt": {
+   "bytes": 10539
+  },
   "audit/pilot_input_parity.txt": {
    "bytes": 1270
+  },
+  "audit/pilot_with_history.txt": {
+   "bytes": 1417
   },
   "audit/qpe_vs_flood.err": {
    "bytes": 0
@@ -93,6 +183,21 @@
   "audit/source_agreement.txt": {
    "bytes": 1506
   },
+  "audit/spatial_features.txt": {
+   "bytes": 4338
+  },
+  "audit/state_group_extreme.txt": {
+   "bytes": 4273
+  },
+  "audit/state_screen.csv": {
+   "bytes": 7572
+  },
+  "audit/state_screen_extreme.csv": {
+   "bytes": 3693
+  },
+  "audit/state_selection.txt": {
+   "bytes": 7812
+  },
   "audit/stderr.txt": {
    "bytes": 388
   },
@@ -119,6 +224,42 @@
    "collapsed": true,
    "example": "single_2000.nc",
    "files": 23
+  },
+  "cds_gulf/manifest.json": {
+   "bytes": 4262
+  },
+  "cds_gulf/plev_#_q1.nc": {
+   "bytes": 660648261,
+   "collapsed": true,
+   "example": "plev_2009_q1.nc",
+   "files": 15
+  },
+  "cds_gulf/plev_#_q2.nc": {
+   "bytes": 687683649,
+   "collapsed": true,
+   "example": "plev_2009_q2.nc",
+   "files": 15
+  },
+  "cds_gulf/plev_#_q3.nc": {
+   "bytes": 686759053,
+   "collapsed": true,
+   "example": "plev_2009_q3.nc",
+   "files": 15
+  },
+  "cds_gulf/plev_#_q4.nc": {
+   "bytes": 678681805,
+   "collapsed": true,
+   "example": "plev_2009_q4.nc",
+   "files": 15
+  },
+  "cds_gulf/single_#.nc": {
+   "bytes": 309811567,
+   "collapsed": true,
+   "example": "single_2009.nc",
+   "files": 15
+  },
+  "cds_gulf_download.log": {
+   "bytes": 1621
   },
   "clean/claims_nfip.parquet": {
    "bytes": 31553297,
@@ -488,6 +629,12 @@
   "labels_extra/flood/mrms_hourly/ev_45944_meta.npz": {
    "bytes": 3750
   },
+  "labels_extra/flood/nfhl/nfhl_#.geojson": {
+   "bytes": 173002810,
+   "collapsed": true,
+   "example": "nfhl_48001.geojson",
+   "files": 254
+  },
   "labels_extra/flood/nfip_claims_conmaz.parquet": {
    "bytes": 1099562,
    "columns": {
@@ -792,6 +939,22 @@
    },
    "rows": 24204
   },
+  "labels_extra/flood/pilot/bg_flood_geometry.parquet": {
+   "bytes": 784495,
+   "columns": {
+    "bg10": "BYTE_ARRAY",
+    "h10_le5": "DOUBLE",
+    "h10_med": "DOUBLE",
+    "h1_le2": "DOUBLE",
+    "h1_le5": "DOUBLE",
+    "h1_med": "DOUBLE",
+    "h1_p10": "DOUBLE",
+    "nfhl_mapped": "DOUBLE",
+    "nfhl_sfha": "DOUBLE",
+    "nfhl_x02": "DOUBLE"
+   },
+   "rows": 15805
+  },
   "labels_extra/flood/pilot/bg_terrain.parquet": {
    "bytes": 358981,
    "columns": {
@@ -995,6 +1158,12 @@
    "example": "pr_tx_2000.nc",
    "files": 24
   },
+  "labels_extra/flood/pilot/hand_z11_t1.npy": {
+   "bytes": 756547712
+  },
+  "labels_extra/flood/pilot/hand_z11_t10.npy": {
+   "bytes": 756547712
+  },
   "labels_extra/flood/pilot/hurdat2.txt": {
    "bytes": 7071568
   },
@@ -1136,6 +1305,49 @@
    },
    "rows": 2996576
   },
+  "labels_extra/flood/pilot/table_notc.parquet": {
+   "bytes": 95481004,
+   "columns": {
+    "area_km2": "DOUBLE",
+    "bg": "INT64",
+    "bg10": "BYTE_ARRAY",
+    "bg_a14": "FLOAT",
+    "bg_f1": "FLOAT",
+    "bg_f3": "FLOAT",
+    "bg_s": "FLOAT",
+    "cty": "BYTE_ARRAY",
+    "cty_a14_mean": "DOUBLE",
+    "cty_f1_max": "DOUBLE",
+    "cty_f1_mean": "DOUBLE",
+    "cty_nbg": "INT64",
+    "cty_s_mean": "DOUBLE",
+    "dur": "INT64",
+    "end": "INT64",
+    "ep": "INT64",
+    "f1_vs_cty": "DOUBLE",
+    "lat": "DOUBLE",
+    "lon": "DOUBLE",
+    "mean_cov": "FLOAT",
+    "month": "INT32",
+    "n_claims": "INT32",
+    "n_pol": "FLOAT",
+    "nb15_max": "FLOAT",
+    "nb15_mean": "FLOAT",
+    "nb3_mean": "FLOAT",
+    "nb7_max": "FLOAT",
+    "nb7_mean": "FLOAT",
+    "nep15_25": "FLOAT",
+    "nep15_50": "FLOAT",
+    "nep7_25": "FLOAT",
+    "nep7_50": "FLOAT",
+    "sfha_share": "FLOAT",
+    "single_share": "FLOAT",
+    "start": "INT64",
+    "y": "INT32",
+    "year": "INT32"
+   },
+   "rows": 3168198
+  },
   "labels_extra/flood/pilot/table_tc1200.parquet": {
    "bytes": 77934403,
    "columns": {
@@ -1185,11 +1397,20 @@
   "labels_extra/flood/pilot/tc_flag_800_2.npy": {
    "bytes": 2226692
   },
+  "labels_extra/flood/pilot/tc_flag_none.npy": {
+   "bytes": 2226692
+  },
   "labels_extra/flood/pilot/terrain_tiles/#_#_#.npy": {
    "bytes": 378458496,
    "collapsed": true,
    "example": "10_208_400.npy",
    "files": 1443
+  },
+  "labels_extra/flood/pilot/terrain_tiles_z11/#_#_#.npy": {
+   "bytes": 1513833984,
+   "collapsed": true,
+   "example": "11_416_800.npy",
+   "files": 5772
   },
   "labels_extra/flood/pilot/tile_test.png": {
    "bytes": 40549
@@ -1594,6 +1815,6 @@
    "rows": 25902
   }
  },
- "n_entries": 194,
+ "n_entries": 243,
  "root": "$WXRISK_DATA"
 }

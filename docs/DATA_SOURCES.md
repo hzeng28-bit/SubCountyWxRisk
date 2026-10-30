@@ -20,7 +20,7 @@ The channel is chosen by source type; no curl or shell, so behaviour is the same
 
 | Source type | Channel | Used for |
 |---|---|---|
-| Vendor API | The vendor's own library | CDS: `ecmwf-datastores-client` (`scripts/09`; the library resumes and checks sizes itself, and we added a free-space preflight once a result is ready); WeatherBench-2: `gcsfs` + zarr (`scripts/01`, `03`, `wb2.py`) |
+| Vendor API | The vendor's own library | CDS: `ecmwf-datastores-client` (`scripts/09`, `scripts/70`; the library resumes and checks sizes itself, and we added a free-space preflight once a result is ready); WeatherBench-2: `gcsfs` + zarr (`scripts/01`, `03`, `wb2.py`) |
 | Object storage | `fetch.s3` / `fetch.s3_bytes` (boto3, anonymous) | MRMS MESH/QPE (`wxrisk/mrms.py`, bucket `noaa-mrms-pds`), Terrarium elevation tiles (`scripts/27`, bucket `elevation-tiles-prod`) |
 | Plain HTTP(S) file | `fetch.https` / `fetch.fetch_many` | `fetch_raw.py`, `scripts/22` (gridMET THREDDS subsets, HURDAT2, TIGER) |
 | Small HTTP(S) response / JSON API | `fetch.get_bytes` / `fetch.get_json` (with retries) | OpenFEMA (`scripts/20`, `fetch_fema_conmaz.py`), county centroid table (`scripts/08`) |
@@ -94,6 +94,7 @@ parquet/NetCDF files above 1 GB record only the byte hash and row count (a conte
 |---|---|---|---|---|---|
 | WeatherBench-2 IFS ENS / ERA5 | Ensemble forecasts and reanalysis (64×32) | `scripts/01`, `03` | `ens_*.npz`, `seq*.npz` | ~0.5 GB | None (public GCS bucket) |
 | ERA5 (CDS) | Convective environment fields, CO/NM/AZ, May–Sep | `scripts/09` | `cds/` | 1.5 GB | Needs `~/.cdsapirc` |
+| ERA5 (CDS), Gulf box | Total column water vapour (single levels) and specific humidity, u, v at 500/700/850 hPa (pressure levels, requested by quarter because a whole year exceeds the CDS cost limit), 24–37 N, 107–79 W, 0.25°, 00/06/12/18 UTC, 2009–2023 (stage 32) | `scripts/70` (submit, then `--download`) | `cds_gulf/` (15 single + 60 plev files) | 2.8 GB | Needs `~/.cdsapirc`; jobs are queued first, files read and checked after download |
 | NOAA Storm Events | Event reports (hail / wind / tornado / flood) | `fetch_raw.py storm_events` | `storm_events/` | 0.23 GB | None |
 | SPC storm reports | Hail, wind, tornado point reports | `fetch_raw.py spc` | `labels_extra/spc/` | 21 MB | None |
 | USDA RMA | Crop insurance cause-of-loss summaries | `fetch_raw.py rma` | `labels_extra/rma/` | 0.11 GB | None |
