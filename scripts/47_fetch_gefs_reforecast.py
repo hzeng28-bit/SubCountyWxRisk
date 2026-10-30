@@ -112,6 +112,11 @@ def init_days(table: Path) -> list[pd.Timestamp]:
     return [t for t in d if 2010 <= t.year <= LAST_YEAR]
 
 
+def all_init_days() -> list[pd.Timestamp]:
+    """Every calendar day 2010..LAST_YEAR as an initialisation day (the all-days unit of docs/MODEL_AUDIT.md), whether or not an episode followed."""
+    return list(pd.date_range("2010-01-01", f"{LAST_YEAR}-12-31"))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--table", default=str(fp.PILOT / "flood_pilot_table.parquet"))
@@ -120,9 +125,12 @@ def main() -> None:
     ap.add_argument("--years", type=int, nargs=2, metavar=("FIRST", "LAST"), help="only initialisation days in these years (Slurm array shards)")
     ap.add_argument("--workers", type=int, default=int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 6)))
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--all-days", action="store_true", help="every calendar day 2010-2019, not only the days before an observed episode")
     a = ap.parse_args()
 
-    days = init_days(Path(a.table))[:: a.stride]
+    days = (all_init_days() if a.all_days else init_days(Path(a.table)))[:: a.stride]
+    if a.all_days:  # days already on disk are skipped by fetch_day; list only the missing ones so the counts below are what will be fetched
+        days = [d for d in days if not (OUT / f"apcp_{d:%Y%m%d}.npy").exists()]
     if a.years:
         days = [d for d in days if a.years[0] <= d.year <= a.years[1]]
     if a.limit:
