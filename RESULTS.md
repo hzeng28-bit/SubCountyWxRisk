@@ -2468,3 +2468,37 @@ Seven diagnostics: stem kernels split into DC / gradient / centre-surround; acti
 - The west-sided reach is shown by a model response, not explained: it may be storm motion (rain to the west of a block group arrives at S+1 to S+3, inside the claim window while the rain channels cover S and S+1), drainage routing (the Texas rivers run towards the east and south-east), or a shortcut in the data; none of the three is tested.
 - The mean gradient is a linearisation over 240 samples and per-pixel; its summed |gradient| over large areas (stage 46) overstates reach, as seen here. The "one direction" statement is about the own-pixel embedding at block-group rows of claim days; the county pooling inputs carry nothing (stage 46).
 - Channel ablation replaces a channel by its training-day mean, an input the head may not have seen in combination; redundant channels would show no effect even if each carried skill when used alone, so single-channel nulls say "redundant", not "unimportant".
+
+
+# Stage 48: coarse-to-fine multi-scale CNN with a learned vote (script 88, `cnn.MultiScale`)
+
+Stage 47 found a local, smooth, saturating rain read. Question: do explicit coarse scales add anything, and how would a weighted vote across scales behave? `MultiScale`: one small CNN per scale s in {1, 2, 4, 8, 16} px (the day's stack average-pooled by s, embedding brought back bilinearly), a head per scale (own-pixel embedding + tabular branch), a gate that returns per-row softmax weights over the scales (input: tabular branch and all embeddings), output = weighted sum of the scale logits. Loss: listwise + binary loss of the vote + 0.5 x the mean of the same loss on each scale's own logit (every scale is also a stand-alone predictor). No county pooling. 54.7 k parameters (matched to the 55 k of stage 46). Controls: `single` (scale 1, same widths, 12 k parameters) and `single_wide` (scale 1, width 40, 50.7 k parameters). Same data, split, sampling, optimiser, 5 epochs; two seeds each; test: 778 days with claims, Texas, S0, observed rain. Validation losses of `ms` (15.8) contain the auxiliary terms and are not comparable with the others (10.5).
+
+## Results (seed means; difference to the stage-46 `full` CNN with a bootstrap over days)
+
+| model | BG AUC | BG top-5% | BG NDCG5 | county AUC | county top-10% |
+|---|---|---|---|---|---|
+| policies only | 0.742 | 0.160 | 0.026 | 0.880 | 0.770 |
+| full (stage 46) | 0.843 | 0.322 | 0.098 | 0.912 | 0.824 |
+| ms vote | 0.841 (-0.002 [-0.004,-0.001]) | 0.320 (-0.002 [-0.013,+0.007]) | 0.095 (-0.003 [-0.006,+0.001]) | 0.913 (+0.002 [+0.001,+0.003]) | 0.836 (+0.012 [+0.005,+0.021]) |
+| single (12 k) | 0.841 | 0.310 (-0.011 [-0.018,-0.005]) | 0.094 | 0.912 | 0.831 (+0.007 [-0.001,+0.016]) |
+| single_wide (51 k) | 0.842 | 0.316 (-0.005 [-0.013,+0.004]) | 0.095 | 0.913 | 0.831 (+0.007 [-0.002,+0.016]) |
+
+- **The vote does not beat the full-resolution models at block-group level.** `ms` is within the interval of `full` and of `single_wide` on top-5% and NDCG; block-group AUC is 0.001-0.002 lower. Per seed, `ms` top-5% is 0.303 / 0.318 against 0.309 / 0.316 for `single` and 0.308 / 0.315 for `single_wide`: the seed spread is larger than any difference.
+- **Each scale alone, from fine to coarse, degrades monotonically** (BG top-5% / NDCG5): 1 px 0.325 / 0.098, 2 px 0.310 / 0.092, 4 px 0.312 / 0.084, 8 px 0.306 / 0.071, 16 px 0.281 / 0.065. The 16 px branch alone (rain averaged over 64 km) still has top-5% 0.281, above boosting without neighbourhood features (0.272, stage 46), because the exposure and tabular inputs carry most of that.
+- **Coarse-to-fine cumulative vote (learned weights renormalised over the coarsest k scales)** rises step by step: 16 px 0.282, +8 px 0.291, +4 px 0.308, +2 px 0.310, +1 px (the full vote) 0.320 in top-5%; NDCG5 0.066, 0.070, 0.078, 0.092, 0.095. Each finer scale adds; the finest adds the most. An equal-weight vote of the five scales is worse in NDCG5 (0.087) than the learned vote.
+- **The learned gate drops the coarse scales.** Mean weights are 0.500 (1 px), 0.500 (2 px) and 0.000-0.001 for 4, 8, 16 px, in every rain class (< 1 mm to >= 50 mm) and for claimed rows; the gate output is nearly constant over rows, so the vote is a fixed average of the two finest branches.
+- **At county level the coarse scales help a little:** county top-10% is 0.836 for the vote (+0.012 [+0.005,+0.021] over `full`, but +0.005 over `single_wide` with an interval that was not computed), 0.839 for the 4 px branch alone; county AUC differences are at most 0.003.
+
+## Conclusions
+
+1. **At 4 km observed rain, extra coarse scales give no gain at the block group.** The vote collapses onto the 1-2 px branches, and every coarser branch alone is worse and adds less. This agrees with stage 47 (reach 2-3 px) and with the stage-46 result that hand-built 3-33 px neighbourhood features recover only a third of the lead.
+2. **The pooling question has a clean answer for this data: not needed.** No pooling-based branch, weighted by a gate or averaged equally, improved the ranking. The scale analysis itself is useful as a diagnostic: the cumulative coarse-to-fine ladder shows where the skill sits (the finest scale).
+3. **Possible county-level value** of coarse scales (top-10% counties +0.005 to +0.012) is suggestive only: it is not separated from the single-scale controls and the metric is the one with the widest intervals.
+
+## Caveats
+
+- Texas, S0, observed rain, two seeds, one gate design. The gate output is nearly constant, so the result cannot distinguish "coarse scales carry no extra information" from "this gate and loss do not learn to use them" (e.g. a gate with per-scale supervision on the vote, or a coarse-to-fine residual design, were not tried).
+- Average pooling mixes the valid mask and the rain channels at coastal and border pixels; a masked pooling was not used.
+- `single` and `single_wide` are not the same architecture as `full` (no county pooling, 16 or 40 channels, three dilated blocks instead of five), so `ms` versus `full` also changes those; the controls are the fair comparison, and `ms` does not beat them outside the seed spread.
+- The scale analysis concerns the 4 km observed field. Forecast-mode inputs at 0.25 degrees (or ensemble spread across members) have a different scale structure and were not tested.
