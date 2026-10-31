@@ -2579,3 +2579,40 @@ The hand summaries give 0.785 \| 0.614 (TX), 0.722 \| 0.592 (LA), 0.782 \| 0.600
 - One model (pooled fit, seed 0), 250 + 250 days per state, one random draw; a first run with 120 days gave visibly different transfer numbers (TX-fitted read-out to FL 0.633 against 0.781), so differences of a few hundredths in A are not reliable. LA has few claimed rows.
 - The norain control is an out-of-distribution input (the network never saw an all-zero rain field); it shows that geometry is present in the code, not how much the head uses it. Whether removing the geometry component (mask dropped, or the state direction projected out) changes skill or the held-out-state gap was not run.
 - Probes use the own-pixel embedding only; the neighbourhood read and the tabular branch of the full model are not part of this test, and nothing here concerns forecast rain.
+
+
+# Stage 51: multi-source neural encoder (src/wxrisk/encoders.py, script 91; `audit/multisource_encoder.txt`)
+
+Question (user): replace the rule-based assembly of heterogeneous inputs by one learned encoder per source, fused into one embedding per block group. Implementation: `MultiSourceNet` (fine 4 km sources through a 1 x 1 projection + norm each and a shared dilated trunk; coarse 0.25 degree sources through their own trunk, put on the fine grid by a cell index and applied as FiLM, identity at initialisation; row sources through numeric + categorical-embedding MLP; `SetPool` for per-record sets; optional modality dropout; 8 unit tests). Setting: the Texas E1 data of stage 42 (all-days unit, S0, train 2010-2016, test 2017-2019, 1,091 test days), loss, schedule and validation of script 81, 5 epochs, 2 seeds per configuration, no county pooling, row branch always the 9 tabular columns. Sources: `rain` observed gridMET (3 channels), `expo` exposure maps (3), `fc` GEFS ensemble mean / member peaks (7 + mask, issue time), `era5` moisture and wind (6 + mask, valid time: ceiling only), `geo` NFHL shares + HAND statistics of the block group (9 row features, script 58). Differences against the stage-42 4 km CNN (3 seeds) with a bootstrap over days.
+
+## Results (point value; BG = block group)
+
+| Sources | BG AUC | BG top-5% | BG NDCG5 paid | county AUC | county top-10% |
+|---|---|---|---|---|---|
+| stage-42 CNN 4 km (hand-assembled input) | 0.846 | 0.319 | 0.097 | 0.913 | 0.832 |
+| boosting, observed summaries | 0.821 | 0.296 | 0.079 | 0.909 | 0.824 |
+| **rain** | 0.844 | 0.319 | 0.096 | 0.912 | 0.834 |
+| rain + expo | 0.842 | 0.313 | 0.093 | 0.912 | 0.831 |
+| rain + geo | 0.843 | 0.327 | 0.097 | 0.912 | 0.828 |
+| rain + fc | 0.843 | 0.319 | 0.099 | 0.912 | 0.828 |
+| rain + era5 | 0.842 | 0.308 | 0.092 | 0.911 | 0.836 |
+| rain + expo + fc + era5 + geo | 0.841 | 0.310 | 0.091 | 0.910 | 0.837 |
+| **fc + expo (forecast mode, no observed rain)** | 0.787 | 0.228 | 0.048 | 0.890 | 0.798 |
+| fc + expo + geo (forecast mode) | 0.777 | 0.233 | 0.049 | 0.890 | 0.810 |
+| policies only | 0.742 | 0.159 | 0.026 | 0.880 | 0.770 |
+
+Paired differences in top-5% capture against the stage-42 CNN [95% over days]: rain -0.000 [-0.012, +0.011]; rain + expo -0.006 [-0.015, +0.002]; rain + geo +0.008 [-0.006, +0.021]; rain + fc -0.000 [-0.012, +0.012]; rain + era5 -0.011 [-0.022, -0.000]; all five -0.009 [-0.021, +0.005]; fc + expo -0.091 [-0.112, -0.071]; fc + expo + geo -0.086 [-0.106, -0.064]. Block-group AUC: rain -0.002 [-0.005, +0.000], the other observed-mode combinations -0.003 to -0.006 (intervals mostly just below zero), forecast mode -0.06 to -0.07.
+
+## Conclusions
+
+1. **The declarative encoder reproduces the hand-assembled pipeline.** With the rain source alone it equals the stage-42 CNN inside every interval (top-5% 0.319 vs 0.319, NDCG 0.096 vs 0.097), so declaring sources and letting per-source encoders do the assembly costs nothing in skill and is above the boosting baseline as before.
+2. **With observed rain, no additional source helps.** NFHL / HAND (+0.008 top-5%, inside the interval), the GEFS forecast field (0), exposure maps (-0.006) and ERA5 (-0.011, borderline worse) all stay within noise of rain alone, and block-group AUC is slightly lower with every extra source. This agrees with the boosting results of stages 21-22 and 37-40: the observed rain already carries what the other sources would add, and extra input channels cost a little variance at this sample size.
+3. **Forecast mode is far below observed mode but above the exposure ranking.** `fc + expo` reaches top-5% 0.228 against 0.159 for policies only (+0.069) and 0.319 with observed rain (-0.091 [-0.112, -0.071]); geometry adds +0.005 in point value. A forecast-mode boosting baseline was not run under this exact protocol, so whether the encoder beats hand-built ensemble summaries there is not answered here (stage 37-40 reported a small increment over exposure for boosting).
+4. **What the encoder buys at this point is uniformity, not skill:** one code path takes grids at two resolutions, row features and (tested, not trained on) categorical codes and record sets, with missing-source handling, without per-source rules. Skill gains need a source that carries information the observed rain does not, which the forecast-mode setting is the natural place to look for.
+
+## Caveats
+
+- Texas only (the forecast, ERA5 and geometry sources exist only there), test years 2017-2019, 2 seeds per configuration (seed spread not tabulated), 5 epochs, no tuning of widths or learning rate.
+- The coarse-source design (own trunk + FiLM from identity initialisation) is one choice: with 5 epochs and early stopping it may not have time to leave the identity, so a null for `fc` in observed mode does not show that a better fusion cannot use it.
+- `geo` enters as row features of the block group, not as rasters; ERA5 is valid-time information (ceiling, not usable at issue time); modality dropout, categorical embeddings and `SetPool` were implemented and unit-tested but not used in these runs (no per-policy records or categorical fields were built).
+- Several training epochs show elapsed times of 1,000-2,700 s in the logs because the Mac slept during the run; this does not change the results (best validation epoch is kept) but the timings are not benchmarks.
