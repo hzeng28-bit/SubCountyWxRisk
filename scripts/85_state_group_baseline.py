@@ -175,6 +175,8 @@ def main() -> None:
                 pass
             T[f"p_{name}"] = models[tuple(f(st))].predict_proba(X)[:, 1]
             scores[name] = (f"p_{name}", "sum")
+        # test-row predictions, for the paired comparison with the CNN of script 89
+        np.savez(wb2.cache_path(f"cnn_{st.lower()}") / "e45_pred.npz", **{c: T[c].to_numpy(np.float32) for c in T.columns if c.startswith("p_")})
         say(f"\n== test {st}: rows {len(T):,}, days {T.sysid.nunique()}, claimed block groups {int((T.n > 0).sum()):,}")
         tabs = e75.event_table(T, scores)
         say("    score order: " + " / ".join(scores))
