@@ -2546,3 +2546,36 @@ Paired differences in top-5% capture [95% over days]:
 - The pooled and own fits differ in training days (TX 3x LA), hence in the number of steps and the schedule; one-cycle length follows the data. A second source of difference with stage 42: county pooling here uses block-group pixels, not county polygons (stage 46: pooling carries no skill).
 - "Shared decision space" is judged only by transfer metrics; no probe checked whether the 16-dim embedding is state-invariant. FL's county top-10% is worse for the own CNN than for boosting (-0.034) so the CNN advantage is not uniform.
 - The boosting baselines were not retuned for the pooled data and use hand-built rain summaries only (stage 46: richer hand features recover about a third of the gap).
+
+
+# Stage 50: is the CNN embedding one shared decision space across states? (script 90; `audit/embedding_shared_pool_s0*.txt`)
+
+Question (user, follow-up of stage 49): the pooled model beats the hand rain features, but does its 16-dim own-pixel embedding mean the same thing in TX, LA and FL? Frozen encoder of the pooled fit (seed 0, S0, tabular branch and head not used); 250 training-year and 250 test claimed days per state (train rows: all claimed block-group days + 5% of the others, weight 20; test rows: all rows of the days: TX 3.0 M, LA 0.8 M, FL 2.7 M). Reference = three hand summaries of the pixel (log peak, log 2-day sum, log 5 x 5 maximum).
+
+## Results
+
+**A. Linear read-out transfer** (row AUC | mean within-day AUC; fitted in the row state, scored in the column state)
+
+| embedding | TX | LA | FL |
+|---|---|---|---|
+| fitted in TX | 0.782 \| 0.644 | 0.722 \| 0.592 | 0.781 \| 0.631 |
+| fitted in LA | 0.771 \| 0.574 | 0.742 \| 0.587 | 0.735 \| 0.548 |
+| fitted in FL | 0.796 \| 0.653 | 0.720 \| 0.595 | 0.790 \| 0.631 |
+
+The hand summaries give 0.785 \| 0.614 (TX), 0.722 \| 0.592 (LA), 0.782 \| 0.600 (FL) whichever state they are fitted in (the read-out is practically monotone in the peak). TX- and FL-fitted embedding read-outs transfer with no loss (TX to FL 0.781 against FL's own 0.790; FL to TX 0.796 against 0.782); the LA-fitted one (smallest sample, 2,815 claimed rows) transfers worse (within-day 0.574 in TX, 0.548 in FL against 0.644 / 0.631 for the others). Within-day, the embedding read-out is +0.03 above the hand summaries in TX and FL and level in LA.
+
+**B. State identifiability** (balanced accuracy of a boosted 3-class classifier, chance 0.333): **embedding 0.897, hand summaries 0.414**. Inside bins of the pixel's peak it is the same, 0.887-0.899 from < 1 mm to >= 100 mm (hand summaries 0.405-0.420). **Control**: with the rain channels zeroed at the encoder input (validity mask only), the state is identified at 1.000 and PC1 has no relation to rain (Spearman 0.02): the mask alone carries a location code.
+
+**C. Geometry**: PC1 of the embedding holds 71% / 74% / 50% of the variance (TX / LA / FL) and orders with log peak (Spearman 0.78 / 0.85 / 0.68). The PC1 directions agree between states (|cosine| TX-LA 0.97, TX-FL 0.90, LA-FL 0.98). Median PC1 coordinate by peak bin (scaled by each state's 1st-99th percentile range): 0.08 / 0.17 / 0.27 / 0.40 / 0.62 / 0.96 in TX, 0.06 / 0.13 / 0.20 / 0.29 / 0.48 / 0.79 in LA and 0.17 / 0.24 / 0.31 / 0.42 / 0.59 / 0.89 in FL for bins 0-1 / 1-5 / 5-12.5 / 12.5-25 / 25-50 / 50-100 mm: the same monotone curve up to a state offset and slope.
+
+## Conclusions
+
+1. **The rain-related part of the code is shared.** The main embedding direction has the same orientation in all three states (cosine 0.90-0.98), maps rain intensity to a similar monotone curve, and a read-out fitted in one state predicts claims in another about as well as in its own state (TX and FL fitted read-outs).
+2. **The embedding as a whole is not state-free.** A classifier recovers the state from it at 0.90 in every rain class, including dry pixels; the hand summaries recover it at 0.41. With rain removed the code is a pure location code, so the encoder keeps a geometry component (via the validity mask and the receptive field around the coast and domain edges) next to the rain component. The head can use it as a state/region intercept; this is a plausible reason why the state-held-out fit loses 0.01-0.03 (stage 49), but that link was not tested.
+3. **So "mapping several inputs to one decision space" holds for the rain direction, and what it adds beyond three hand summaries is small in the linear read-out** (+0.03 within-day AUC in TX and FL, none in LA); the CNN's gain in stage 49 comes from the nonlinear head with the tabular branch and from the local contrast structure (stage 47), which a linear read-out of one pixel does not show.
+
+## Caveats
+
+- One model (pooled fit, seed 0), 250 + 250 days per state, one random draw; a first run with 120 days gave visibly different transfer numbers (TX-fitted read-out to FL 0.633 against 0.781), so differences of a few hundredths in A are not reliable. LA has few claimed rows.
+- The norain control is an out-of-distribution input (the network never saw an all-zero rain field); it shows that geometry is present in the code, not how much the head uses it. Whether removing the geometry component (mask dropped, or the state direction projected out) changes skill or the held-out-state gap was not run.
+- Probes use the own-pixel embedding only; the neighbourhood read and the tabular branch of the full model are not part of this test, and nothing here concerns forecast rain.
