@@ -2502,3 +2502,47 @@ Stage 47 found a local, smooth, saturating rain read. Question: do explicit coar
 - Average pooling mixes the valid mask and the rain channels at coastal and border pixels; a masked pooling was not used.
 - `single` and `single_wide` are not the same architecture as `full` (no county pooling, 16 or 40 channels, three dilated blocks instead of five), so `ms` versus `full` also changes those; the controls are the fair comparison, and `ms` does not beat them outside the seed spread.
 - The scale analysis concerns the 4 km observed field. Forecast-mode inputs at 0.25 degrees (or ensemble spread across members) have a different scale structure and were not tested.
+
+
+# Stage 49: pooled TX + LA + FL 4 km CNN, own-state and state-held-out fits (script 89; `audit/cnn_pooled_S0.txt`)
+
+Question (user): can a convolutional encoder replace the hand-built rain features and map the inputs of several states into one decision space? Setting: the stage-45 rows and boosting baseline (script 85, scope S0, train 2010-2016, test 2017-2023 days with >= 1 claimed block group: TX 1,738, LA 1,487, FL 1,735 days), the `cnn.Hybrid` of stage 42 (53.6 k parameters, listwise + 0.3 x BCE, 5 epochs, best validation epoch kept) on **rain only** (log peak, log 2-day sum, validity mask; coordinates and exposure maps dropped because stage 46 showed they add nothing) plus the 9 tabular columns. County pooling uses the block-group pixels of each county. Fits: `pool` (TX+LA+FL), `own` (test state only), `loso` (the other two states), `tx` (Texas model on LA / FL); 2 seeds each, seed-mean predictions; paired differences with a bootstrap over days. Boosting baselines are the stage-45 fits with the same names.
+
+## Results (point value; top-5% = block-group top-5% capture of claim count, NDCG5 with paid amount)
+
+| State | Metric | boosting own | boosting pool | boosting loso | CNN own | CNN pool | CNN loso |
+|---|---|---|---|---|---|---|---|
+| TX | BG AUC | 0.822 | 0.786 | 0.786 | 0.838 | 0.836 | 0.817 |
+| | top-5% | 0.295 | 0.293 | 0.273 | 0.322 | 0.324 | 0.291 |
+| | NDCG5 paid | 0.082 | 0.080 | 0.071 | 0.099 | 0.099 | 0.081 |
+| | county top-10% | 0.796 | 0.794 | 0.794 | 0.804 | 0.797 | 0.786 |
+| LA | BG AUC | 0.748 | 0.702 | 0.763 | 0.780 | 0.784 | 0.777 |
+| | top-5% | 0.210 | 0.228 | 0.231 | 0.272 | 0.259 | 0.252 |
+| | NDCG5 paid | 0.074 | 0.066 | 0.069 | 0.099 | 0.091 | 0.086 |
+| | county top-10% | 0.498 | 0.489 | 0.503 | 0.513 | 0.515 | 0.517 |
+| FL | BG AUC | 0.830 | 0.803 | 0.812 | 0.841 | 0.845 | 0.820 |
+| | top-5% | 0.283 | 0.281 | 0.261 | 0.283 | 0.312 | 0.275 |
+| | NDCG5 paid | 0.074 | 0.079 | 0.073 | 0.076 | 0.084 | 0.074 |
+| | county top-10% | 0.564 | 0.552 | 0.554 | 0.530 | 0.553 | 0.553 |
+
+Paired differences in top-5% capture [95% over days]:
+- CNN pool - boosting pool: TX +0.031 [+0.018, +0.044], LA +0.031 [+0.019, +0.043], FL +0.031 [+0.018, +0.044] (BG AUC +0.04 to +0.08 in all; NDCG5 paid +0.019 TX, +0.025 LA, +0.005 FL [-0.000, +0.010]; county top-10% +0.003 TX [-0.002, +0.008], +0.026 LA, +0.001 FL [-0.008, +0.011]).
+- CNN own - boosting own: TX +0.027 [+0.013, +0.039], LA +0.061 [+0.047, +0.077], FL -0.001 [-0.014, +0.011] (FL county top-10% -0.034 [-0.044, -0.024]).
+- CNN loso - boosting loso: TX +0.018 [+0.004, +0.031], LA +0.021 [+0.007, +0.034], FL +0.013 [+0.001, +0.028].
+- CNN pool - CNN own: TX +0.002 [-0.006, +0.011], LA -0.013 [-0.022, -0.004], FL +0.029 [+0.017, +0.042] (FL NDCG5 +0.008 [+0.005, +0.012], county top-10% +0.023 [+0.013, +0.032]).
+- CNN loso - CNN own: TX -0.031 [-0.043, -0.019], LA -0.020 [-0.033, -0.006], FL -0.008 [-0.021, +0.006] (BG AUC -0.021 in TX and FL).
+- CNN tx - CNN own: LA -0.021 [-0.035, -0.008], FL -0.030 [-0.043, -0.017].
+
+## Conclusions
+
+1. **For the rain part, the encoder replaces the hand-built features.** With identical training sets the rain-only CNN is above boosting on the five rain summaries at the head of the block-group list in all three states and in all three regimes (pool: +0.031 top-5% everywhere; own: TX, LA; loso: all three), and on block-group AUC. At county level it ties boosting (TX, FL) or is slightly better (LA). The tabular exposure / history columns were kept as hand features, so this is a statement about rain features only.
+2. **One network for several grids works, but pooling does not reliably add skill.** The pooled model equals the own-state model in TX (already data-rich), is worse at the head in LA (-0.013) and clearly better in FL (+0.029 top-5%, +0.023 county top-10%). The extrapolation of stage 43 (+0.01-0.02 per doubling) is supported only in FL; the pooled gain is state-dependent. Boosting gets worse in block-group AUC when pooled (stage 45), the CNN does not.
+3. **The shared space transfers only partly.** A model that never saw the test state loses 0.01-0.03 of top-5% capture (and 0.02 of BG AUC in TX and FL) against its own-state fit, yet stays above boosting trained the same way. Point values: the held-out-state CNN is above boosting's own fit in LA (0.252 vs 0.210), about level in TX (0.291 vs 0.295) and FL (0.275 vs 0.283); these three comparisons were not tested for significance. So the rain-to-risk mapping is largely shared across the Gulf states, and a state-specific part (exposure / reporting regime / drainage) remains.
+
+## Caveats
+
+- Scope S0, observed rain (gridMET), 2 seeds per fit (per-seed spread not tabulated here); test years 2017-2023. Nothing here concerns forecast rain, scope S2 or cross-state ranking (every event is a state-day).
+- Probabilities are not comparable across fits (mean predicted rate differs by an order of magnitude between pool and own fits); only rankings are evaluated.
+- The pooled and own fits differ in training days (TX 3x LA), hence in the number of steps and the schedule; one-cycle length follows the data. A second source of difference with stage 42: county pooling here uses block-group pixels, not county polygons (stage 46: pooling carries no skill).
+- "Shared decision space" is judged only by transfer metrics; no probe checked whether the 16-dim embedding is state-invariant. FL's county top-10% is worse for the own CNN than for boosting (-0.034) so the CNN advantage is not uniform.
+- The boosting baselines were not retuned for the pooled data and use hand-built rain summaries only (stage 46: richer hand features recover about a third of the gap).
