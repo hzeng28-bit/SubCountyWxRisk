@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch import nn
 
-__all__ = ["Hybrid", "pad_index", "day_loss"]
+__all__ = ["Hybrid", "MultiScale", "pad_index", "day_loss"]
 
 
 class Block(nn.Module):
@@ -58,6 +58,44 @@ class Hybrid(nn.Module):
         mx = torch.where(torch.isfinite(mx), mx, torch.zeros_like(mx))
         z = torch.cat([own, mean[county], mx[county], self.tab(tab)], dim=1)
         return self.head(z).squeeze(-1)
+
+
+class MultiScale(nn.Module):
+    """Pyramid of small CNNs with a learned vote (stage 48): one encoder per scale s sees the day's stack average-pooled by s (s = 1 is the full-resolution
+    image), its embedding is bilinearly brought back to the grid, and a per-scale head turns the own-pixel embedding + tabular branch into a logit. A gate reads the
+    tabular branch and all own-pixel embeddings and returns softmax weights over the scales; the prediction is the weighted sum of the per-scale logits
+    (`forward` returns that, the per-scale logits and the weights, so every scale can also be trained and scored on its own). No county pooling (stage 46: it carries nothing).
+
+    img [1, C, H, W]; pix [R] flat pixel index of every row; tab [R, n_tab].
+    """
+
+    def __init__(self, in_ch: int, n_tab: int, scales=(1, 2, 4, 8, 16), emb: int = 16, ch: int = 16, dilations=(1, 2, 4), hidden: int = 32):
+        super().__init__()
+        self.scales = tuple(scales)
+        self.emb = emb
+        self.enc = nn.ModuleList([
+            nn.Sequential(nn.Sequential(nn.Conv2d(in_ch, ch, 3, padding=1), nn.GroupNorm(8, ch), nn.GELU()), *[Block(ch, d) for d in dilations], nn.Conv2d(ch, emb, 1))
+            for _ in self.scales])
+        self.tab = nn.Sequential(nn.Linear(n_tab, 32), nn.GELU())
+        self.heads = nn.ModuleList([nn.Sequential(nn.Linear(emb + 32, hidden), nn.GELU(), nn.Linear(hidden, 1)) for _ in self.scales])
+        self.gate = nn.Sequential(nn.Linear(32 + emb * len(self.scales), hidden), nn.GELU(), nn.Linear(hidden, len(self.scales)))
+
+    def own_embeddings(self, img, pix):
+        out = []
+        for s, enc in zip(self.scales, self.enc):
+            x = nn.functional.avg_pool2d(img, s, s, ceil_mode=True) if s > 1 else img
+            e = enc(x)
+            if s > 1:
+                e = nn.functional.interpolate(e, size=img.shape[-2:], mode="bilinear", align_corners=False)
+            out.append(e[0].reshape(self.emb, -1).T[pix])
+        return out
+
+    def forward(self, img, pix, tab):
+        own = self.own_embeddings(img, pix)
+        t = self.tab(tab)
+        logits = torch.cat([h(torch.cat([o, t], 1)) for h, o in zip(self.heads, own)], 1)  # [R, S]
+        w = torch.softmax(self.gate(torch.cat([t] + own, 1)), dim=1)
+        return (w * logits).sum(1), logits, w
 
 
 def pad_index(groups: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
