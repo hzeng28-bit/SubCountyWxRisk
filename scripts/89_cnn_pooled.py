@@ -30,6 +30,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk.tblog import RunLog  # noqa: E402
 
 STATES = ["TX", "LA", "FL"]
 NNEG, LAM, ACCUM = 2000, 0.3, 4
@@ -152,6 +153,8 @@ def run_train(train: list[str], tag: str, seed: int, epochs: int, frac: float, s
     say(f"train days {len(pos_days)} with a claim + {len(neg_days)} without (a quarter per epoch), validation {len(val_days)}; parameters {npar:,}; epochs {epochs}")
     opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=2e-3, total_steps=max(steps, 10), pct_start=0.15)
+    tb = RunLog(f"pooled/{scope}_{tag}_s{seed}", {"train_states": "+".join(train), "scope": scope, "seed": seed, "epochs": epochs, "frac": frac, "parameters": npar})
+    gstep = 0
     best, best_state = np.inf, None
     for ep in range(epochs):
         t0 = time.time()
@@ -159,7 +162,7 @@ def run_train(train: list[str], tag: str, seed: int, epochs: int, frac: float, s
         pick = rng.choice(len(neg_days), int(0.25 * len(neg_days)), replace=False)
         order = pos_days + [neg_days[i] for i in pick]
         rng.shuffle(order)
-        tot, k = 0.0, 0
+        tot, k, last = 0.0, 0, 0.0
         for i, (s, n) in enumerate(order):
             b = day_batch(s, n, True, rng)
             loss = cnn.day_loss(logit(b), b[4], b[5], LAM) / ACCUM
@@ -167,7 +170,12 @@ def run_train(train: list[str], tag: str, seed: int, epochs: int, frac: float, s
             tot += float(loss) * ACCUM
             k += 1
             if (i + 1) % ACCUM == 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                gn = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                gstep += 1
+                tb.scalar("train/loss_step", (tot - last) / ACCUM, gstep)
+                tb.scalar("train/grad_norm", float(gn), gstep)
+                tb.scalar("train/lr", opt.param_groups[0]["lr"], gstep)
+                last = tot
                 opt.step()
                 opt.zero_grad()
                 if sched.last_epoch < sched.total_steps - 1:
@@ -177,9 +185,15 @@ def run_train(train: list[str], tag: str, seed: int, epochs: int, frac: float, s
         with torch.no_grad():
             vl = float(np.mean([float(cnn.day_loss(logit(b), b[4], b[5], LAM)) for b in (day_batch(s, n, True, vr) for s, n in val_days)]))
         say(f"  epoch {ep + 1}: train loss {tot / k:.4f}, validation loss {vl:.4f} ({time.time() - t0:.0f} s)")
+        tb.scalars("epoch/loss", {"train": tot / k, "val": vl}, ep + 1)
+        tb.scalar("epoch/seconds", time.time() - t0, ep + 1)
+        tb.scalar("epoch/days_per_s", k / max(time.time() - t0, 1e-6), ep + 1)
+        tb.scalar("epoch/best_val", min(best, vl), ep + 1)
+        tb.weights(model, ep + 1)
         if vl < best:
             best, best_state = vl, {k_: v.detach().clone() for k_, v in model.state_dict().items()}
     model.load_state_dict(best_state)
+    tb.close()
     model.eval()
     wd = wb2.cache_path("cnn_pool")
     wd.mkdir(parents=True, exist_ok=True)

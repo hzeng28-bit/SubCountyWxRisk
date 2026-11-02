@@ -2616,3 +2616,37 @@ Paired differences in top-5% capture against the stage-42 CNN [95% over days]: r
 - The coarse-source design (own trunk + FiLM from identity initialisation) is one choice: with 5 epochs and early stopping it may not have time to leave the identity, so a null for `fc` in observed mode does not show that a better fusion cannot use it.
 - `geo` enters as row features of the block group, not as rasters; ERA5 is valid-time information (ceiling, not usable at issue time); modality dropout, categorical embeddings and `SetPool` were implemented and unit-tested but not used in these runs (no per-policy records or categorical fields were built).
 - Several training epochs show elapsed times of 1,000-2,700 s in the logs because the Mac slept during the run; this does not change the results (best validation epoch is kept) but the timings are not benchmarks.
+
+
+# Stage 52: gridMET pretraining and fine-tuning with hourly MRMS channels (scripts 92, 93; `audit/mrms_finetune.txt`)
+
+Question (user, after stages 49-51 showed that observed rain dominates): does short-time radar information (hourly rain intensity and duration) add to the daily gridMET rain? Data: dynamical.org MRMS hourly (`precipitation_surface`, 1 km, gauge-corrected QPE before 2020-10); a read-only probe found it usable from 2015-03 (NaN before; the precipitation-type flag only from 2016-02, not used here), so a model trained on MRMS alone would see 22 of the 84 months of the E1 training split. Design: the gridMET encoder of stage 51 (`rain`, trained 2010-2016) is the pretrained network; a second fine source `mrms` is added by function-preserving expansion (zero weights on the new stem slice) and the network is fine-tuned on the training / validation months from 2015-03 (579 training days, 483 with a claim; 88 validation days); test = the E1 test days 2017-2019 (1,091 days), identical to stages 42 and 51 and before the 2020-10 product change. MRMS day products (script 92, 4 km cells of the E1 grid, 48 h window from 14 UTC of day S, offset chosen by correlation with gridMET: 0.923 at 13-14 h): 48 h sum, largest hourly cell-mean rate, largest hourly 1 km rate, share of hours >= 1 and >= 5 mm/h, share of valid hours. Controls: `ft_rain` (the same fine-tuning without MRMS), `ft_mrms_shuf` (MRMS of another day of the same month), `scratch_*` (random initialisation on the window). Loss, sampling, validation as script 81; 2 seeds each.
+
+## Results (point value; differences with a bootstrap over days)
+
+| Variant | BG AUC | BG top-5% | BG NDCG5 paid | county AUC | county top-10% |
+|---|---|---|---|---|---|
+| gridMET pretrained (`rain`, 2010-2016) | 0.844 | 0.319 | 0.096 | 0.912 | 0.834 |
+| ft_rain (control, window only) | 0.845 | 0.308 | 0.094 | 0.911 | 0.826 |
+| **ft_mrms** | 0.846 | 0.310 | 0.096 | 0.911 | 0.824 |
+| ft_mrms_shuf (negative control) | 0.845 | 0.309 | 0.093 | 0.911 | 0.830 |
+| scratch_rain | 0.842 | 0.308 | 0.090 | 0.911 | 0.830 |
+| scratch_mrms | 0.842 | 0.302 | 0.093 | 0.910 | 0.828 |
+
+- **ft_mrms - ft_rain** (the clean test of the MRMS channels): BG AUC +0.001 [+0.000, +0.002]; top-5% +0.002 [-0.003, +0.007]; NDCG5 paid +0.002 [+0.001, +0.004]; county AUC -0.000 [-0.001, +0.000]; county top-10% -0.002 [-0.005, +0.001]. ft_mrms_shuf - ft_rain: all within +-0.001 except county top-10% +0.004 [-0.000, +0.009].
+- **scratch_mrms - scratch_rain**: top-5% -0.006 [-0.013, +0.001]; NDCG5 +0.002 [-0.001, +0.006]; BG AUC -0.000 [-0.002, +0.002].
+- **Fine-tuning on the window against the full pretrained model**: ft_rain - rain top-5% -0.011 [-0.021, -0.001], county top-10% -0.008 [-0.015, -0.000]; ft_mrms - rain top-5% -0.009 [-0.019, +0.001], county top-10% -0.010 [-0.018, -0.002].
+- Best validation loss on the window (seed means): start 11.35, ft_rain 11.31, ft_mrms 11.31, scratch_rain 11.32, scratch_mrms 11.27 (the validation set has 88 days).
+
+## Conclusions
+
+1. **The hourly MRMS channels add very little to daily gridMET for this product.** Against the correct control the gain is +0.002 in NDCG5 with paid amount (interval above zero) and +0.001 in block-group AUC, and nothing at the head of the list or at county level; the shuffled-day control is at zero. There is a small real signal, about 2% of the NDCG, and no practical gain.
+2. **The short MRMS record costs more than it gives.** Fine-tuning on the 2015-2016 window lowers top-5% capture by 0.011 and county top-10% by 0.008 relative to the model trained on the full 2010-2016 data, with or without MRMS; MRMS does not recover the loss. Pretraining on gridMET is worth keeping (ft_rain NDCG5 0.094 against 0.090 from scratch), the fine-tuning step is not.
+3. **Why this is plausible (not tested):** claims are counted per block group over [S, S+3] with day-level dates, and gridMET's daily peak and sum already rank the block groups; hourly intensity and duration may matter for timing (nowcasting) or sub-daily labels, which this unit does not have.
+
+## Caveats
+
+- Texas, observed rain, E1 test years 2017-2019 (gauge-corrected QPE product only; the 2020-10 change to Pass 2 and the FLASH ratio, available from 2020-10, were not tested), 2 seeds per variant, a fine-tuning window of 579 training days. Intervals for the MRMS effect are narrow only because the paired comparison uses the same days; a longer record could show a larger effect.
+- The precipitation-type channels (convective / stratiform / tropical; flag available from 2016-02) and the VIL / EchoTop products (not in this source) were not used. In 9% of the heavy days of the window MRMS and gridMET disagree (correlation below 0.6, mostly December-March, where radar QPE of cold-season rain or snow is unreliable): the radar channels carry that noise.
+- The 48 h window offset (14 UTC) was chosen by correlation on 12 heavy days of a sub-box and not tuned further; lr 1e-3 for fine-tuning and 5 epochs were not tuned.
+- Evaluation globs of scripts 91 / 93 were changed to `ms_<tag>_s[0-9]*.npy`: the old pattern let `ft_mrms` also pick up the `ft_mrms_shuf` files (found and corrected before the numbers above; stage 51 tags do not collide).
