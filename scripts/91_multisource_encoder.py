@@ -28,6 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk.tblog import RunLog  # noqa: E402
 
 NNEG, LAM, ACCUM = 2000, 0.3, 4
 OUT: list[str] = []
@@ -138,13 +139,15 @@ def run_train(sources: list[str], seed: int, epochs: int, tag: str, p_drop: floa
     steps = epochs * int(((has_pos[train_days]).sum() + 0.25 * (~has_pos[train_days]).sum()) // ACCUM)
     opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=2e-3, total_steps=max(steps, 10), pct_start=0.15)
+    tb = RunLog(f"multisource/{tag}_s{seed}", {"sources": ",".join(sorted(use)), "seed": seed, "epochs": epochs, "modality_dropout": p_drop, "parameters": npar})
+    gstep = 0
     best, best_state = np.inf, None
     for ep in range(epochs):
         t0 = time.time()
         model.train()
         order = np.concatenate([train_days[has_pos[train_days]], rng.choice(train_days[~has_pos[train_days]], int(0.25 * (~has_pos[train_days]).sum()), replace=False)])
         rng.shuffle(order)
-        tot, k = 0.0, 0
+        tot, k, last = 0.0, 0, 0.0
         for i, n in enumerate(order):
             b = day_batch(int(n), True, rng)
             loss = day_loss(logit(b), b[4], b[5], LAM) / ACCUM
@@ -152,7 +155,12 @@ def run_train(sources: list[str], seed: int, epochs: int, tag: str, p_drop: floa
             tot += loss.item() * ACCUM
             k += 1
             if (i + 1) % ACCUM == 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                gn = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                gstep += 1
+                tb.scalar("train/loss_step", (tot - last) / ACCUM, gstep)
+                tb.scalar("train/grad_norm", float(gn), gstep)
+                tb.scalar("train/lr", opt.param_groups[0]["lr"], gstep)
+                last = tot
                 opt.step()
                 opt.zero_grad()
                 if sched.last_epoch < sched.total_steps - 1:
@@ -162,9 +170,15 @@ def run_train(sources: list[str], seed: int, epochs: int, tag: str, p_drop: floa
         with torch.no_grad():
             vl = float(np.mean([float(day_loss(logit(b), b[4], b[5], LAM)) for b in (day_batch(int(n), True, vr) for n in val_days)]))
         say(f"  epoch {ep + 1}: train loss {tot / k:.4f}, validation loss {vl:.4f} ({time.time() - t0:.0f} s)")
+        tb.scalars("epoch/loss", {"train": tot / k, "val": vl}, ep + 1)
+        tb.scalar("epoch/seconds", time.time() - t0, ep + 1)
+        tb.scalar("epoch/days_per_s", k / max(time.time() - t0, 1e-6), ep + 1)
+        tb.scalar("epoch/best_val", min(best, vl), ep + 1)
+        tb.weights(model, ep + 1)
         if vl < best:
             best, best_state = vl, {k_: v.detach().clone() for k_, v in model.state_dict().items()}
     model.load_state_dict(best_state)
+    tb.close()
     model.eval()
     preds = []
     with torch.no_grad():
@@ -187,7 +201,7 @@ def run_eval(tags: list[str]) -> None:
     scores["CNN 4 km, stage 42 (3 seeds)"] = ("p_cnn4km", "sum")
     scores["boosting, observed summaries"] = ("p_hgb", "sum")
     for t in tags:
-        fs = sorted(e81.D.glob(f"ms_{t}_s*.npy"))
+        fs = sorted(e81.D.glob(f"ms_{t}_s[0-9]*.npy"))
         if not fs:
             continue
         T[f"p_ms_{t}"] = np.mean([np.load(f) for f in fs], axis=0)
