@@ -115,6 +115,7 @@ parquet/NetCDF files above 1 GB record only the byte hash and row count (a conte
 | Census building permits (county) | Annual new-construction permits by county, 2010-2023 | `scripts/fetch/fetch_econ.py` | `labels_extra/econ/bps_county_<year>.txt` | 0.4 MB each | None |
 | Redfin county market tracker | Monthly county home sales, prices, inventory, 2012+ (Texas extract cached in `redfin_tx.parquet` by `scripts/37`) | `scripts/fetch/fetch_econ.py` | `labels_extra/econ/redfin_county_market_tracker.tsv.gz` | 241 MB | None (public S3, ETag checked); rolling, `mutable`; Texas counties without Redfin coverage are missing |
 | **NFIP claims (OpenFEMA v3)** | National claims 2000–2023, with block group, water depth, loss, foundation | `scripts/20` | `labels_extra/flood/nfip_national/` | 1.56 M records | None (API, paged) |
+| NFIP claim open dates, Texas 2017–2023 | `openDate`, `mostRecentPaymentDate` (first moment an insurer holds a claim record); used for the claims T-0 of the scenario report | `scripts/fetch/fetch_tx_claim_dates.py` | `labels_extra/flood/nfip_tx_claim_dates.parquet` | 116,924 records | None (API, paged; server row count checked). `openDate` is the NFIP claim open date at day resolution, not a private insurer's notice of loss |
 | **NFIP policies (OpenFEMA v3)** | 74.74 M policies: effective/termination dates, block group, building attributes | Download the bulk parquet by hand and save it as `labels_extra/flood/nfip_policies_v3.parquet` (3.7 GB), then extract a state with `scripts/24` (`TX`, or `LA FL`) | Same as left; per state: `labels_extra/flood/pilot/policies_<st>.parquet` | 3.7 GB | None |
 | FEMA flood disaster declarations, CO/NM/AZ claims | Older small tables | `scripts/fetch/fetch_fema_conmaz.py` | `labels_extra/flood/` | Small | None |
 | gridMET precipitation | 4 km daily precipitation, Texas, 2000–2023 | `scripts/22` | `labels_extra/flood/pilot/gridmet/` | 1.5 GB | None (THREDDS) |
@@ -142,6 +143,21 @@ but we have not verified the URL of the bulk file, so do not assume any particul
 | `.../pilot/flood_pilot_table.parquet` | 25 | Main block group × rain episode table (about 3 million rows) |
 | `.../pilot/bg_terrain.parquet` / `flood_pilot_wavelet.parquet` | 27 / 28 | Block group terrain, rain-episode wavelet features |
 | `audit/building_attrs.txt` | 30 | Building-attribute audit report (see `FLOOD_PRIORS.md`) |
+
+## Compressed arrays (`*.npy.zst`, `*.npz.zst`) and discarded inputs
+
+Large arrays in `cnn*/` and `labels_extra/flood/pilot/` are stored as zstd (level 19) next to where the plain file used to be, by
+`scripts/107_zstd_archive.py`. Read them with `wxrisk.zstio.load(path)` (finds either form; no `mmap_mode` for compressed files,
+the array goes into RAM); undo one with `zstio.restore(path)`. Files zstd shrinks by less than half (dense float32 model
+outputs: `p89_S0_*`, `vs_ms`, `vw_ms`, `chan_abl`) stay plain so they can still be memory-mapped. `wxrisk.integrity.content_hash` of
+`.npz.zst` is the hash of the compressed bytes: compare after `zstio.load`, not on the bytes.
+
+Deleted on 2026-11-03 to save ~11 GB (all rebuildable, none is read by a current analysis): `labels_extra/qpe/*.grib2` (script 19;
+`qpe_county_day.parquet` kept), `cds/` and `cds_gulf/` ERA5 NetCDF (scripts 09, 70; slow CDS queue; the day tensors and
+`scalefeat_*` are built), `pilot/terrain_tiles*` and `hand_z11_t*.npy` (scripts 27, 57; `bg_terrain` and `bg_flood_geometry` kept),
+`pilot/expo_2010_2023.npz` and `claims_cum.npy` (old pre-prep inputs of scripts 25 and 45; the `_clean` versions replace them, so 45's
+old-vs-clean comparison can no longer be re-run). `pilot/policies_{tx,la,fl}.parquet` are kept: they are the input that
+`scripts/40_prep.py verify` rebuilds `clean/` from.
 
 ## Data traps you must know
 

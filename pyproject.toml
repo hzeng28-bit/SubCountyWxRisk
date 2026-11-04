@@ -35,6 +35,7 @@ dependencies = [
     "dataretrieval>=1.4.0",
     "optuna>=5.0.0",
     "pyflwdir>=0.5.12",
+    "zstandard>=0.25.0",
 ]
 
 [project.optional-dependencies]

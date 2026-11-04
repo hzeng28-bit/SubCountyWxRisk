@@ -30,6 +30,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 
 
 def _load(name, file):
@@ -437,7 +438,7 @@ def stem_features(F: dict) -> np.ndarray:
 def run_groups(seed: int) -> None:
     c = Ctx(seed)
     torch, d = c.torch, c.d
-    F = dict(np.load(D / f"filters_s{seed}.npz", allow_pickle=True))
+    F = dict(zstio.load(D / f"filters_s{seed}.npz", allow_pickle=True))
     e86 = _load("e86", "86_cnn_mechanism.py")
     e75, T, _ = e86.test_frame(d, c.claim_days, True)
     lab_e, k_e, sil_e, pc_e, ev_e = kmeans_pick(emb_features(F))

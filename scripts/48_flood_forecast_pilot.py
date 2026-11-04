@@ -35,6 +35,7 @@ from sklearn.metrics import roc_auc_score
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import flood_pilot as fp  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk import wb2  # noqa: E402
 
 GEFS = wb2.cache_path("labels_extra") / "flood" / "gefs"
@@ -53,7 +54,7 @@ def build() -> None:
     t = pd.read_parquet(fp.PILOT / "flood_pilot_table.parquet",
                         columns=["bg", "ep", "cty", "start", "end", "dur", "year"])
     t = t[t.year <= LAST_YEAR].copy()
-    meta = np.load(GEFS / "gefs_meta.npz", allow_pickle=True)
+    meta = zstio.load(GEFS / "gefs_meta.npz", allow_pickle=True)
     glat, glon = meta["lat"], meta["lon"]
     days, lat, lon, P = fp.load_precip()
     g = fp.bg_geometry()
@@ -86,7 +87,7 @@ def build() -> None:
         if not f.exists():
             dropped += 1
             continue
-        a = np.load(f).astype(np.float32)  # [5, 8, ny, nx]
+        a = zstio.load(f).astype(np.float32)  # [5, 8, ny, nx]
         nd = 1 if r.dur == 1 else 2
         dayf = np.stack([a[:, :4].sum(1), a[:, 4:].sum(1)], 1)[:, :nd]  # [member, day, y, x]
         di = days.get_loc(s0)

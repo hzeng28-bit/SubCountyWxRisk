@@ -29,6 +29,7 @@ from sklearn.linear_model import LogisticRegression
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import flood_pilot as fp  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk import wb2  # noqa: E402
 
 
@@ -92,7 +93,7 @@ def episodes_part() -> pd.DataFrame:
 
 def alignment_and_sample() -> pd.DataFrame:
     say("\n== 2-3. alignment and sample (all stored initialisation days)")
-    meta = np.load(e48.GEFS / "gefs_meta.npz", allow_pickle=True)
+    meta = zstio.load(e48.GEFS / "gefs_meta.npz", allow_pickle=True)
     glat, glon = meta["lat"], meta["lon"]
     days, lat, lon, P = fp.load_precip()
     g = fp.bg_geometry()
@@ -128,7 +129,7 @@ def alignment_and_sample() -> pd.DataFrame:
         if s0 not in days:
             continue
         di = days.get_loc(s0)
-        a = np.load(f).astype(np.float32)
+        a = zstio.load(f).astype(np.float32)
         d1, d2 = a[:, :4].sum(1), a[:, 4:].sum(1)  # [member, y, x]
         fm = {1: d1.mean(0), 2: d2.mean(0)}
         for fd in (1, 2):

@@ -25,6 +25,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 
 
 def _load(name, file):
@@ -145,17 +146,17 @@ def run_eval() -> None:
     def add(name, arr):
         T[f"p_{name}"] = arr[in_test]
         models.append(name)
-    add("full (stage 46, mean of 2 seeds)", np.mean([np.load(f) for f in sorted(D.glob("v_full_s*.npy"))], axis=0))
+    add("full (stage 46, mean of 2 seeds)", np.mean([zstio.load(f) for f in sorted(D.glob("v_full_s*.npy"))], axis=0))
     seeds = {}
     for tag in SCALES:
         fs = sorted(D.glob(f"v_{tag}_s*.npy"))
         if fs:
-            seeds[tag] = [np.load(f) for f in fs]
+            seeds[tag] = [zstio.load(f) for f in fs]
             add(f"{tag} vote (mean of {len(fs)} seeds)", np.mean(seeds[tag], axis=0))
     S = SCALES["ms"]
     if "ms" in seeds:
-        per = [np.load(f) for f in sorted(D.glob("vs_ms_s*.npy"))]
-        wts = [np.load(f) for f in sorted(D.glob("vw_ms_s*.npy"))]
+        per = [zstio.load(f) for f in sorted(D.glob("vs_ms_s*.npy"))]
+        wts = [zstio.load(f) for f in sorted(D.glob("vw_ms_s*.npy"))]
         pm, wm = np.mean(per, axis=0), np.mean(wts, axis=0)
         for j, s in enumerate(S):
             add(f"ms scale {s} px alone", pm[:, j])

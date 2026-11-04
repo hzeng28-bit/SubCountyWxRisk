@@ -53,7 +53,8 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
   `WXRISK_DEVICE`; fp32 on device, each kernel has a numpy reference and a parity test; `scripts/probe_devices.py` shows what a
   machine can do). Tables: Polars/DuckDB scan parquet lazily instead of `read_parquet` into pandas (see `wxrisk.policies`).
   Big arrays: save as `.npy` (never `savez_compressed`) and open with `mmap_mode="r"`; copy the slice you need before sending it to a
-  device. Rewriting a pandas step in Polars/SQL needs a parity check, **null keys behave differently** (pandas `astype(str)` turns
+  device.
+  Once archived (`scripts/107_zstd_archive.py`: `<name>.npy.zst`, zstd 19, no mmap) read with `wxrisk.zstio.load(path)` (works for both forms). Rewriting a pandas step in Polars/SQL needs a parity check, **null keys behave differently** (pandas `astype(str)` turns
   them into a phantom group; Polars/DuckDB drop or group them explicitly).
 - Scripts add `src/` to `sys.path`, import `from wxrisk import wb2`, and use `wb2.cache_path(...)`; do the same.
 - **Downloads go through `wxrisk.fetch`, never curl/wget/shell** (must behave the same on macOS, Linux, Windows):
@@ -128,4 +129,11 @@ uv run ruff check <files you touched>    # config says line length 100, but exis
 
 ## Current state and next steps
 
-The Texas flood line is live. Observed-rain ranking meets the task (stages 35, 36); forecast-mode ranking (GEFSv12, 5 members, 0.25 degrees) adds only a small increment over the exposure ranking and little in the largest events (stages 37-40: ensemble extremes and ERA5 moisture / wind ingredients did not help). Candidate group TX + LA + FL (stage 27), pipelines for LA and FL not built. Next: two-dimensional field inputs (CNN hybrid) instead of centroid and county summaries; see `docs/MODEL_AUDIT.md` section 5 for the metrics every new model is judged by. E1 (stage 42) passed at 4 km observed resolution, tied at 0.25 degrees; the multi-scale latent route (autoencoder / diffusion, no Transformer first) is proposed in `docs/CNN_HYBRID_DESIGN.md` section 10, V0/V1 done (stage 43): the frozen VAE latent did not help (boosting worse at the head of the list, no recovery of the 4 km gain in the 0.25 degree CNN) and the supervised 4 km CNN is still data-limited (learning curve rising, about 110 training episodes), so the next step is the candidate-state data scaling (LA, FL), not a diffusion model.
+The Texas flood line is live; LA and FL have observed-rain pipelines (stages 44-45). Audit of all stages: `docs/AUDIT_2026-11-02.md`.
+
+- **What carries the skill**: block-group rain and exposure, plus claim history (+0.026). Everything else tested is null or negative: neighbour rain, terrain, NFHL / HAND, USGS history, ensemble extremes, ERA5, MRMS hourly, VAE latent, multi-scale vote, county pooling (stages 8, 18-22, 33, 40, 43, 46, 48, 51, 52).
+- **Observed-rain mode**: the 4 km rain-only CNN beats boosting at the head of the block-group list in TX, LA and FL (stages 42, 49). It is a local (2-3 px) rain read, not long-range structure (stage 47). The pooling gain is state-dependent (FL only); transfer to an unseen state loses 0.01-0.03 top-5% (stages 49, 50).
+- **Forecast mode is the open problem**: GEFSv12 adds little over the exposure ranking and almost nothing in the largest events (stages 37-40, 51: top-5% 0.228 vs 0.319 observed). The only untested route is H4 (train on observed 4 km fields, apply to downscaled / finer forecast members; `docs/CNN_HYBRID_DESIGN.md`). A bigger encoder or more input sources is not the next step.
+- **Before trusting a CNN-vs-boosting gap**: the CNN is a 3-5 seed mean against a single boosting model, and most stage 46-52 variants have 2 seeds with spread comparable to the differences. Run a boosting ensemble and more seeds first.
+- Pipelines for scope S2 (tropical windows kept; where Florida's claims are) and the all-days metric for the CNN are not built.
+- Do not use `dur`, `foundationType == 0` or `foundation_missing` as features (traps above).

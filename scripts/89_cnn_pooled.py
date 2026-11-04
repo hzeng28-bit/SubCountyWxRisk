@@ -30,6 +30,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk.tblog import RunLog  # noqa: E402
 
 STATES = ["TX", "LA", "FL"]
@@ -67,15 +68,15 @@ class State:
     def __init__(self, st: str, scope: str):
         d = wb2.cache_path(f"cnn_{st.lower()}")
         self.st, self.dir, self.scope = st, d, scope
-        S = np.load(d / "static.npz", allow_pickle=True)
+        S = zstio.load(d / "static.npz", allow_pickle=True)
         self.days = pd.DatetimeIndex(S["days"])
-        self.ptr = np.load(d / "rows_ptr.npy")
-        self.rbg = np.load(d / "rows_bg.npy")
-        self.tab = np.load(d / "rows_tab.npy", mmap_mode="r")
-        self.cnt = np.load(d / ("rows_n0.npy" if scope == "S0" else "rows_nall.npy"))
-        self.paid = np.load(d / "rows_paid0.npy")
-        self.ok = ~np.load(d / "rows_tc.npy") if scope == "S0" else np.ones(len(self.rbg), bool)
-        self.O = np.load(d / "obs4k_day_maps.npy", mmap_mode="r")
+        self.ptr = zstio.load(d / "rows_ptr.npy")
+        self.rbg = zstio.load(d / "rows_bg.npy")
+        self.tab = zstio.load(d / "rows_tab.npy", mmap_mode="r")
+        self.cnt = zstio.load(d / ("rows_n0.npy" if scope == "S0" else "rows_nall.npy"))
+        self.paid = zstio.load(d / "rows_paid0.npy")
+        self.ok = ~zstio.load(d / "rows_tc.npy") if scope == "S0" else np.ones(len(self.rbg), bool)
+        self.O = zstio.load(d / "obs4k_day_maps.npy", mmap_mode="r")
         self.valid = S["obs4_valid"].astype(np.float32)
         self.H, self.W = self.valid.shape
         self.pix = (S["b4_y"].astype(np.int64) * self.W + S["b4_x"].astype(np.int64))
@@ -226,7 +227,7 @@ def run_eval(seeds: list[int], scope: str) -> None:
         rows = np.flatnonzero(yr >= 2017)
         T = e85.table(R, rows)
         scores = {"policies only": ("n_pol", "sum")}
-        base = np.load(x.dir / "e45_pred.npz")
+        base = zstio.load(x.dir / "e45_pred.npz")
         for b in ("own", "tx", "pool", "loso"):
             if f"p_{b}" in base.files:
                 T[f"b_{b}"] = base[f"p_{b}"]
@@ -238,9 +239,9 @@ def run_eval(seeds: list[int], scope: str) -> None:
             ps = []
             for sd in seeds:
                 f = x.dir / f"p89_{scope}_{tag}_s{sd}.npz"
-                if not f.exists():
+                if not zstio.exists(f):
                     continue
-                z = np.load(f)
+                z = zstio.load(f)
                 assert len(z["p"]) == len(T) and (z["bg"] == R["bg"][rows]).all(), f"row alignment {f}"
                 ps.append(z["p"])
             if ps:

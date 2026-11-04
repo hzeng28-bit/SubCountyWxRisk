@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from . import bg_crosswalk, wb2
+from . import zstio
 
 PILOT = wb2.cache_path("labels_extra") / "flood" / "pilot"
 TX = "48"
@@ -45,9 +46,9 @@ def load_precip(cache: Path | None = None, meta: Path | None = None, tag: str = 
 
     cache = cache or PILOT / f"pr_{tag}_2000_2023.npy"
     meta = meta or PILOT / f"pr_{tag}_meta.npz"
-    if cache.exists() and meta.exists():
-        m = np.load(meta, allow_pickle=True)
-        return pd.DatetimeIndex(m["days"]), m["lat"], m["lon"], np.load(cache, mmap_mode="r")
+    if zstio.exists(cache) and meta.exists():
+        m = zstio.load(meta, allow_pickle=True)
+        return pd.DatetimeIndex(m["days"]), m["lat"], m["lon"], zstio.load(cache, mmap_mode="r")
     files = [PILOT / "gridmet" / f"pr_{tag}_{y}.nc" for y in YEARS]
     with xr.open_dataset(files[0], engine="netcdf4") as d0:
         lat, lon = d0.lat.values, d0.lon.values
@@ -70,7 +71,7 @@ def load_precip(cache: Path | None = None, meta: Path | None = None, tag: str = 
     days = days[0].append(days[1:])
     np.savez(meta, days=days.values, lat=lat, lon=lon)
     part.replace(cache)
-    return days, lat, lon, np.load(cache, mmap_mode="r")
+    return days, lat, lon, zstio.load(cache, mmap_mode="r")
 
 
 def grid_index(lat: np.ndarray, lon: np.ndarray, ylat: np.ndarray, xlon: np.ndarray):

@@ -29,6 +29,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 
 
 def _load(name, file):
@@ -67,8 +68,8 @@ def run_build() -> None:
         W[i, 0], W[i, 1] = x.max(0), x.sum(0)
     W.flush()
     np.save(D / "gridmet_win_days.npy", days[:n].to_numpy())
-    O = np.load(D / "obs4k_day_maps.npy", mmap_mode="r")
-    st = np.load(D / "static.npz", allow_pickle=True)
+    O = zstio.load(D / "obs4k_day_maps.npy", mmap_mode="r")
+    st = zstio.load(D / "static.npz", allow_pickle=True)
     tdays = pd.DatetimeIndex(st["days"])
     ix = days[:n].get_indexer(tdays)
     pick = np.random.default_rng(0).choice(len(tdays), 20, replace=False)
@@ -79,9 +80,9 @@ def run_build() -> None:
 
 class Wins:
     def __init__(self):
-        self.W = np.load(D / "gridmet_win.npy", mmap_mode="r")
-        self.days = pd.DatetimeIndex(np.load(D / "gridmet_win_days.npy"))
-        st = np.load(D / "static.npz", allow_pickle=True)
+        self.W = zstio.load(D / "gridmet_win.npy", mmap_mode="r")
+        self.days = pd.DatetimeIndex(zstio.load(D / "gridmet_win_days.npy"))
+        st = zstio.load(D / "static.npz", allow_pickle=True)
         self.valid = st["obs4_valid"]
         yr = self.days.year.to_numpy()
         ym = yr * 12 + self.days.month.to_numpy()
@@ -342,7 +343,7 @@ def run_v1(tags: list[str]) -> None:
     e75 = _load("e75", "75_task_metrics.py")
     e75.OUT = OUT
     d = e81.Data()
-    feats = np.load(D / "e1_hgb_features.npz")
+    feats = zstio.load(D / "e1_hgb_features.npz")
     rid, X = feats["rid"], feats["X"]
     day_of_row = np.repeat(np.arange(d.D), np.diff(d.ptr))
     dr = day_of_row[rid]
@@ -354,7 +355,7 @@ def run_v1(tags: list[str]) -> None:
     cell = (d.st["b4_y"].astype(np.int64)[bg] // S) * ((d.W4 + PAD) // S) + d.st["b4_x"].astype(np.int64)[bg] // S
 
     def zfeat(tag):
-        Z = np.load(D / f"z_{tag}.npy", mmap_mode="r")
+        Z = zstio.load(D / f"z_{tag}.npy", mmap_mode="r")
         c = Z.shape[1]
         ZZ = np.asarray(Z, np.float32).reshape(d.D, c, -1)
         own = ZZ[dr, :, cell]
@@ -396,7 +397,7 @@ def run_v1(tags: list[str]) -> None:
         T["p_" + name] = p
         cols[f"boosting {name}"] = "p_" + name
     cs = sorted(D.glob("e1_pred_cnn4km_s*.npy"))
-    T["p_cnn4km"] = np.mean([np.load(f) for f in cs], axis=0)
+    T["p_cnn4km"] = np.mean([zstio.load(f) for f in cs], axis=0)
     cols["CNN 4 km (seed mean)"] = "p_cnn4km"
     tabs, scores = event_scores(T, {**cols, "policies only": "n_pol"}, e75)
     metrics = (("bg_auc", "bg_w", "block-group AUC"), ("bg_cap_n_0.05", None, "BG top-5% capture"), ("bg_ndcg_p", None, "BG NDCG5 paid"), ("c_auc", "c_w", "county AUC"), ("c_cap_n_0.1", None, "county top-10% capture"))
@@ -454,7 +455,7 @@ def run_curve() -> None:
             continue
         res = []
         for f in fs:
-            T["q"] = np.load(f)
+            T["q"] = zstio.load(f)
             t, _ = event_scores(T, {"q": "q"}, e75)
             t = t["q"]
             res.append([e75.pooled(t, "c_auc", "c_w"), e75.pooled(t, "bg_cap_n_0.05", None), e75.pooled(t, "bg_ndcg_p", None), e75.pooled(t, "bg_auc", "bg_w")])
@@ -480,7 +481,7 @@ def run_zcmp(tag: str) -> None:
     for lab, pat in groups.items():
         fs = sorted(D.glob(pat))
         if fs:
-            T["p_" + lab] = np.mean([np.load(f) for f in fs], axis=0)
+            T["p_" + lab] = np.mean([zstio.load(f) for f in fs], axis=0)
             cols[lab] = "p_" + lab
             say(f"  {lab}: {len(fs)} runs")
     tabs, scores = event_scores(T, {**cols, "policies only": "n_pol"}, e75)

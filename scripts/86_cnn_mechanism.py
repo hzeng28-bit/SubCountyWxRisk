@@ -32,6 +32,7 @@ from scipy.ndimage import gaussian_filter, maximum_filter, uniform_filter
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 
 
 def _load(name, file):
@@ -91,7 +92,7 @@ def run_ladder() -> None:
     from sklearn.metrics import log_loss
 
     d = e81.Data()
-    f = np.load(D / "e1_hgb_features.npz")
+    f = zstio.load(D / "e1_hgb_features.npz")
     rid, X0 = f["rid"], f["X"]
     say(f"rows {len(rid):,}; computing the extra feature groups ...")
     ex = extra_features(d, rid)
@@ -335,12 +336,12 @@ def run_eval() -> None:
     for v in e81.VARIANTS:
         fs = sorted(D.glob(f"v_{v}_s*.npy"))
         if fs:
-            seeds[v] = [np.load(f) for f in fs]
+            seeds[v] = [zstio.load(f) for f in fs]
             add(f"{v} (mean of {len(fs)} seeds)", np.mean(seeds[v], axis=0))
     for name in ("base", "geo", "ms", "ctx", "geo+ms+ctx", "base+dayw", "geo+ms+ctx+dayw", "norain_tab", "norain_tab+geo"):
         if (D / f"ladder_{name}.npy").exists():
-            add(f"boosting {name}", np.load(D / f"ladder_{name}.npy"))
-    old = [np.load(D / f"e1_pred_cnn4km_s{s}.npy") for s in range(3)]
+            add(f"boosting {name}", zstio.load(D / f"ladder_{name}.npy"))
+    old = [zstio.load(D / f"e1_pred_cnn4km_s{s}.npy") for s in range(3)]
     add("stage-42 CNN 4 km (3 seeds)", np.mean(old, axis=0))
     ref = next(m for m in models if m.startswith("full"))
     report(e75, T, models, ref, f"ablations and ladder against {ref}")
@@ -364,7 +365,7 @@ def run_eval() -> None:
         names = []
         for f in pr:
             nm = f.stem.replace("probe_", "").replace("_s0", "")
-            T3[f"p_{nm}"] = np.load(f)
+            T3[f"p_{nm}"] = zstio.load(f)
             names.append(nm)
         order = ["none"] + [n for n in ("shift_x1", "shift_x2", "shift_x4", "shift_x8", "shift_x16", "shift_y4", "blur1", "blur2", "blur4", "coarse6", "no_rain") if n in names]
         report(e75, T3, order, "none", "test-time perturbation of the rain channels of the full CNN (seed 0)")
@@ -374,7 +375,7 @@ def run_eval() -> None:
         names = []
         for f in hd:
             nm = f.stem.replace("head_drop_", "").replace("_s0", "")
-            T4[f"p_{nm}"] = np.load(f)
+            T4[f"p_{nm}"] = zstio.load(f)
             names.append(nm)
         order = ["none"] + [n for n in ("own", "county_mean", "county_max", "county_mean+county_max", "tab", "own+county_mean+county_max") if n in names]
         report(e75, T4, order, "none", "head inputs of the full CNN set to zero at test time (seed 0)")
