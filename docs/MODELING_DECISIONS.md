@@ -105,3 +105,15 @@ an **episode-level factor** (how many claims this event produces, a count-type m
 | 3 | A finer forecast for forecast mode: HRRR / HREF / NAM-nest hourly rain, or more members; Stage IV or MRMS hourly for sub-daily intensity | forecast mode loses 0.024 (resolution) + 0.045 (error); outcome oracle leaves +0.085 | needs download; sub-daily intensity in observed mode is not supported by the miss analysis (3.9% of last-ranked positives have cell rain < 10 mm) |
 | 4 | More outcome data: a second state (LA, FL, SC) and later years | test is 497-1015 episodes, intervals +-0.03; small-exposure block groups dominate misses | NFIP claims and policies are already national |
 | 5 | Soil moisture beyond 14-day rain | antecedent rain was null in stage 8 | untested; low prior |
+
+## 9. Addendum 2026-11-02 (stages 16-52; evidence in `RESULTS.md`, audit in `docs/AUDIT_2026-11-02.md`)
+
+Settled since section 2:
+- S18. Claim history (hist00, prior3) is the only static extra that helps the pilot: +0.026 observed, +0.051 forecast (stages 17, 19). Learners converge near 0.81 within-event AUC; a family average adds +0.0016, inside the interval (stage 20).
+- S19. Neighbour-smoothed history, NFHL area shares, 70 m HAND, USGS gauge history, ensemble extremes, ERA5 ingredients, MRMS hourly channels: null or negative (stages 18, 21, 22, 33, 40, 51, 52). Do not rebuild without a new reason.
+- S20. Observed rain, 4 km: a rain-only CNN beats boosting at the block-group head in TX, LA and FL; the gain is a local 2-3 px rain read. Caveats: seed-mean vs single boosting model, 2 seeds in most variants (stages 42, 46-49).
+- S21. Pooling states does not lift boosting (stage 45); it helps the CNN only in FL; the rain direction of the embedding is shared, the embedding as a whole is not state-free (stages 49, 50).
+- S22. Forecast mode: GEFS adds +0.010 county AUC over exposure and ~0 in the largest events (stages 38, 39); `fc+expo` top-5% 0.228 vs 0.319 observed (stage 51).
+
+Open items status: O1 done (stage 16); O3 claim history done, building priors untested; O4 closed (stage 22); O7 started (stages 44-45, 49); O8, O2 not started.
+Next experiment: H4 (observed-trained model applied to downscaled / finer forecast members), preceded by a boosting ensemble and more seeds as the fair baseline.
