@@ -30,6 +30,7 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import flood_pilot as fp  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk import wb2  # noqa: E402
 
 
@@ -70,7 +71,7 @@ def build() -> pd.DataFrame:
     cl = e75.claims("S0")
     C = fp.claim_cumulative(cl, ids)
     Cp = paid_cumulative(cl, ids)
-    meta = np.load(e48.GEFS / "gefs_meta.npz", allow_pickle=True)
+    meta = zstio.load(e48.GEFS / "gefs_meta.npz", allow_pickle=True)
     glat, glon = meta["lat"], meta["lon"]
     days, lat, lon, P = fp.load_precip()
     py = np.abs(glat[None, :] - lat[:, None]).argmin(1)
@@ -82,8 +83,8 @@ def build() -> pd.DataFrame:
     cx = np.abs(glon[None, :] - g.lon.to_numpy()[:, None]).argmin(1)
     bcell = cy * len(glon) + cx
     cty_cells = {c: np.unique(bcell[i]) for c, i in g.groupby("cty").indices.items()}
-    d = np.load(fp.PILOT / "county_daily.npz", allow_pickle=True)
-    tc = np.load(fp.PILOT / "tc_flag_800_2.npy")
+    d = zstio.load(fp.PILOT / "county_daily.npz", allow_pickle=True)
+    tc = zstio.load(fp.PILOT / "tc_flag_800_2.npy")
     tc_ci = {c: i for i, c in enumerate(d["cty"])}
     csum = np.concatenate([np.zeros((1, tc.shape[1]), np.int32), np.cumsum(tc, axis=0, dtype=np.int32)])
     tc_cty = np.array([tc_ci.get(c, -1) for c in cty_of])
@@ -118,7 +119,7 @@ def build() -> pd.DataFrame:
         bgs = bgs[~flag]
         if not len(bgs):
             continue
-        a = np.load(f).astype(np.float32)
+        a = zstio.load(f).astype(np.float32)
         dayf = np.stack([a[:, :4].sum(1), a[:, 4:].sum(1)], 1)  # [member, day, y, x]
         F1m = dayf.max(1)  # per member peak over S, S+1: [member, y, x]
         fc_f1 = F1m.mean(0).ravel()

@@ -33,6 +33,7 @@ import xarray as xr
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import flood_pilot as fp  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk import wb2  # noqa: E402
 
 
@@ -106,7 +107,7 @@ def build() -> None:
     keys = np.sort(bi.astype(np.int64) * 20000 + dd)
     hist00 = np.log1p(np.bincount(bi[dd < 3653], minlength=nbg)).astype(np.float32)
 
-    meta = np.load(e48.GEFS / "gefs_meta.npz", allow_pickle=True)
+    meta = zstio.load(e48.GEFS / "gefs_meta.npz", allow_pickle=True)
     glat, glon = meta["lat"], meta["lon"]
     ny, nx = len(glat), len(glon)
     days, lat, lon, P = fp.load_precip()
@@ -123,8 +124,8 @@ def build() -> None:
     valid = np.zeros(ncell, bool)
     for v in cty_cells.values():
         valid[v] = True
-    d_ = np.load(fp.PILOT / "county_daily.npz", allow_pickle=True)
-    tc = np.load(fp.PILOT / "tc_flag_800_2.npy")
+    d_ = zstio.load(fp.PILOT / "county_daily.npz", allow_pickle=True)
+    tc = zstio.load(fp.PILOT / "tc_flag_800_2.npy")
     tc_ci = {cc: i for i, cc in enumerate(d_["cty"])}
     csum = np.concatenate([np.zeros((1, tc.shape[1]), np.int32), np.cumsum(tc, axis=0, dtype=np.int32)])
     tc_cty = np.array([tc_ci.get(cc, -1) for cc in cty_of])
@@ -161,7 +162,7 @@ def build() -> None:
     for n, (f, s0) in enumerate(keep):
         es = (s0 - fp.EXPO_START).days
         di = days.get_loc(s0)
-        a = np.load(f).astype(np.float32)
+        a = zstio.load(f).astype(np.float32)
         dayf = np.stack([a[:, :4].sum(1), a[:, 4:].sum(1)], 1)
         F1m = dayf.max(1)
         G[n, 0] = F1m.mean(0)
@@ -218,11 +219,11 @@ def build() -> None:
 
 def check() -> None:
     say("\n== E0 checks")
-    G = np.load(OUT_DIR / "gefs_day_tensors.npy", mmap_mode="r")
-    O = np.load(OUT_DIR / "obs4k_day_maps.npy", mmap_mode="r")
-    st = np.load(OUT_DIR / "static.npz", allow_pickle=True)
-    ptr, rbg, rtab = np.load(OUT_DIR / "rows_ptr.npy"), np.load(OUT_DIR / "rows_bg.npy"), np.load(OUT_DIR / "rows_tab.npy", mmap_mode="r")
-    rn = np.load(OUT_DIR / "rows_n.npy")
+    G = zstio.load(OUT_DIR / "gefs_day_tensors.npy", mmap_mode="r")
+    O = zstio.load(OUT_DIR / "obs4k_day_maps.npy", mmap_mode="r")
+    st = zstio.load(OUT_DIR / "static.npz", allow_pickle=True)
+    ptr, rbg, rtab = zstio.load(OUT_DIR / "rows_ptr.npy"), zstio.load(OUT_DIR / "rows_bg.npy"), zstio.load(OUT_DIR / "rows_tab.npy", mmap_mode="r")
+    rn = zstio.load(OUT_DIR / "rows_n.npy")
     days = pd.DatetimeIndex(st["days"])
     D = len(days)
     say(f"  tensors {G.shape} float16 ({G.nbytes / 1e6:.0f} MB), 4 km maps {O.shape} ({O.nbytes / 1e6:.0f} MB), rows {len(rbg):,} ({ptr[-1]:,}), days {days[0]:%Y-%m-%d} .. {days[-1]:%Y-%m-%d}")

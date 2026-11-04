@@ -28,6 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk.tblog import RunLog  # noqa: E402
 
 NNEG, LAM, ACCUM = 2000, 0.3, 4
@@ -204,7 +205,7 @@ def run_eval(tags: list[str]) -> None:
         fs = sorted(e81.D.glob(f"ms_{t}_s[0-9]*.npy"))
         if not fs:
             continue
-        T[f"p_ms_{t}"] = np.mean([np.load(f) for f in fs], axis=0)
+        T[f"p_ms_{t}"] = np.mean([zstio.load(f) for f in fs], axis=0)
         scores[f"MS {t} ({len(fs)} seed{'s' if len(fs) > 1 else ''})"] = (f"p_ms_{t}", "sum")
     scores["policies only"] = ("n_pol", "sum")
     metrics = (("bg_auc", "bg_w", "block-group AUC"), ("bg_cap_n_0.05", None, "BG top-5% capture"), ("bg_ndcg_p", None, "BG NDCG5 paid"),

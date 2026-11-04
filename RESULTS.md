@@ -2650,3 +2650,156 @@ Question (user, after stages 49-51 showed that observed rain dominates): does sh
 - The precipitation-type channels (convective / stratiform / tropical; flag available from 2016-02) and the VIL / EchoTop products (not in this source) were not used. In 9% of the heavy days of the window MRMS and gridMET disagree (correlation below 0.6, mostly December-March, where radar QPE of cold-season rain or snow is unreliable): the radar channels carry that noise.
 - The 48 h window offset (14 UTC) was chosen by correlation on 12 heavy days of a sub-box and not tuned further; lr 1e-3 for fine-tuning and 5 epochs were not tuned.
 - Evaluation globs of scripts 91 / 93 were changed to `ms_<tag>_s[0-9]*.npy`: the old pattern let `ft_mrms` also pick up the `ft_mrms_shuf` files (found and corrected before the numbers above; stage 51 tags do not collide).
+
+
+# Stage 53: per-event hierarchical evaluation against a blind guess, Texas (script 94; `audit/event_eval_tx.txt`, figures `docs/figures/event_eval_tx_*.png`)
+
+State: Texas (most S0 claims, rows and test event days of the three pipelines). Unit: test event day 2017-2023 (1,738 days; 394 with >= 10 claimed block groups hold 87.6% of the claims). Scores: random (blind guess), policies only, boosting own fit, CNN own fit (2 seeds). Observed rain, scope S0.
+
+## Results (CNN; events with >= 10 claimed block groups, n = 394; chance in brackets)
+| metric | worst | p10 | mode (bin) | median | mean | p90 | best | beats chance |
+|---|---|---|---|---|---|---|---|---|
+| county AUC [0.5] | 0.68 | 0.82 | 0.95 | 0.93 | 0.92 | 0.99 | 1.00 | 100% |
+| top-10% counties capture [0.10] | 0.06 | 0.50 | 0.95 | 0.89 | 0.81 | 1.00 | 1.00 | 99.5% |
+| block-group AUC [0.5] | 0.43 | 0.67 | 0.85 | 0.85 | 0.83 | 0.95 | 1.00 | 98.5% |
+| top-5% block groups capture [0.05] | 0.00 | 0.09 | 0.25 | 0.38 | 0.43 | 0.82 | 1.00 | 93.1% |
+
+Same metrics for policies only (exposure ranking): county AUC mean 0.887, top-10% capture 0.736, block-group AUC 0.715, top-5% capture 0.169. Boosting: 0.912 / 0.800 / 0.815 / 0.391. Per event the CNN has the higher block-group AUC than policies only in 67% of all events and than boosting in 59% (mean +0.069 and +0.015). All 1,738 events: block-group AUC mean 0.80, median 0.84, mode bin 0.95; top-5% capture mean 0.32, median 0.25.
+Probability part (CNN probability rescaled inside the event to the true claimed count, i.e. level given): within-event Brier skill against the uniform probability, median 0.000, mean +0.005 (all events) / +0.015 (>= 10 claims), best +0.60, worst -0.35, positive in 45% (62% for >= 10 claims); pooled over all events +0.031.
+
+## Conclusions
+- Against a blind guess the ranking wins almost always at county level (99-100%) and in 94-98% of block-group events; the blind guess itself sits at 0.5 / k as it should (sanity check passed).
+- The fair reference is exposure, not a blind guess: most of the county win rate is exposure (0.887 of 0.917); the weather part adds about +0.03 county AUC, +0.11 block-group AUC and 2.5x the top-5% capture (0.17 to 0.43).
+- Typical day: block-group AUC about 0.85, but only 38% of the claims inside the top-5% block groups (median); one event in ten finds nothing there.
+- The probability product has almost no sharpness beyond the ranking: with the level given, Brier skill over uniform is about zero for the typical event. It is a ranking tool, not a calibrated probability (consistent with stage 35 / MODEL_AUDIT).
+
+## Caveats
+- Best case input: observed rain (perfect-prog), S0, Texas, own-state fit, two seeds. Forecast mode is far lower (stage 51: top-5% capture 0.228 vs 0.319 with observed rain); these numbers are the upper bound of what the product can show, not what a user sees at issue time.
+- Events with 1-2 claimed block groups (77% of days) make AUC a coin of rank; the headline stratum is the 394 events with >= 10; conditional on an event having happened (days with >= 1 claim), not an all-days evaluation.
+- The Brier part uses the true claim count (level oracle); absolute levels are not forecast (MODELING_DECISIONS, level vs shape). County win rate uses only counties with rows; 5+ counties and both classes are required.
+- "Mode" is the fullest bin of 10 bins and is coarse; no intervals over events are given for these distribution statistics (events within a storm are dependent).
+
+
+# Stage 54: forecast-mode per-event evaluation against a blind guess, Texas 2017-2019 (script 95; `audit/forecast_event_eval_tx.txt`, figures `docs/figures/forecast_eval_tx_*.png`)
+
+Same events and metrics as stage 53, scores known at issue time: `fc + expo` (GEFSv12 ensemble fields + exposure, script 91, 2 seeds) against the observed-rain `rain + expo` on the same rows (the GEFS reforecast ends in 2019, so only 2017-2019: 1,091 days, 778 events with a claim, 210 with >= 10 claimed block groups holding 91.8% of the claims).
+
+## Results (events with >= 10 claimed block groups, n = 210; chance in brackets)
+| metric | forecast: worst / mode (bin) / median / mean / best | beats chance | policies only (mean) | observed rain (mean) |
+|---|---|---|---|---|
+| county AUC [0.5] | 0.67 / 0.95 / 0.90 / 0.89 / 1.00 | 100% | 0.883 | 0.913 |
+| top-10% counties capture [0.10] | 0.04 / 0.95 / 0.86 / 0.77 / 1.00 | 98.6% | 0.731 | 0.809 |
+| block-group AUC [0.5] | 0.40 / 0.85 / 0.81 / 0.78 / 0.97 | 97.6% | 0.731 | 0.829 |
+| top-5% block groups capture [0.05] | 0.00 / 0.25 / 0.24 / 0.27 / 0.89 | 87.6% | 0.185 | 0.426 |
+
+- Per event the forecast has the higher block-group AUC than policies only in 70.5% of events (mean +0.047) and than the observed-rain model in 34% (mean -0.050).
+- Day flagging over all 1,091 days (AUC for the 210 days with >= 10 claimed block groups, day score = sum of block-group probabilities): blind guess 0.43 (chance), policies only 0.48, forecast 0.78, observed 0.82.
+- Probability, level given: within-event Brier skill over uniform, median 0.002, mean +0.004, pooled +0.006 (worse than observed mode's +0.015 / +0.031 of stage 53).
+
+## Conclusions
+- The forecast still wins against a blind guess almost always (county 100%, block group 98%), and flags the big-claim days (AUC 0.78, against 0.48 for exposure alone), which an exposure ranking cannot do.
+- What it adds over exposure is small at county level (+0.008 AUC, +0.04 top-10% capture) and moderate at block-group level (+0.047 AUC, top-5% capture 0.185 to 0.274); the observed-rain model gets +0.10 and 0.43. About half of the observed-rain block-group gain is kept; the head of the list is where the forecast loses most.
+- Typical event: block-group AUC about 0.81 (mode bin 0.85), but the median share of claims in the top-5% block groups is 0.24; one event in ten at 0.04 or less.
+
+## Caveats
+- Three test years, 2017-2019, 2 seeds, one network; the largest storms are few and Harvey (2017) dominates the claim total. Intervals over events are not given and events inside a storm are dependent.
+- Event metrics are conditional on a day having >= 1 claim (as stage 53); only the day-flagging AUC uses all days. False alarms on quiet days are not scored by the event metrics.
+- Brier uses the true claim count (level given). The `fc + expo` network is the stage 51 configuration; a forecast-mode boosting baseline was not rerun under this protocol, so "better than hand-built ensemble summaries" is not shown here.
+- GEFS reforecast is 5 members at 0.25 degrees, a much poorer input than an operational ensemble; these numbers are not a measure of an operational product.
+
+
+# Stage 55: task scorecard, observed and forecast mode, Texas (script 96; `audit/task_scorecard.txt|csv`, figure `docs/figures/scorecard_tx.png`)
+
+The target-metric specification of `docs/MODEL_AUDIT.md` section 5 on the Texas CNN product: ranking of block groups and counties inside an event, event-clustered bootstrap (500 draws), paired difference to policies only, by year, and the auxiliary probability checks. Unit block group x day, event = test day with >= 1 claimed block group. (A) observed rain, own-state CNN (2 seeds), 2017-2023, 1,738 events; (B) forecast mode `fc + expo`, 2017-2019, 778 events, with the observed-rain network as reference. Baselines: blind guess, policies only, rain only (4 km pixel peak, A only), boosting (A only).
+
+## Results (point [95% over events]; difference to policies only)
+| metric | A: CNN observed | A: boosting | B: CNN forecast | B: observed ref. | policies only (A / B) |
+|---|---|---|---|---|---|
+| BG AUC | 0.838 [0.825, 0.851] (+0.106) | 0.822 (+0.090) | 0.787 [0.773, 0.799] (+0.045) | 0.842 (+0.100) | 0.732 / 0.742 |
+| BG top-5% capture, claim count | 0.322 [0.305, 0.336] (+0.139) | 0.295 | 0.228 [0.206, 0.250] (+0.069) | 0.313 | 0.183 / 0.159 |
+| BG top-5% capture, paid amount | 0.355 [0.333, 0.375] (+0.218) | 0.327 | 0.227 [0.202, 0.249] (+0.096) | 0.337 | 0.136 / 0.131 |
+| BG NDCG@5% (paid) | 0.099 [0.090, 0.106] (+0.072) | 0.082 | 0.048 [0.043, 0.054] (+0.022) | 0.093 | 0.027 / 0.026 |
+| county AUC | 0.915 [0.910, 0.920] (+0.030) | 0.911 | 0.890 [0.882, 0.899] (+0.010) | 0.912 | 0.885 / 0.880 |
+| county top-10% capture | 0.804 [0.790, 0.818] (+0.058) | 0.796 | 0.798 [0.776, 0.818] (+0.029) | 0.831 | 0.745 / 0.770 |
+
+- Blind guess sits at 0.5 / k in every metric (checks out). Rain only is worse than policies only in AUC and in the county metrics and better only at the very head (top 1% BG capture 0.104 vs 0.049): rain alone does not rank, rain times exposure does.
+- CNN minus boosting (A): BG AUC +0.016, top-5% capture +0.027, NDCG +0.017, county AUC +0.004 (point values from the same runs; intervals of the difference are in stage 49 with the stage 42 protocol).
+- By year (A): BG AUC 0.82-0.86 in all seven years against 0.67-0.79 for policies only; top-5% capture 0.24-0.40 against 0.11-0.23. Forecast mode (B): 0.82 / 0.78 / 0.77 in 2017 / 18 / 19, a decline over the three years; top-5% capture 0.26 / 0.23 / 0.19.
+- Probability (auxiliary): calibration slope 0.92 (A) and 1.13 (B), mean p 0.69x (A) and 0.35x (B) of the observed rate; expected / observed claimed block groups per event, median ratio 0.94 (A) and 0.85 (B) but 0.36 (A) and 0.09 (B) for events with >= 30 claimed block groups, Spearman 0.55 / 0.42 between expected and observed counts; share of claims outside the top-5% block groups: mean 0.68 (A), 0.77 (B). Brier skill (baseline = test-period rate): +0.035 (A), +0.002 (B); trailing-3-year re-centring (2020-2023, A only): +0.004, +0.014, -0.008, +0.009; same-year oracle ranges from -0.015 to +0.088.
+
+## Conclusions
+- Ranking: with observed rain the product beats exposure-only ranking in every ranking metric with intervals clear of zero, and the gain is stable across the seven test years; it beats the blind guess by construction.
+- Forecast mode keeps about half of the block-group gain (AUC +0.045 against +0.100; top-5% capture +0.069 against +0.154) and a third of the county gain; its county top-5% gain over exposure is not distinguishable from zero in the forecast run (+0.012 [-0.006, +0.030]).
+- The probability is usable as a relative risk inside an event, not as an event-size forecast: row-level reliability is close to the diagonal, but the expected total is too low for the large events (median ratio 0.09-0.36 at >= 30 claimed block groups) and the Brier skill with a deployable (trailing) level is about zero.
+
+## Caveats
+- Texas, S0, scope without tropical-cyclone windows, 2 seeds; observed rain is a best case (stage 51); forecast mode covers three years and the GEFS 5-member 0.25 degree reforecast, and the forecast-mode baseline is policies only (no forecast-mode boosting or rain-only score under this protocol).
+- Event metrics are conditional on a day with at least one claim; calibration in A is measured on those days only (the CNN was trained on days and sampled negatives of that kind), in B on all days.
+- Brier baseline is the test-period rate (generous); the trailing-3-year re-centring needs three earlier test years, so it exists only for 2020-2023 in A. The impact layer check with simulated losses (MODEL_AUDIT section 5) was not run, and the event definition is a day, not the county episode of the stage 36 spec, so values differ from stage 36.
+- Capture and AUC intervals are over events that are dependent within a storm; the CNN-minus-boosting numbers here are point values, not paired intervals.
+
+
+# Stage 56: scenario analysis for a Texas city forecaster (scripts 97-100; report `docs/SCENARIO_REPORT.md`, videos `docs/media/countdown_*.mp4`, figure `docs/figures/scenario_summary.png`)
+
+Question: after an NWS flash-flood warning, how early and how accurately can the model rank, when does the sub-county map exist and in which form, and what does the clock look like at T-0 on a laptop. T0 = 12Z of day S; forecast mode = GEFSv12 00Z of S-1 (leads 36-84 h).
+
+## Results
+- Cost (Apple M4 Pro): network 60 k parameters, 3 ms features + 28 ms forward per day on CPU (6 ms on the GPU), 9 s to fetch 5 members for Texas; the rebuilt pipeline reproduces the stored predictions to 1e-7. With an assumed 5 h publication delay the ranking is on screen at T-31 h.
+- Warnings (IEM, 2,559 Texas FF Warnings 2017-2023, median 3.0 h): 87-90% of event days with >= 10 claimed block groups have a warning in T0-48 h .. T0+48 h, 76-78% a warning covering an affected county. Ranking earlier than the first such warning in 75-76% of events, median lead 27-28 h (T0-24 h window: 39 h); the warning came first in a quarter.
+- Inside warned counties, forecast mode (180 event days): block-group AUC 0.746 vs 0.674 for policies only (+0.072 [+0.048, +0.098]), top-5% capture 0.204 vs 0.122 (+0.081 [+0.045, +0.113]); county AUC -0.004 [-0.016, +0.008]. Observed rain (332 event days): 0.857 vs 0.674, top-5% 0.430 vs 0.139.
+- Display (150 event days): discrete points BG AUC 0.775 forecast / 0.836 observed against 0.71-0.73 / 0.79-0.81 for kernel-smoothed surfaces; interpolation as filler for 30% hidden block groups beats the nearest point (0.795 vs 0.767 observed) but not exposure in forecast mode (0.701 vs 0.733).
+
+## Conclusions
+- The early value is sub-county, inside the warned area; at county level the early ranking adds nothing over exposure. The headline numbers (AUC 0.86, 43%) belong to the after-the-rain mode (about T+54 h with an assumed QPE delay).
+- Show the discrete points; use the interpolated surface as context only.
+
+## Caveats
+- The 5 h GEFS publication delay and 6 h QPE delay are assumptions; the warning archive has warnings only (no watches, no WPC outlooks); the two lead-time windows give 28 h and 39 h medians (the wide one can count a warning for the previous day's storm, the narrow one cannot see warnings issued before the model run). Texas, 5-member reforecast, 2017-2019 for forecast mode, no interval for the lead medians. The videos replay stored outputs with real warnings and claims, one typical (2019-06-04) and one hard (2019-06-09) event; later GEFS cycles are not simulated.
+
+
+# Stage 57: update cadence and the two T-0s (scripts 101-103, `scripts/fetch/fetch_tx_claim_dates.py`; report part 2 of `docs/SCENARIO_REPORT.md`, video `docs/media/countdown2_*.mp4`, figure `docs/figures/cadence_summary.png`)
+
+Question: how fast can a government organisation get updates through the NWS interfaces, what is a fresher update worth, and how do the hazard T-0 (all mitigation decisions, incl. wireless alerts, before it) and the claims T-0 (insurer's resource reservation before it) differ. The task sheet checks the impact model on simulated fields with a known answer, so the rain input is simulated: the observed 4 km gridMET field of a test day is the truth, a synthetic forecast issued l hours before is the truth with displacement (sd 25 km x eps), correlated amplitude error (0.5 x eps) and blur (4 px x eps), eps = eps60 (l/60 h)^alpha; the real claims are the answer.
+
+## Results
+- Pipeline `rain + expo` rebuilt from the weights reproduces the stored predictions to 3e-8. Calibration at the real GEFS-mode lead (60 h): eps60 = 1.92 gives block-group AUC 0.778 (real fc + expo run: 0.778) and top-5% capture 0.265 (real 0.274, not fitted). Observed rain (eps 0): 0.826 / 0.416; policies only 0.731 / 0.184 (210 event days, 2017-2019).
+- Skill against the lead (alpha 0.75; AUC / top-5%): 84 h 0.769 / 0.246, 60 h 0.778 / 0.266, 24 h 0.798 / 0.316, 12 h 0.810 / 0.353, 1 h 0.825 / 0.413; alpha 0.5-1.0 at 12 h: top-5% 0.328-0.375.
+- On the timeline before the hazard T-0 (6-hourly +5 h vs hourly +2 h): AUC 0.774 vs 0.776 at 48 h, 0.799 vs 0.802 at 1 h; top-5% 0.258 / 0.261 to 0.323 / 0.331. Gain between T-48 h and the hazard T-0 +0.025 AUC and +0.065 capture; the hourly stream adds at most +0.003 AUC and +0.01 capture at the same moment though it delivers 37 updates (p10 21, p90 73) against 6 (p10 3, p90 12) before the hazard T-0.
+- Interfaces (real Texas warnings 2020-2023, 1,397; 305 = 22% carry a considerable / catastrophic damage tag, the only ones that trigger a WEA): detection delay median / p95 NWWS-OI push 5 / 9 s; api.weather.gov poll 1 / 5 / 10 / 15 / 30 min 62 / 181 / 331 / 481 / 927 s median (p95 102 / 319 / 602 / 886 / 1,737 s, +5-60 s propagation assumed). Age of the newest product: GEFS-like 8.0 h (+5 h assumed), hourly rapid-refresh-like 2.4 h, MRMS Pass 1 / Pass 2 0.83 / 1.5 h.
+- Hazard T-0 (first affected-county warning in T0-24 h .. T0+48 h, 72% of events, else T0): median T0 +0 h, p10 -15.5 h, p90 +36 h; the first ranking (T-31 h) is on screen a median 31 h before it (p10 15.5, p90 67; >= 12 h in 93%, >= 24 h in 77%).
+- Claims T-0: Texas 2017-2023, 78,573 claims with an open date: 16% opened on or before the loss day, median lag 2 days (p10 0, p90 13). Per event (394): share opened by S+1 / S+2 / S+3 / S+7 = 7% / 25% / 47% / 77%; 10% day median S+2 (p10 S+0, p90 S+4), 50% day median S+3. In hours from T0: 10% at +66 h (p10 +18, p90 +114), 50% at +90 h.
+- Insurer slack (claims T-0 minus the time the ranking exists minus an assumed survey lead): forecast ranking (T-31 h) 91 / 73 / 25 h median for leads of 6 / 24 / 72 h (share >= 0: 100 / 100 / 81%); observed-rain ranking (T0+54 h, assumed QPE delay) 6 / -12 / -60 h (54 / 32 / 4%); in 46% of events the 10% day precedes the observed ranking.
+
+## Conclusions
+- Reserve on the forecast ranking; the observed-rain ranking is too late for survey leads beyond about 6 h in the median event. The interface matters little for warnings (seconds to minutes against a 3 h product) and a lot for forecast age; the value of fresher updates is the age of the newest information, not the number of updates.
+- The hazard clock reaches zero while the claims clock still has a median of 66 h: days for the insurer, none for the emergency manager. Most warnings (78%) carry no WEA-triggering tag.
+
+## Caveats
+- Visual v3 (script 104): every run is drawn (counter, log with the measured 32 ms per run, scan sweep, dispatch set with entered / left marks, change map, churn lane). To make runs differ the clip uses AR(1) innovations between successive runs (tau = 12 h, assumed; marginal error unchanged): the top-5% set (629 block groups) then changes by a median 2.7% (p90 12%) per hourly run; with one shared error pattern (v2) it hardly changes.
+- Video v4 (script 105): two groups (model output | real-world consequence), no scan sweep, a 14 s featured-county act, encoded with Apple VideoToolbox HEVC (`hevc_videotoolbox`, `hvc1`, yuv420p). The hardware encoder works in this ffmpeg build (9.0.2); for this mostly static graphic it was not faster in wall time than libx264 on the M4 Pro (20 s of video: 2.4 s vs 1.2 s, input decoding included) and produced larger files (6 Mb/s master 61 MB, 3 Mb/s copy 36 MB, against 9.6 MB for libx264 CRF 21 as H.264 fallback); the 417 s of rendering is matplotlib, not the encoder. HEVC plays natively on macOS; Windows needs the HEVC extension, hence the H.264 copy.
+- Within-county ranking (script 106; `audit/within_county_eval.txt`): forecast mode 2017-2019, 511 (event, county) pairs: AUC 0.735 [0.724, 0.748] vs 0.667 policies only (+0.068 [+0.060, +0.076]); share of the county's claimed block groups in its top 10%: 0.296 vs 0.221 (+0.075 [+0.062, +0.090]; random 0.10); observed-rain CNN 2017-2023, 993 pairs: 0.767 vs 0.666, 0.360 vs 0.223. Featured county (rule: most claimed block groups): Harris 2019-05-07, 166 of 2,109 block groups; top-10% budget (211): forecast 39, exposure only 22, random 17, observed rain 53; AUC 0.72 / 0.62 / 0.70, 45th percentile of the 511 county-days.
+- The error law is an assumption anchored at one real point (60 h); under 12 h the simulation is optimistic (nowcast rain is partly observed, real rapid-refresh runs have their own error); the hourly stream is idealised for any lead.
+- Hazard T-0 is a warning-based proxy (circular with the NWS), claims T-0 a day-resolution 10%-opened proxy from the NFIP open date (not a private insurer's first notice); the hazard window starts at T0-24 h, so "ranking before the warning" is 100% by construction (about 25% of events have a warning before the ranking with a T0-48 h window, stage 56).
+- GEFS (5 h), QPE (6 h) and API propagation delays and the 6 / 24 / 72 h survey leads are assumptions; no independent tasking or aerial-deployment time was found. The NWS interface facts come from NWS pages, an NSSL change log, a briefing and third-party HRRR availability figures (see the report for links); no official GEFS delay was found.
+- Texas, S0, 210 events (synthetic part) and 394 events (claims), no intervals for the medians; the video replays one typical event (2019-05-11) with real warnings and claim open dates on simulated forecast updates.
+
+
+# Stage 58: storage audit and zstd archive of the large arrays (script 107, `src/wxrisk/zstio.py`; log `audit/zstd_archive.log`)
+
+Question: the data dir had grown to 66 GB; which parts are sparse, which dense, is a sparse-matrix format the better store, and do preprocessing or trained dictionaries help zstd?
+
+## Results
+- Census of 313 arrays above 50 MB (44.7 GB): 134 arrays / 32 GB compress to < 0.15 with zstd-3 (rain maps float16 with 56-78% zeros and few distinct values, row tables with repeated static columns, counts that are 99.8% zero), 20 / 3.7 GB to 0.15-0.5, 158 / 8.8 GB (float32 model probabilities `p89_*`, `vs_ms`, `vw_ms`, `z_c8_*`) stay above 0.5.
+- Sparse formats lose (100 MB mid-year slices, fraction of raw): CSR / COO + zstd 0.129 vs dense + zstd 0.086 on obs4k maps (density 25%), 0.104 vs 0.052 on pr_tx, 0.150 vs 0.039 on rows_tab; uncompressed COO is 1.25-2.2x the dense size. scipy.sparse also rejects float16. Only the 0.2%-dense count vectors tie.
+- Byte shuffle helps only dense / table data (rows_tab 0.039 -> 0.022 at level 3, but plain level 19 reaches 0.015; p89 0.91 -> 0.79) and hurts rain maps (pr_tx 0.052 -> 0.078). Level 19 vs 9: obs4k 0.085 vs 0.092, pr_tx 0.035 vs 0.044, rows_tab 0.015 vs 0.024, at ~30-40 MB/s; a 128 MB window gave nothing.
+- Trained dictionaries (32 / 128 KB, 3,652 GEFS files of 259 KB, 254 NFHL GeoJSON of 633 KB): 0.123 -> 0.120 and 0.159 -> 0.156 at level 9, worse for GeoJSON at level 3. Not used; the grib2 files (mesh) do not compress (0.95-0.97).
+- Applied: plain zstd level 19, no shuffle, no dictionary, 62 files archived (the 8 below 20% saving stay as they are); 39.65 -> 6.83 GB, data dir 55 -> 25 GB (66 GB before the discard of 11 GB of rebuildable inputs, see `docs/DATA_SOURCES.md`). Every archive is verified by a byte-exact sha256 round trip before the original is removed; all 62 load through `zstio.load` (37 GB in 18 s) and the lock verifies (5,066 files).
+
+## Conclusions
+- Dense + zstd-19 is the right store for these arrays; a sparse format would only matter for the count vectors, which already compress to 0.001.
+- The price is no `mmap`: large arrays (up to 2.9 GB) are decompressed into RAM on load.
+
+## Caveats
+- Ratios come from 100-200 MB slices (middle of the array, summer-heavy for rain), not whole files; the whole-file numbers in the log are the real ones and agree within a factor 1.5.
+- Loaders were switched mechanically (`np.load` -> `zstio.load`) in scripts 48, 76, 77, 80-98 and `flood_pilot.py`; the archived files load and `flood_pilot.load_precip` works, but the training scripts (81, 82, 89, 91, 93) were not rerun end to end. Scripts 25 and 45 still point at the deleted pre-prep inputs. Memory-mapped random access inside epoch loops now works on in-RAM copies: several big arrays at once can exceed 25 GB RAM.
+- zarr / blosc (chunked, would keep partial reads) and pydata `sparse` were not benchmarked.

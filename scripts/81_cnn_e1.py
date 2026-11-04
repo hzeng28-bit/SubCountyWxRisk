@@ -30,6 +30,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import flood_pilot as fp  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk import wb2  # noqa: E402
 from wxrisk.tblog import RunLog  # noqa: E402
 
@@ -69,14 +70,14 @@ class Data:
     """The arrays of script 80, the split and the pooling indices."""
 
     def __init__(self):
-        self.st = np.load(D / "static.npz", allow_pickle=True)
-        self.G = np.load(D / "gefs_day_tensors.npy")  # [day, 18, 53, 61] float16, in memory (424 MB)
-        self.O = np.load(D / "obs4k_day_maps.npy", mmap_mode="r")
-        self.ptr = np.load(D / "rows_ptr.npy")
-        self.rbg = np.load(D / "rows_bg.npy")
-        self.rtab = np.load(D / "rows_tab.npy", mmap_mode="r")
-        self.rn = np.load(D / "rows_n.npy")
-        self.rpaid = np.load(D / "rows_paid.npy")
+        self.st = zstio.load(D / "static.npz", allow_pickle=True)
+        self.G = zstio.load(D / "gefs_day_tensors.npy")  # [day, 18, 53, 61] float16, in memory (424 MB)
+        self.O = zstio.load(D / "obs4k_day_maps.npy", mmap_mode="r")
+        self.ptr = zstio.load(D / "rows_ptr.npy")
+        self.rbg = zstio.load(D / "rows_bg.npy")
+        self.rtab = zstio.load(D / "rows_tab.npy", mmap_mode="r")
+        self.rn = zstio.load(D / "rows_n.npy")
+        self.rpaid = zstio.load(D / "rows_paid.npy")
         self.days = pd.DatetimeIndex(self.st["days"])
         self.D = len(self.days)
         yr = self.days.year.to_numpy()
@@ -112,7 +113,7 @@ class Data:
     def attach_latent(self, tag: str, shuffle: bool = False) -> None:
         """Frozen VAE latent (script 82) as extra channels on the GEFS grid: each cell takes the latent cell (6 x 6 gridMET pixels) that holds its centre.
         shuffle=True pairs every day with the latent of another day of the same calendar month (negative control)."""
-        Z = np.load(D / f"z_{tag}.npy").astype(np.float32)  # [day, C, 44, 54]
+        Z = zstio.load(D / f"z_{tag}.npy").astype(np.float32)  # [day, C, 44, 54]
         r = np.abs(self.st["glat"][:, None] - self.lat4[None, :]).argmin(1) // 6
         c = np.abs(self.st["glon"][:, None] - self.lon4[None, :]).argmin(1) // 6
         r, c = np.minimum(r, Z.shape[2] - 1), np.minimum(c, Z.shape[3] - 1)
@@ -422,13 +423,13 @@ def run_eval() -> None:
     bg = d.rbg[lo:hi]
     T = pd.DataFrame({"sysid": d.days[day_of_row].strftime("%Y%m%d"), "cty": np.array(d.ctys)[d.cty_idx[bg]], "n": d.rn[lo:hi], "paid": d.rpaid[lo:hi],
                       "n_pol": np.asarray(d.rtab[lo:hi, 8], np.float32), "year": d.days.year.to_numpy()[day_of_row]})
-    feats = np.load(D / "e1_hgb_features.npz")
+    feats = zstio.load(D / "e1_hgb_features.npz")
     pos = np.searchsorted(feats["rid"], rows)
     T["obs_cty_max"] = feats["X"][pos, 11]  # columns 9-16: cell peak, cell sum, county peak, county mean (0.25 deg); 4 km pixel peak, sum, county peak, mean
     names = {}
     for f in sorted(D.glob("e1_pred_*.npy")):
         col = f.stem.replace("e1_pred_", "p_")
-        T[col] = np.load(f)
+        T[col] = zstio.load(f)
         names[col] = f.stem
     cnn_cols = [c for c in T.columns if c.startswith("p_cnn")]
     for res in ("025", "4km"):

@@ -29,6 +29,11 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from wxrisk import zstio  # noqa: E402
+
 D = Path(os.environ.get("WXRISK_DATA", Path.home() / "wxrisk_data")) / "cnn"
 T0 = pd.Timestamp("2014-11-01")
 START = pd.Timestamp("2015-03-01")
@@ -92,7 +97,7 @@ def hour_index(day: pd.Timestamp, off: int) -> int:
 def check() -> None:
     ds = open_ds()
     g = Grid(ds)
-    O = np.load(D / "obs4k_day_maps.npy", mmap_mode="r")
+    O = zstio.load(D / "obs4k_day_maps.npy", mmap_mode="r")
     r0, r1, c0, c1 = 60, 120, 100, 190  # sub-box over the upper Texas coast / east Texas (about 2.5 x 3.7 degrees)
     cand = np.flatnonzero((g.days >= "2016-01-01") & (g.days <= "2018-12-31"))
     tot = np.array([float(np.asarray(O[n, 1, r0:r1, c0:c1], np.float32).sum()) for n in cand])
@@ -122,6 +127,8 @@ def build(off: int) -> None:
     days = g.days[first:]
     nd = len(days)
     path = D / "mrms4k_day_maps.npy"
+    if zstio.zst_path(path).exists():
+        zstio.restore(path)  # resume writes in place; an archived copy would otherwise be silently recreated empty
     mode = "r+" if path.exists() else "w+"
     out = np.lib.format.open_memmap(path, mode=mode, dtype=np.float16, shape=(nd, 6, g.ny, g.nx))
     np.save(D / "mrms4k_days.npy", days.values.astype("datetime64[D]"))

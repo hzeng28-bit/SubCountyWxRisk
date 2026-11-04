@@ -32,6 +32,7 @@ from scipy.ndimage import maximum_filter
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 
 STATES = ["TX", "LA", "FL"]
 LOG: list[str] = []
@@ -53,14 +54,14 @@ def features(st: str) -> dict:
     """Rows kept for the baseline of one state, with their features; cached in cnn_<st>/e45_rows.npz."""
     d = wb2.cache_path(f"cnn_{st.lower()}")
     cache = d / "e45_rows.npz"
-    if cache.exists():
-        return dict(np.load(cache, allow_pickle=True))
-    S = np.load(d / "static.npz", allow_pickle=True)
+    if zstio.exists(cache):
+        return dict(zstio.load(cache, allow_pickle=True))
+    S = zstio.load(d / "static.npz", allow_pickle=True)
     days = pd.DatetimeIndex(S["days"])
-    ptr, rbg = np.load(d / "rows_ptr.npy"), np.load(d / "rows_bg.npy")
-    tab, tc = np.load(d / "rows_tab.npy", mmap_mode="r"), np.load(d / "rows_tc.npy")
-    n0, nall, paid = np.load(d / "rows_n0.npy"), np.load(d / "rows_nall.npy"), np.load(d / "rows_paid0.npy")
-    O = np.load(d / "obs4k_day_maps.npy", mmap_mode="r")
+    ptr, rbg = zstio.load(d / "rows_ptr.npy"), zstio.load(d / "rows_bg.npy")
+    tab, tc = zstio.load(d / "rows_tab.npy", mmap_mode="r"), zstio.load(d / "rows_tc.npy")
+    n0, nall, paid = zstio.load(d / "rows_n0.npy"), zstio.load(d / "rows_nall.npy"), zstio.load(d / "rows_paid0.npy")
+    O = zstio.load(d / "obs4k_day_maps.npy", mmap_mode="r")
     by, bx, cty = S["b4_y"].astype(np.int64), S["b4_x"].astype(np.int64), S["cty_idx"].astype(np.int64)
     nc = len(S["ctys"])
     rng = np.random.default_rng(0)

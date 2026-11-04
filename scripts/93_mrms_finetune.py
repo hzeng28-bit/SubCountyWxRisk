@@ -31,6 +31,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wxrisk import wb2  # noqa: E402
+from wxrisk import zstio  # noqa: E402
 from wxrisk.tblog import RunLog  # noqa: E402
 
 NNEG, LAM, ACCUM = 2000, 0.3, 4
@@ -91,8 +92,8 @@ def run_train(variant: str, seed: int, epochs: int) -> None:
         model.load_state_dict(expand_state(old, model) if use_mrms else old)
     npar = sum(p.numel() for p in model.parameters())
     # MRMS maps
-    M = np.load(e81.D / "mrms4k_day_maps.npy", mmap_mode="r")
-    mdays = pd.DatetimeIndex(np.load(e81.D / "mrms4k_days.npy"))
+    M = zstio.load(e81.D / "mrms4k_day_maps.npy", mmap_mode="r")
+    mdays = pd.DatetimeIndex(zstio.load(e81.D / "mrms4k_days.npy"))
     first = int(np.flatnonzero(d.days >= mdays[0])[0])
     assert d.days[first] == mdays[0] and len(M) == len(d.days) - first, "MRMS maps do not line up with the E1 days"
     valid = d.valid4.astype(np.float32)
@@ -207,7 +208,7 @@ def run_eval(tags: list[str]) -> None:
     for t in tags:
         fs = sorted(e81.D.glob(f"ms_{t}_s[0-9]*.npy"))
         if fs:
-            T[f"p_{t}"] = np.mean([np.load(f) for f in fs], axis=0)
+            T[f"p_{t}"] = np.mean([zstio.load(f) for f in fs], axis=0)
             scores[f"{t} ({len(fs)} seed{'s' if len(fs) > 1 else ''})"] = (f"p_{t}", "sum")
     T["p_cnn4km"] = T[[c for c in T.columns if c.startswith("p_cnn4km_s")]].mean(axis=1)
     scores["CNN 4 km, stage 42 (3 seeds)"] = ("p_cnn4km", "sum")

@@ -27,7 +27,7 @@ def main(seed: int) -> None:
     D, FIG, HALF, RINGS = e87.D, e87.FIG, e87.HALF, e87.RINGS
     FIG.mkdir(parents=True, exist_ok=True)
     F = dict(np.load(D / f"filters_s{seed}.npz", allow_pickle=True))
-    A = dict(np.load(D / f"chan_abl_s{seed}.npz", allow_pickle=True))
+    A = dict(e87.zstio.load(D / f"chan_abl_s{seed}.npz", allow_pickle=True))
     M = dict(np.load(D / f"chan_abl_metrics_s{seed}.npz", allow_pickle=True))
     lab_e, lab_s = A["lab_e"], A["lab_s"]
     ke, ks = lab_e.max() + 1, lab_s.max() + 1
@@ -311,7 +311,7 @@ def main(seed: int) -> None:
     say(f"  reference (claimed block groups): {ref[crop, crop]:.2f}/{ref[(r2 >= 8) & (r2 < 16)].mean():.2f}/{ref[(r2 >= 16) & (r2 <= 20)].mean():.2f}")
 
     # ---------------------------------------------------------------- 7 ablation, redundancy, groups
-    own = np.load(D / f"own_emb_s{seed}.npy", mmap_mode="r")
+    own = e87.zstio.load(D / f"own_emb_s{seed}.npy", mmap_mode="r")
     sub = np.asarray(own[np.random.default_rng(0).choice(len(own), 400000, replace=False)], np.float32)
     sub = sub * orient[None]
     C = np.corrcoef(sub.T)

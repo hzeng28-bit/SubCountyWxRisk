@@ -1,19 +1,233 @@
 {
  "entries": {
   ".lock_cache.json": {
-   "bytes": 3017174
+   "bytes": 1641924
+  },
+  "audit/abl_bce_s0.log": {
+   "bytes": 899
+  },
+  "audit/abl_bce_s1.log": {
+   "bytes": 899
+  },
+  "audit/abl_coarse_rain_s0.log": {
+   "bytes": 915
+  },
+  "audit/abl_coarse_rain_s1.log": {
+   "bytes": 916
+  },
+  "audit/abl_done.txt": {
+   "bytes": 5
+  },
+  "audit/abl_full_s0.log": {
+   "bytes": 908
+  },
+  "audit/abl_full_s1.log": {
+   "bytes": 908
+  },
+  "audit/abl_nocoord_s0.log": {
+   "bytes": 911
+  },
+  "audit/abl_nocoord_s1.log": {
+   "bytes": 911
+  },
+  "audit/abl_nostatic_s0.log": {
+   "bytes": 913
+  },
+  "audit/abl_nostatic_s1.log": {
+   "bytes": 913
+  },
+  "audit/abl_shuffle_rain_s0.log": {
+   "bytes": 917
+  },
+  "audit/abl_shuffle_rain_s1.log": {
+   "bytes": 917
   },
   "audit/building_attrs.txt": {
    "bytes": 5879
   },
+  "audit/cadence_simulation.pkl": {
+   "bytes": 3310557
+  },
+  "audit/cadence_simulation.txt": {
+   "bytes": 4190
+  },
   "audit/cleaning_evidence.json": {
    "bytes": 9319
+  },
+  "audit/cnn_filters_groups_s0.txt": {
+   "bytes": 4323
+  },
+  "audit/cnn_filters_groups_s1.txt": {
+   "bytes": 4342
+  },
+  "audit/cnn_filters_s0.txt": {
+   "bytes": 9629
+  },
+  "audit/cnn_filters_s1.txt": {
+   "bytes": 9902
+  },
+  "audit/cnn_mech_eval.log": {
+   "bytes": 10555
+  },
+  "audit/cnn_mech_ladder.log": {
+   "bytes": 432
+  },
+  "audit/cnn_mech_ladder2.log": {
+   "bytes": 221
+  },
+  "audit/cnn_mech_ladder3.log": {
+   "bytes": 220
+  },
+  "audit/cnn_mech_probe.log": {
+   "bytes": 358
+  },
+  "audit/cnn_mechanism.txt": {
+   "bytes": 10555
+  },
+  "audit/cnn_mechanism_ladder.txt": {
+   "bytes": 220
+  },
+  "audit/cnn_mechanism_mech.txt": {
+   "bytes": 652
+  },
+  "audit/cnn_multiscale.txt": {
+   "bytes": 5395
+  },
+  "audit/cnn_pooled_S0.txt": {
+   "bytes": 5714
+  },
+  "audit/cnn_pooled_train_S0_loso_FL_s0.txt": {
+   "bytes": 688
+  },
+  "audit/cnn_pooled_train_S0_loso_FL_s1.txt": {
+   "bytes": 687
+  },
+  "audit/cnn_pooled_train_S0_loso_LA_s0.txt": {
+   "bytes": 696
+  },
+  "audit/cnn_pooled_train_S0_loso_LA_s1.txt": {
+   "bytes": 696
+  },
+  "audit/cnn_pooled_train_S0_loso_TX_s0.txt": {
+   "bytes": 688
+  },
+  "audit/cnn_pooled_train_S0_loso_TX_s1.txt": {
+   "bytes": 687
+  },
+  "audit/cnn_pooled_train_S0_own_FL_s0.txt": {
+   "bytes": 690
+  },
+  "audit/cnn_pooled_train_S0_own_FL_s1.txt": {
+   "bytes": 690
+  },
+  "audit/cnn_pooled_train_S0_own_LA_s0.txt": {
+   "bytes": 682
+  },
+  "audit/cnn_pooled_train_S0_own_LA_s1.txt": {
+   "bytes": 682
+  },
+  "audit/cnn_pooled_train_S0_own_TX_s0.txt": {
+   "bytes": 692
+  },
+  "audit/cnn_pooled_train_S0_own_TX_s1.txt": {
+   "bytes": 692
+  },
+  "audit/cnn_pooled_train_S0_pool_s0.txt": {
+   "bytes": 698
+  },
+  "audit/cnn_pooled_train_S0_pool_s1.txt": {
+   "bytes": 693
+  },
+  "audit/curve.log": {
+   "bytes": 678
   },
   "audit/e0_day_tensors.txt": {
    "bytes": 2494
   },
+  "audit/e1_cnn_observed.txt": {
+   "bytes": 8849
+  },
+  "audit/e1_hgb.txt": {
+   "bytes": 478
+  },
+  "audit/e1_train_025_s0.txt": {
+   "bytes": 1445
+  },
+  "audit/e1_train_025_s1.txt": {
+   "bytes": 1445
+  },
+  "audit/e1_train_025_s2.txt": {
+   "bytes": 1462
+  },
+  "audit/e1_train_025_s3.txt": {
+   "bytes": 1446
+  },
+  "audit/e1_train_025_s4.txt": {
+   "bytes": 1445
+  },
+  "audit/e1_train_4km_s0.txt": {
+   "bytes": 699
+  },
+  "audit/e1_train_4km_s1.txt": {
+   "bytes": 699
+  },
+  "audit/e1_train_4km_s2.txt": {
+   "bytes": 699
+  },
+  "audit/embedding_shared_pool_s0.txt": {
+   "bytes": 2161
+  },
+  "audit/embedding_shared_pool_s0_norain.txt": {
+   "bytes": 2161
+  },
   "audit/ensemble_extremes.txt": {
    "bytes": 8123
+  },
+  "audit/event_eval_tx.parquet": {
+   "bytes": 129691,
+   "columns": {
+    "('CNN', 'bg_auc')": "FLOAT",
+    "('CNN', 'bg_top5')": "FLOAT",
+    "('CNN', 'bss_shape')": "DOUBLE",
+    "('CNN', 'cty_auc')": "FLOAT",
+    "('CNN', 'cty_top10')": "FLOAT",
+    "('blind guess', 'bg_auc')": "DOUBLE",
+    "('blind guess', 'bg_top5')": "FLOAT",
+    "('blind guess', 'cty_auc')": "DOUBLE",
+    "('blind guess', 'cty_top10')": "FLOAT",
+    "('boosting', 'bg_auc')": "FLOAT",
+    "('boosting', 'bg_top5')": "FLOAT",
+    "('boosting', 'cty_auc')": "FLOAT",
+    "('boosting', 'cty_top10')": "FLOAT",
+    "('meta', 'n_claimed_bg')": "INT64",
+    "('policies only', 'bg_auc')": "FLOAT",
+    "('policies only', 'bg_top5')": "FLOAT",
+    "('policies only', 'cty_auc')": "FLOAT",
+    "('policies only', 'cty_top10')": "FLOAT",
+    "event": "BYTE_ARRAY"
+   },
+   "rows": 1738
+  },
+  "audit/event_eval_tx.txt": {
+   "bytes": 5355
+  },
+  "audit/extract_policies_la_fl.log": {
+   "bytes": 8420
+  },
+  "audit/fetch_gridmet_lafl.log": {
+   "bytes": 47
+  },
+  "audit/ffw_tx.parquet": {
+   "bytes": 69425,
+   "columns": {
+    "counties": "BYTE_ARRAY",
+    "damage": "BYTE_ARRAY",
+    "emergency": "BOOLEAN",
+    "expired": "INT64",
+    "issued": "INT64",
+    "wfo": "BYTE_ARRAY"
+   },
+   "rows": 2559
   },
   "audit/flood_definition_diag.txt": {
    "bytes": 2871
@@ -38,6 +252,34 @@
   },
   "audit/flood_sources.txt": {
    "bytes": 3292
+  },
+  "audit/forecast_event_eval_tx.parquet": {
+   "bytes": 68422,
+   "columns": {
+    "('blind guess', 'bg_auc')": "DOUBLE",
+    "('blind guess', 'bg_top5')": "FLOAT",
+    "('blind guess', 'cty_auc')": "DOUBLE",
+    "('blind guess', 'cty_top10')": "FLOAT",
+    "('forecast (fc+expo)', 'bg_auc')": "FLOAT",
+    "('forecast (fc+expo)', 'bg_top5')": "FLOAT",
+    "('forecast (fc+expo)', 'bss_shape')": "DOUBLE",
+    "('forecast (fc+expo)', 'cty_auc')": "FLOAT",
+    "('forecast (fc+expo)', 'cty_top10')": "FLOAT",
+    "('meta', 'n')": "INT64",
+    "('observed (rain+expo)', 'bg_auc')": "FLOAT",
+    "('observed (rain+expo)', 'bg_top5')": "FLOAT",
+    "('observed (rain+expo)', 'cty_auc')": "FLOAT",
+    "('observed (rain+expo)', 'cty_top10')": "FLOAT",
+    "('policies only', 'bg_auc')": "FLOAT",
+    "('policies only', 'bg_top5')": "FLOAT",
+    "('policies only', 'cty_auc')": "FLOAT",
+    "('policies only', 'cty_top10')": "FLOAT",
+    "event": "BYTE_ARRAY"
+   },
+   "rows": 778
+  },
+  "audit/forecast_event_eval_tx.txt": {
+   "bytes": 5745
   },
   "audit/forecast_mode_ingredients.txt": {
    "bytes": 1238
@@ -74,6 +316,57 @@
   },
   "audit/label_scope_relaxation.txt": {
    "bytes": 2765
+  },
+  "audit/latent_v0_build.txt": {
+   "bytes": 100
+  },
+  "audit/latent_v0_curve.txt": {
+   "bytes": 678
+  },
+  "audit/latent_v0_probe_c8_2000.txt": {
+   "bytes": 1412
+  },
+  "audit/latent_v0_probe_c8_2010.txt": {
+   "bytes": 1413
+  },
+  "audit/latent_v0_v1.txt": {
+   "bytes": 2372
+  },
+  "audit/latent_v0_zcmp.txt": {
+   "bytes": 1642
+  },
+  "audit/lc25_train_4km_s0.txt": {
+   "bytes": 749
+  },
+  "audit/lc25_train_4km_s1.txt": {
+   "bytes": 748
+  },
+  "audit/lc50_train_4km_s0.txt": {
+   "bytes": 749
+  },
+  "audit/lc50_train_4km_s1.txt": {
+   "bytes": 750
+  },
+  "audit/lc_0.25.log": {
+   "bytes": 881
+  },
+  "audit/lc_0.25_s0.log": {
+   "bytes": 1105
+  },
+  "audit/lc_0.25_s1.log": {
+   "bytes": 1104
+  },
+  "audit/lc_0.5.log": {
+   "bytes": 881
+  },
+  "audit/lc_0.5_s0.log": {
+   "bytes": 1105
+  },
+  "audit/lc_0.5_s1.log": {
+   "bytes": 1106
+  },
+  "audit/lc_done.txt": {
+   "bytes": 5
   },
   "audit/learner_convergence_quick.txt": {
    "bytes": 2296
@@ -156,17 +449,110 @@
   "audit/model_assumption_audit.txt": {
    "bytes": 3114
   },
+  "audit/mrms_finetune.txt": {
+   "bytes": 1055
+  },
+  "audit/mrms_finetune_train_ft_mrms_s0.txt": {
+   "bytes": 589
+  },
+  "audit/mrms_finetune_train_ft_mrms_s1.txt": {
+   "bytes": 588
+  },
+  "audit/mrms_finetune_train_ft_mrms_shuf_s0.txt": {
+   "bytes": 594
+  },
+  "audit/mrms_finetune_train_ft_mrms_shuf_s1.txt": {
+   "bytes": 594
+  },
+  "audit/mrms_finetune_train_ft_rain_s0.txt": {
+   "bytes": 589
+  },
+  "audit/mrms_finetune_train_ft_rain_s1.txt": {
+   "bytes": 589
+  },
+  "audit/mrms_finetune_train_scratch_mrms_s0.txt": {
+   "bytes": 531
+  },
+  "audit/mrms_finetune_train_scratch_mrms_s1.txt": {
+   "bytes": 531
+  },
+  "audit/mrms_finetune_train_scratch_rain_s0.txt": {
+   "bytes": 531
+  },
+  "audit/mrms_finetune_train_scratch_rain_s1.txt": {
+   "bytes": 531
+  },
   "audit/mrms_sparse.json": {
    "bytes": 5540
   },
   "audit/mrms_sparse.txt": {
    "bytes": 5140
   },
+  "audit/multisource_encoder.txt": {
+   "bytes": 2426
+  },
+  "audit/multisource_train_fc+expo+geo_s0.txt": {
+   "bytes": 503
+  },
+  "audit/multisource_train_fc+expo+geo_s1.txt": {
+   "bytes": 502
+  },
+  "audit/multisource_train_fc+expo_s0.txt": {
+   "bytes": 480
+  },
+  "audit/multisource_train_fc+expo_s1.txt": {
+   "bytes": 480
+  },
+  "audit/multisource_train_rain+era5_s0.txt": {
+   "bytes": 484
+  },
+  "audit/multisource_train_rain+era5_s1.txt": {
+   "bytes": 484
+  },
+  "audit/multisource_train_rain+expo+fc+era5+geo_s0.txt": {
+   "bytes": 534
+  },
+  "audit/multisource_train_rain+expo+fc+era5+geo_s1.txt": {
+   "bytes": 526
+  },
+  "audit/multisource_train_rain+expo_s0.txt": {
+   "bytes": 483
+  },
+  "audit/multisource_train_rain+expo_s1.txt": {
+   "bytes": 488
+  },
+  "audit/multisource_train_rain+fc_s0.txt": {
+   "bytes": 480
+  },
+  "audit/multisource_train_rain+fc_s1.txt": {
+   "bytes": 485
+  },
+  "audit/multisource_train_rain+geo_s0.txt": {
+   "bytes": 493
+  },
+  "audit/multisource_train_rain+geo_s1.txt": {
+   "bytes": 500
+  },
+  "audit/multisource_train_rain_s0.txt": {
+   "bytes": 471
+  },
+  "audit/multisource_train_rain_s1.txt": {
+   "bytes": 479
+  },
   "audit/nfip_granularity.txt": {
    "bytes": 6121
   },
   "audit/nfip_state_coverage.txt": {
    "bytes": 10539
+  },
+  "audit/obs_days_fl.log": {
+   "bytes": 331
+  },
+  "audit/obs_days_la.log": {
+   "bytes": 275
+  },
+  "audit/obs_days_tx.log": {
+   "bytes": 273
   },
   "audit/pilot_input_parity.txt": {
    "bytes": 1270
@@ -204,14 +590,32 @@
   "audit/scaling_kmeans.json": {
    "bytes": 3960
   },
+  "audit/scenario_analysis.pkl": {
+   "bytes": 93507
+  },
+  "audit/scenario_analysis.txt": {
+   "bytes": 5542
+  },
+  "audit/scenario_latency.json": {
+   "bytes": 438
+  },
   "audit/source_agreement.txt": {
    "bytes": 1506
   },
   "audit/spatial_features.txt": {
    "bytes": 4338
   },
+  "audit/state_group_baseline.log": {
+   "bytes": 3392
+  },
+  "audit/state_group_baseline.txt": {
+   "bytes": 3392
+  },
   "audit/state_group_extreme.txt": {
    "bytes": 4273
+  },
+  "audit/state_inventory.txt": {
+   "bytes": 1448
   },
   "audit/state_screen.csv": {
    "bytes": 7572
@@ -228,65 +632,159 @@
   "audit/task_metrics.txt": {
    "bytes": 10165
   },
+  "audit/task_scorecard.csv": {
+   "bytes": 19552
+  },
+  "audit/task_scorecard.txt": {
+   "bytes": 12518
+  },
   "audit/usgs_gauge_history.txt": {
    "bytes": 1254
   },
-  "cds/manifest.json": {
-   "bytes": 1164
+  "audit/v1.log": {
+   "bytes": 2372
   },
-  "cds/plev_#.nc": {
-   "bytes": 886580188,
-   "collapsed": true,
-   "example": "plev_2000.nc",
-   "files": 23
+  "audit/v1_done.txt": {
+   "bytes": 5
   },
-  "cds/precip_#.nc": {
-   "bytes": 86202261,
-   "collapsed": true,
-   "example": "precip_2000.nc",
-   "files": 23
+  "audit/v_bce_train_s0.txt": {
+   "bytes": 543
   },
-  "cds/single_#.nc": {
-   "bytes": 589502157,
-   "collapsed": true,
-   "example": "single_2000.nc",
-   "files": 23
+  "audit/v_bce_train_s1.txt": {
+   "bytes": 543
   },
-  "cds_gulf/manifest.json": {
-   "bytes": 4262
+  "audit/v_coarse_rain_train_s0.txt": {
+   "bytes": 559
   },
-  "cds_gulf/plev_#_q1.nc": {
-   "bytes": 660648261,
-   "collapsed": true,
-   "example": "plev_2009_q1.nc",
-   "files": 15
+  "audit/v_coarse_rain_train_s1.txt": {
+   "bytes": 560
   },
-  "cds_gulf/plev_#_q2.nc": {
-   "bytes": 687683649,
-   "collapsed": true,
-   "example": "plev_2009_q2.nc",
-   "files": 15
+  "audit/v_full_train_s0.txt": {
+   "bytes": 552
   },
-  "cds_gulf/plev_#_q3.nc": {
-   "bytes": 686759053,
-   "collapsed": true,
-   "example": "plev_2009_q3.nc",
-   "files": 15
+  "audit/v_full_train_s1.txt": {
+   "bytes": 552
   },
-  "cds_gulf/plev_#_q4.nc": {
-   "bytes": 678681805,
-   "collapsed": true,
-   "example": "plev_2009_q4.nc",
-   "files": 15
+  "audit/v_ms_train_s0.txt": {
+   "bytes": 467
   },
-  "cds_gulf/single_#.nc": {
-   "bytes": 309811567,
-   "collapsed": true,
-   "example": "single_2009.nc",
-   "files": 15
+  "audit/v_ms_train_s1.txt": {
+   "bytes": 467
+  },
+  "audit/v_nocoord_train_s0.txt": {
+   "bytes": 555
+  },
+  "audit/v_nocoord_train_s1.txt": {
+   "bytes": 555
+  },
+  "audit/v_nostatic_train_s0.txt": {
+   "bytes": 557
+  },
+  "audit/v_nostatic_train_s1.txt": {
+   "bytes": 557
+  },
+  "audit/v_shuffle_rain_train_s0.txt": {
+   "bytes": 561
+  },
+  "audit/v_shuffle_rain_train_s1.txt": {
+   "bytes": 561
+  },
+  "audit/v_single_train_s0.txt": {
+   "bytes": 463
+  },
+  "audit/v_single_train_s1.txt": {
+   "bytes": 463
+  },
+  "audit/v_single_wide_train_s0.txt": {
+   "bytes": 473
+  },
+  "audit/v_single_wide_train_s1.txt": {
+   "bytes": 472
+  },
+  "audit/vae_c8_2000.log": {
+   "bytes": 834
+  },
+  "audit/within_county_eval.txt": {
+   "bytes": 2152
+  },
+  "audit/within_county_pairs_fc.parquet": {
+   "bytes": 35418,
+   "columns": {
+    "auc_blind guess": "DOUBLE",
+    "auc_forecast (fc+expo)": "DOUBLE",
+    "auc_observed (rain+expo)": "DOUBLE",
+    "auc_policies only": "DOUBLE",
+    "cap_blind guess": "DOUBLE",
+    "cap_forecast (fc+expo)": "DOUBLE",
+    "cap_observed (rain+expo)": "DOUBLE",
+    "cap_policies only": "DOUBLE",
+    "cty": "BYTE_ARRAY",
+    "event": "BYTE_ARRAY",
+    "nbg": "INT64",
+    "ncl": "INT64",
+    "w": "DOUBLE"
+   },
+   "rows": 511
+  },
+  "audit/z1_c8_2000_s0.log": {
+   "bytes": 1850
+  },
+  "audit/z1_c8_2000_s1.log": {
+   "bytes": 1850
+  },
+  "audit/z1_c8_2000_s2.log": {
+   "bytes": 1851
+  },
+  "audit/z1_c8_2000shuf_s0.log": {
+   "bytes": 1851
+  },
+  "audit/z1_c8_2000shuf_s1.log": {
+   "bytes": 1852
+  },
+  "audit/z1_done.txt": {
+   "bytes": 5
+  },
+  "audit/z1_train_025_c8_2000_s0.txt": {
+   "bytes": 1494
+  },
+  "audit/z1_train_025_c8_2000_s1.txt": {
+   "bytes": 1494
+  },
+  "audit/z1_train_025_c8_2000_s2.txt": {
+   "bytes": 1495
+  },
+  "audit/z1_train_025_c8_2000shuf_s0.txt": {
+   "bytes": 1495
+  },
+  "audit/z1_train_025_c8_2000shuf_s1.txt": {
+   "bytes": 1496
+  },
+  "audit/zstd_archive.log": {
+   "bytes": 3379
   },
   "cds_gulf_download.log": {
    "bytes": 1621
+  },
+  "ckpt/latent_v0_train_c8_2000.txt": {
+   "bytes": 1293
+  },
+  "ckpt/latent_v0_train_c8_2010.txt": {
+   "bytes": 1281
+  },
+  "ckpt/latent_v0_train_smoke.txt": {
+   "bytes": 280
+  },
+  "ckpt/vae_c8_2000.ckpt": {
+   "bytes": 9849723
+  },
+  "ckpt/vae_c8_2000.pt": {
+   "bytes": 2456901
+  },
+  "ckpt/vae_c8_2010.ckpt": {
+   "bytes": 9849723
+  },
+  "ckpt/vae_c8_2010.pt": {
+   "bytes": 2456901
   },
   "clean/claims_nfip.parquet": {
    "bytes": 31553297,
@@ -328,6 +826,80 @@
   "clean/claims_nfip.prep.json": {
    "bytes": 2970
   },
+  "clean/policies_fl.parquet": {
+   "bytes": 259415358,
+   "columns": {
+    "built_date": "INT32",
+    "built_date_missing": "BOOLEAN",
+    "cancelled": "INT32",
+    "cov_building": "INT32",
+    "coverage_end": "INT32",
+    "eff": "INT32",
+    "elev_diff": "INT32",
+    "elev_diff_missing": "BOOLEAN",
+    "first_policy_date": "INT32",
+    "first_policy_date_missing": "BOOLEAN",
+    "floors_code": "INT32",
+    "floors_code_missing": "BOOLEAN",
+    "foundation": "BYTE_ARRAY",
+    "foundation_missing": "BOOLEAN",
+    "geoid": "BYTE_ARRAY",
+    "geoid_missing": "BOOLEAN",
+    "mandatory": "BOOLEAN",
+    "n_policies": "INT32",
+    "occupancy": "INT32",
+    "post_firm": "BOOLEAN",
+    "premium": "INT32",
+    "primary_res": "BOOLEAN",
+    "replacement_cost": "INT32",
+    "replacement_cost_missing": "BOOLEAN",
+    "term": "INT32",
+    "term_missing": "BOOLEAN",
+    "zone": "BYTE_ARRAY",
+    "zone_missing": "BOOLEAN"
+   },
+   "rows": 22377861
+  },
+  "clean/policies_fl.prep.json": {
+   "bytes": 2723
+  },
+  "clean/policies_la.parquet": {
+   "bytes": 95865452,
+   "columns": {
+    "built_date": "INT32",
+    "built_date_missing": "BOOLEAN",
+    "cancelled": "INT32",
+    "cov_building": "INT32",
+    "coverage_end": "INT32",
+    "eff": "INT32",
+    "elev_diff": "INT32",
+    "elev_diff_missing": "BOOLEAN",
+    "first_policy_date": "INT32",
+    "first_policy_date_missing": "BOOLEAN",
+    "floors_code": "INT32",
+    "floors_code_missing": "BOOLEAN",
+    "foundation": "BYTE_ARRAY",
+    "foundation_missing": "BOOLEAN",
+    "geoid": "BYTE_ARRAY",
+    "geoid_missing": "BOOLEAN",
+    "mandatory": "BOOLEAN",
+    "n_policies": "INT32",
+    "occupancy": "INT32",
+    "post_firm": "BOOLEAN",
+    "premium": "INT32",
+    "primary_res": "BOOLEAN",
+    "replacement_cost": "INT32",
+    "replacement_cost_missing": "BOOLEAN",
+    "term": "INT32",
+    "term_missing": "BOOLEAN",
+    "zone": "BYTE_ARRAY",
+    "zone_missing": "BOOLEAN"
+   },
+   "rows": 8456525
+  },
+  "clean/policies_la.prep.json": {
+   "bytes": 2711
+  },
   "clean/policies_tx.norm.json": {
    "bytes": 586
   },
@@ -368,31 +940,807 @@
   "clean/policies_tx.prep.json": {
    "bytes": 2720
   },
+  "cnn/chan_abl_metrics_s0.npz": {
+   "bytes": 4050
+  },
+  "cnn/chan_abl_metrics_s1.npz": {
+   "bytes": 4050
+  },
+  "cnn/chan_abl_s0.npz": {
+   "bytes": 723294854
+  },
+  "cnn/chan_abl_s1.npz": {
+   "bytes": 723294854
+  },
   "cnn/e0_maps.png": {
    "bytes": 219650
   },
-  "cnn/gefs_day_tensors.npy": {
-   "bytes": 424467164
+  "cnn/e1_hgb_features.npz.zst": {
+   "bytes": 71332662
   },
-  "cnn/obs4k_day_maps.npy": {
-   "bytes": 1213721728
+  "cnn/e1_pred_cnn025_s0.npy": {
+   "bytes": 50760444
   },
-  "cnn/rows_bg.npy": {
-   "bytes": 173349388
+  "cnn/e1_pred_cnn025_s1.npy": {
+   "bytes": 50760444
   },
-  "cnn/rows_n.npy": {
-   "bytes": 173349388
+  "cnn/e1_pred_cnn025_s2.npy": {
+   "bytes": 50760444
   },
-  "cnn/rows_paid.npy": {
-   "bytes": 173349388
+  "cnn/e1_pred_cnn025_s3.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_pred_cnn025_s4.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_pred_cnn4km_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_pred_cnn4km_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_pred_cnn4km_s2.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_pred_hgb.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_pred_hgb200.npy": {
+   "bytes": 50760444
+  },
+  "cnn/e1_test_rows.parquet": {
+   "bytes": 690173792,
+   "columns": {
+    "cty": "BYTE_ARRAY",
+    "n": "FLOAT",
+    "n_pol": "FLOAT",
+    "p_cnn025": "FLOAT",
+    "p_cnn025_s0": "FLOAT",
+    "p_cnn025_s1": "FLOAT",
+    "p_cnn025_s2": "FLOAT",
+    "p_cnn025_s3": "FLOAT",
+    "p_cnn025_s4": "FLOAT",
+    "p_cnn4km": "FLOAT",
+    "p_cnn4km_s0": "FLOAT",
+    "p_cnn4km_s1": "FLOAT",
+    "p_cnn4km_s2": "FLOAT",
+    "p_hgb": "FLOAT",
+    "p_hgb200": "FLOAT",
+    "paid": "FLOAT",
+    "sysid": "BYTE_ARRAY"
+   },
+   "rows": 12690079
+  },
+  "cnn/filters_s0.npz": {
+   "bytes": 4756638
+  },
+  "cnn/filters_s1.npz": {
+   "bytes": 4756638
+  },
+  "cnn/gefs_day_tensors.npy.zst": {
+   "bytes": 174922375
+  },
+  "cnn/gridmet_win.npy.zst": {
+   "bytes": 164373490
+  },
+  "cnn/gridmet_win_days.npy": {
+   "bytes": 58560
+  },
+  "cnn/head_drop_county_max_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/head_drop_county_mean+county_max_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/head_drop_county_mean_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/head_drop_none_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/head_drop_own+county_mean+county_max_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/head_drop_own_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/head_drop_tab_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/ladder_base+dayw.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_base.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_ctx.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_geo+ms+ctx+dayw.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_geo+ms+ctx.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_geo.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_ms.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_norain_tab+geo.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ladder_norain_tab.npy": {
+   "bytes": 50760444
+  },
+  "cnn/lc25_pred_cnn4km_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/lc25_pred_cnn4km_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/lc50_pred_cnn4km_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/lc50_pred_cnn4km_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/mrms4k_day_maps.npy.zst": {
+   "bytes": 222476080
+  },
+  "cnn/mrms4k_days.npy": {
+   "bytes": 14232
+  },
+  "cnn/mrms4k_offset.txt": {
+   "bytes": 2
+  },
+  "cnn/mrms4k_progress.txt": {
+   "bytes": 286
+  },
+  "cnn/ms_fc+expo+geo_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_fc+expo+geo_s0.pt": {
+   "bytes": 258457
+  },
+  "cnn/ms_fc+expo+geo_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_fc+expo+geo_s1.pt": {
+   "bytes": 258457
+  },
+  "cnn/ms_fc+expo_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_fc+expo_s0.pt": {
+   "bytes": 257065
+  },
+  "cnn/ms_fc+expo_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_fc+expo_s1.pt": {
+   "bytes": 257065
+  },
+  "cnn/ms_ft_mrms_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_ft_mrms_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_ft_mrms_shuf_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_ft_mrms_shuf_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_ft_rain_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_ft_rain_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+era5_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+era5_s0.pt": {
+   "bytes": 257121
+  },
+  "cnn/ms_rain+era5_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+era5_s1.pt": {
+   "bytes": 257121
+  },
+  "cnn/ms_rain+expo+fc+era5+geo_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+expo+fc+era5+geo_s0.pt": {
+   "bytes": 275705
+  },
+  "cnn/ms_rain+expo+fc+era5+geo_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+expo+fc+era5+geo_s1.pt": {
+   "bytes": 275705
+  },
+  "cnn/ms_rain+expo_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+expo_s0.pt": {
+   "bytes": 233947
+  },
+  "cnn/ms_rain+expo_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+expo_s1.pt": {
+   "bytes": 233947
+  },
+  "cnn/ms_rain+fc_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+fc_s0.pt": {
+   "bytes": 257065
+  },
+  "cnn/ms_rain+fc_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+fc_s1.pt": {
+   "bytes": 257065
+  },
+  "cnn/ms_rain+geo_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+geo_s0.pt": {
+   "bytes": 224605
+  },
+  "cnn/ms_rain+geo_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain+geo_s1.pt": {
+   "bytes": 224605
+  },
+  "cnn/ms_rain_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain_s0.pt": {
+   "bytes": 223285
+  },
+  "cnn/ms_rain_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_rain_s1.pt": {
+   "bytes": 223285
+  },
+  "cnn/ms_scratch_mrms_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_scratch_mrms_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_scratch_rain_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/ms_scratch_rain_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/obs4k_day_maps.npy.zst": {
+   "bytes": 81812463
+  },
+  "cnn/own_emb_s0.npy.zst": {
+   "bytes": 149034543
+  },
+  "cnn/own_emb_s1.npy.zst": {
+   "bytes": 137785485
+  },
+  "cnn/probe_blur1_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_blur2_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_blur4_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_coarse6_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_no_rain_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_none_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_shift_x16_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_shift_x1_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_shift_x2_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_shift_x4_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_shift_x8_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/probe_shift_y4_s0.npy": {
+   "bytes": 38067868
+  },
+  "cnn/rows_bg.npy.zst": {
+   "bytes": 136341
+  },
+  "cnn/rows_n.npy.zst": {
+   "bytes": 111879
+  },
+  "cnn/rows_paid.npy.zst": {
+   "bytes": 117978
   },
   "cnn/rows_ptr.npy": {
    "bytes": 29312
   },
-  "cnn/rows_tab.npy": {
-   "bytes": 1560143468
+  "cnn/rows_tab.npy.zst": {
+   "bytes": 23118432
   },
   "cnn/static.npz": {
+   "bytes": 1128262
+  },
+  "cnn/v1_pred_summaries.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v1_pred_summaries_+_latent_c8_2000.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v1_pred_summaries_+_latent_c8_2010.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_bce_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_bce_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_coarse_rain_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_coarse_rain_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_full_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_full_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_ms_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_ms_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_nocoord_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_nocoord_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_nostatic_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_nostatic_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_shuffle_rain_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_shuffle_rain_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_single_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_single_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_single_wide_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/v_single_wide_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vae_c8_2000.pt": {
+   "bytes": 2456901
+  },
+  "cnn/vae_c8_2010.pt": {
+   "bytes": 2456901
+  },
+  "cnn/vs_ms_s0.npy": {
+   "bytes": 253801708
+  },
+  "cnn/vs_ms_s1.npy": {
+   "bytes": 253801708
+  },
+  "cnn/vs_single_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vs_single_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vs_single_wide_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vs_single_wide_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vw_ms_s0.npy": {
+   "bytes": 253801708
+  },
+  "cnn/vw_ms_s1.npy": {
+   "bytes": 253801708
+  },
+  "cnn/vw_single_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vw_single_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vw_single_wide_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/vw_single_wide_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/w_bce_s0.pt": {
+   "bytes": 230121
+  },
+  "cnn/w_bce_s1.pt": {
+   "bytes": 230121
+  },
+  "cnn/w_coarse_rain_s0.pt": {
+   "bytes": 230425
+  },
+  "cnn/w_coarse_rain_s1.pt": {
+   "bytes": 230425
+  },
+  "cnn/w_full_s0.pt": {
+   "bytes": 230159
+  },
+  "cnn/w_full_s1.pt": {
+   "bytes": 230159
+  },
+  "cnn/w_ms_s0.pt": {
+   "bytes": 252631
+  },
+  "cnn/w_ms_s1.pt": {
+   "bytes": 252631
+  },
+  "cnn/w_nocoord_s0.pt": {
+   "bytes": 230273
+  },
+  "cnn/w_nocoord_s1.pt": {
+   "bytes": 230273
+  },
+  "cnn/w_nostatic_s0.pt": {
+   "bytes": 230311
+  },
+  "cnn/w_nostatic_s1.pt": {
+   "bytes": 230311
+  },
+  "cnn/w_shuffle_rain_s0.pt": {
+   "bytes": 230463
+  },
+  "cnn/w_shuffle_rain_s1.pt": {
+   "bytes": 230463
+  },
+  "cnn/w_single_s0.pt": {
+   "bytes": 57047
+  },
+  "cnn/w_single_s1.pt": {
+   "bytes": 57047
+  },
+  "cnn/w_single_wide_s0.pt": {
+   "bytes": 211649
+  },
+  "cnn/w_single_wide_s1.pt": {
+   "bytes": 211649
+  },
+  "cnn/z1_pred_cnn025_c8_2000_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/z1_pred_cnn025_c8_2000_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/z1_pred_cnn025_c8_2000_s2.npy": {
+   "bytes": 50760444
+  },
+  "cnn/z1_pred_cnn025_c8_2000shuf_s0.npy": {
+   "bytes": 50760444
+  },
+  "cnn/z1_pred_cnn025_c8_2000shuf_s1.npy": {
+   "bytes": 50760444
+  },
+  "cnn/z_c8_2000.npy": {
+   "bytes": 138644480
+  },
+  "cnn/z_c8_2010.npy": {
+   "bytes": 138644480
+  },
+  "cnn_fl/e45_pred.npz.zst": {
+   "bytes": 135299268
+  },
+  "cnn_fl/e45_rows.npz.zst": {
+   "bytes": 68005464
+  },
+  "cnn_fl/obs4k_day_maps.npy.zst": {
+   "bytes": 117406077
+  },
+  "cnn_fl/p89_S0_loso_FL_s0.npz.zst": {
+   "bytes": 65072140
+  },
+  "cnn_fl/p89_S0_loso_FL_s1.npz.zst": {
+   "bytes": 65035979
+  },
+  "cnn_fl/p89_S0_loso_LA_s0.npz.zst": {
+   "bytes": 64821200
+  },
+  "cnn_fl/p89_S0_loso_LA_s1.npz.zst": {
+   "bytes": 65028751
+  },
+  "cnn_fl/p89_S0_loso_TX_s0.npz.zst": {
+   "bytes": 64883093
+  },
+  "cnn_fl/p89_S0_loso_TX_s1.npz.zst": {
+   "bytes": 64618846
+  },
+  "cnn_fl/p89_S0_own_FL_s0.npz.zst": {
+   "bytes": 65012779
+  },
+  "cnn_fl/p89_S0_own_FL_s1.npz.zst": {
+   "bytes": 65299173
+  },
+  "cnn_fl/p89_S0_own_LA_s0.npz.zst": {
+   "bytes": 64226390
+  },
+  "cnn_fl/p89_S0_own_LA_s1.npz.zst": {
+   "bytes": 65246670
+  },
+  "cnn_fl/p89_S0_own_TX_s0.npz.zst": {
+   "bytes": 65673980
+  },
+  "cnn_fl/p89_S0_own_TX_s1.npz.zst": {
+   "bytes": 64956439
+  },
+  "cnn_fl/p89_S0_pool_s0.npz.zst": {
+   "bytes": 64633445
+  },
+  "cnn_fl/p89_S0_pool_s1.npz.zst": {
+   "bytes": 64877675
+  },
+  "cnn_fl/rows_bg.npy.zst": {
+   "bytes": 59045
+  },
+  "cnn_fl/rows_n0.npy.zst": {
+   "bytes": 112589
+  },
+  "cnn_fl/rows_nall.npy.zst": {
+   "bytes": 155862
+  },
+  "cnn_fl/rows_paid0.npy.zst": {
+   "bytes": 82919
+  },
+  "cnn_fl/rows_ptr.npy": {
+   "bytes": 41008
+  },
+  "cnn_fl/rows_tab.npy.zst": {
+   "bytes": 51962167
+  },
+  "cnn_fl/rows_tc.npy": {
+   "bytes": 56184942
+  },
+  "cnn_fl/static.npz": {
+   "bytes": 779142
+  },
+  "cnn_la/e45_pred.npz": {
+   "bytes": 77335856
+  },
+  "cnn_la/e45_rows.npz.zst": {
+   "bytes": 22838347
+  },
+  "cnn_la/obs4k_day_maps.npy.zst": {
+   "bytes": 117406077
+  },
+  "cnn_la/p89_S0_loso_FL_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_loso_FL_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_loso_LA_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_loso_LA_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_loso_TX_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_loso_TX_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_own_FL_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_own_FL_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_own_LA_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_own_LA_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_own_TX_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_own_TX_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_pool_s0.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/p89_S0_pool_s1.npz": {
+   "bytes": 38667924
+  },
+  "cnn_la/rows_bg.npy": {
+   "bytes": 66784056
+  },
+  "cnn_la/rows_n0.npy": {
+   "bytes": 66784056
+  },
+  "cnn_la/rows_nall.npy": {
+   "bytes": 66784056
+  },
+  "cnn_la/rows_paid0.npy": {
+   "bytes": 66784056
+  },
+  "cnn_la/rows_ptr.npy": {
+   "bytes": 41008
+  },
+  "cnn_la/rows_tab.npy.zst": {
+   "bytes": 17658903
+  },
+  "cnn_la/rows_tc.npy": {
+   "bytes": 16696110
+  },
+  "cnn_la/static.npz": {
+   "bytes": 318330
+  },
+  "cnn_pool/w_S0_loso_FL_s0.pt": {
+   "bytes": 224627
+  },
+  "cnn_pool/w_S0_loso_FL_s1.pt": {
+   "bytes": 224627
+  },
+  "cnn_pool/w_S0_loso_LA_s0.pt": {
+   "bytes": 224627
+  },
+  "cnn_pool/w_S0_loso_LA_s1.pt": {
+   "bytes": 224627
+  },
+  "cnn_pool/w_S0_loso_TX_s0.pt": {
+   "bytes": 224627
+  },
+  "cnn_pool/w_S0_loso_TX_s1.pt": {
+   "bytes": 224627
+  },
+  "cnn_pool/w_S0_own_FL_s0.pt": {
+   "bytes": 224589
+  },
+  "cnn_pool/w_S0_own_FL_s1.pt": {
+   "bytes": 224589
+  },
+  "cnn_pool/w_S0_own_LA_s0.pt": {
+   "bytes": 224589
+  },
+  "cnn_pool/w_S0_own_LA_s1.pt": {
+   "bytes": 224589
+  },
+  "cnn_pool/w_S0_own_TX_s0.pt": {
+   "bytes": 224589
+  },
+  "cnn_pool/w_S0_own_TX_s1.pt": {
+   "bytes": 224589
+  },
+  "cnn_pool/w_S0_pool_s0.pt": {
+   "bytes": 224513
+  },
+  "cnn_pool/w_S0_pool_s1.pt": {
+   "bytes": 224513
+  },
+  "cnn_tx/e45_pred.npz.zst": {
+   "bytes": 97859049
+  },
+  "cnn_tx/e45_rows.npz.zst": {
+   "bytes": 64428641
+  },
+  "cnn_tx/obs4k_day_maps.npy.zst": {
+   "bytes": 115684879
+  },
+  "cnn_tx/p89_S0_loso_FL_s0.npz.zst": {
+   "bytes": 73996213
+  },
+  "cnn_tx/p89_S0_loso_FL_s1.npz.zst": {
+   "bytes": 74248621
+  },
+  "cnn_tx/p89_S0_loso_LA_s0.npz.zst": {
+   "bytes": 74282091
+  },
+  "cnn_tx/p89_S0_loso_LA_s1.npz.zst": {
+   "bytes": 74388514
+  },
+  "cnn_tx/p89_S0_loso_TX_s0.npz.zst": {
+   "bytes": 74752399
+  },
+  "cnn_tx/p89_S0_loso_TX_s1.npz.zst": {
+   "bytes": 74439704
+  },
+  "cnn_tx/p89_S0_own_FL_s0.npz.zst": {
+   "bytes": 74858028
+  },
+  "cnn_tx/p89_S0_own_FL_s1.npz.zst": {
+   "bytes": 74810066
+  },
+  "cnn_tx/p89_S0_own_LA_s0.npz.zst": {
+   "bytes": 73296100
+  },
+  "cnn_tx/p89_S0_own_LA_s1.npz.zst": {
+   "bytes": 73503042
+  },
+  "cnn_tx/p89_S0_own_TX_s0.npz.zst": {
+   "bytes": 74292632
+  },
+  "cnn_tx/p89_S0_own_TX_s1.npz.zst": {
+   "bytes": 74120612
+  },
+  "cnn_tx/p89_S0_pool_s0.npz.zst": {
+   "bytes": 74263400
+  },
+  "cnn_tx/p89_S0_pool_s1.npz.zst": {
+   "bytes": 74660898
+  },
+  "cnn_tx/rows_bg.npy.zst": {
+   "bytes": 119565
+  },
+  "cnn_tx/rows_n0.npy.zst": {
+   "bytes": 150293
+  },
+  "cnn_tx/rows_nall.npy.zst": {
+   "bytes": 186689
+  },
+  "cnn_tx/rows_paid0.npy.zst": {
+   "bytes": 148822
+  },
+  "cnn_tx/rows_ptr.npy": {
+   "bytes": 41008
+  },
+  "cnn_tx/rows_tab.npy.zst": {
+   "bytes": 33358697
+  },
+  "cnn_tx/rows_tc.npy": {
+   "bytes": 63815450
+  },
+  "cnn_tx/static.npz": {
+   "bytes": 1053596
+  },
+  "colab_upload/code.zip": {
+   "bytes": 92448
+  },
+  "colab_upload/gridmet_win_days.npy": {
+   "bytes": 58560
+  },
+  "colab_upload/static.npz": {
    "bytes": 1128262
   },
   "ens_tp24_2018_lead72h_00z.npz": {
@@ -929,6 +2277,22 @@
    },
    "rows": 74739461
   },
+  "labels_extra/flood/nfip_tx_claim_dates.parquet": {
+   "bytes": 2324566,
+   "columns": {
+    "amountPaidOnBuildingClaim": "DOUBLE",
+    "asOfDate": "BYTE_ARRAY",
+    "causeOfDamage": "BYTE_ARRAY",
+    "censusGeoid": "BYTE_ARRAY",
+    "countyCode": "BYTE_ARRAY",
+    "dateOfLoss": "BYTE_ARRAY",
+    "floodEvent": "BYTE_ARRAY",
+    "id": "INT64",
+    "mostRecentPaymentDate": "BYTE_ARRAY",
+    "openDate": "BYTE_ARRAY"
+   },
+   "rows": 116924
+  },
   "labels_extra/flood/nwis/dv_az_#.rdb": {
    "bytes": 23086379,
    "collapsed": true,
@@ -977,8 +2341,20 @@
   "labels_extra/flood/pilot/abl_nosfha.csv": {
    "bytes": 564
   },
+  "labels_extra/flood/pilot/bg2010_fl.zip": {
+   "bytes": 2681343
+  },
+  "labels_extra/flood/pilot/bg2010_la.zip": {
+   "bytes": 1486724
+  },
   "labels_extra/flood/pilot/bg2010_tx.zip": {
    "bytes": 5146382
+  },
+  "labels_extra/flood/pilot/bg2020_fl.zip": {
+   "bytes": 3927383
+  },
+  "labels_extra/flood/pilot/bg2020_la.zip": {
+   "bytes": 2165323
   },
   "labels_extra/flood/pilot/bg2020_tx.zip": {
    "bytes": 7588326
@@ -1022,20 +2398,14 @@
    },
    "rows": 15805
   },
-  "labels_extra/flood/pilot/claims_cum.npy": {
-   "bytes": 323307208
-  },
-  "labels_extra/flood/pilot/claims_cum_clean.npy": {
-   "bytes": 323307208
+  "labels_extra/flood/pilot/claims_cum_clean.npy.zst": {
+   "bytes": 140944
   },
   "labels_extra/flood/pilot/county_daily.npz": {
    "bytes": 4648142
   },
-  "labels_extra/flood/pilot/expo_2010_2023.npz": {
-   "bytes": 1293735318
-  },
-  "labels_extra/flood/pilot/expo_2010_2023_clean.npz": {
-   "bytes": 1293735318
+  "labels_extra/flood/pilot/expo_2010_2023_clean.npz.zst": {
+   "bytes": 18572440
   },
   "labels_extra/flood/pilot/fetch_inputs.log": {
    "bytes": 724
@@ -1206,23 +2576,85 @@
   "labels_extra/flood/pilot/gm_test.nc": {
    "bytes": 507060
   },
+  "labels_extra/flood/pilot/gridmet/pr_lafl_#.nc": {
+   "bytes": 1189201008,
+   "collapsed": true,
+   "example": "pr_lafl_2000.nc",
+   "files": 24
+  },
   "labels_extra/flood/pilot/gridmet/pr_tx_#.nc": {
    "bytes": 1458920592,
    "collapsed": true,
    "example": "pr_tx_2000.nc",
    "files": 24
   },
-  "labels_extra/flood/pilot/hand_z11_t1.npy": {
-   "bytes": 756547712
-  },
-  "labels_extra/flood/pilot/hand_z11_t10.npy": {
-   "bytes": 756547712
-  },
   "labels_extra/flood/pilot/hurdat2.txt": {
    "bytes": 7071568
   },
   "labels_extra/flood/pilot/hurdat2_nepac.txt": {
    "bytes": 4087516
+  },
+  "labels_extra/flood/pilot/policies_fl.parquet": {
+   "bytes": 515181906,
+   "columns": {
+    "buildingReplacementCost": "INT64",
+    "cancellationDateOfFloodPolicy": "INT32",
+    "censusGeoid": "BYTE_ARRAY",
+    "elevationDifference": "INT32",
+    "floodZoneCurrent": "BYTE_ARRAY",
+    "foundationType": "BYTE_ARRAY",
+    "mandatoryPurchaseFlag": "BOOLEAN",
+    "nfipRatedCommunityNumber": "BYTE_ARRAY",
+    "numberOfFloorsInInsuredBuilding": "INT32",
+    "occupancyType": "INT32",
+    "originalConstructionDate": "INT32",
+    "originalNBDate": "INT32",
+    "policyCount": "INT32",
+    "policyEffectiveDate": "INT32",
+    "policyTermIndicator": "INT32",
+    "policyTerminationDate": "INT32",
+    "postFIRMConstructionIndicator": "BOOLEAN",
+    "primaryResidenceIndicator": "BOOLEAN",
+    "propertyPurchaseDate": "INT32",
+    "propertyState": "BYTE_ARRAY",
+    "ratedFloodZone": "BYTE_ARRAY",
+    "reportedZipCode": "BYTE_ARRAY",
+    "rolloverTransferCode": "BYTE_ARRAY",
+    "totalBuildingInsuranceCoverage": "INT32",
+    "totalInsurancePremiumOfThePolicy": "INT32"
+   },
+   "rows": 22377861
+  },
+  "labels_extra/flood/pilot/policies_la.parquet": {
+   "bytes": 207739591,
+   "columns": {
+    "buildingReplacementCost": "INT64",
+    "cancellationDateOfFloodPolicy": "INT32",
+    "censusGeoid": "BYTE_ARRAY",
+    "elevationDifference": "INT32",
+    "floodZoneCurrent": "BYTE_ARRAY",
+    "foundationType": "BYTE_ARRAY",
+    "mandatoryPurchaseFlag": "BOOLEAN",
+    "nfipRatedCommunityNumber": "BYTE_ARRAY",
+    "numberOfFloorsInInsuredBuilding": "INT32",
+    "occupancyType": "INT32",
+    "originalConstructionDate": "INT32",
+    "originalNBDate": "INT32",
+    "policyCount": "INT32",
+    "policyEffectiveDate": "INT32",
+    "policyTermIndicator": "INT32",
+    "policyTerminationDate": "INT32",
+    "postFIRMConstructionIndicator": "BOOLEAN",
+    "primaryResidenceIndicator": "BOOLEAN",
+    "propertyPurchaseDate": "INT32",
+    "propertyState": "BYTE_ARRAY",
+    "ratedFloodZone": "BYTE_ARRAY",
+    "reportedZipCode": "BYTE_ARRAY",
+    "rolloverTransferCode": "BYTE_ARRAY",
+    "totalBuildingInsuranceCoverage": "INT32",
+    "totalInsurancePremiumOfThePolicy": "INT32"
+   },
+   "rows": 8456525
   },
   "labels_extra/flood/pilot/policies_tx.parquet": {
    "bytes": 279177540,
@@ -1255,8 +2687,14 @@
    },
    "rows": 11612805
   },
-  "labels_extra/flood/pilot/pr_tx_2000_2023.npy": {
-   "bytes": 2917324928
+  "labels_extra/flood/pilot/pr_lafl_2000_2023.npy.zst": {
+   "bytes": 120843871
+  },
+  "labels_extra/flood/pilot/pr_lafl_meta.npz": {
+   "bytes": 75202
+  },
+  "labels_extra/flood/pilot/pr_tx_2000_2023.npy.zst": {
+   "bytes": 131202055
   },
   "labels_extra/flood/pilot/pr_tx_meta.npz": {
    "bytes": 75506
@@ -1297,6 +2735,12 @@
     "year": "INT32"
    },
    "rows": 12690079
+  },
+  "labels_extra/flood/pilot/rel_bg20_bg10_st12.txt": {
+   "bytes": 2508516
+  },
+  "labels_extra/flood/pilot/rel_bg20_bg10_st22.txt": {
+   "bytes": 805140
   },
   "labels_extra/flood/pilot/rel_bg20_bg10_st48.txt": {
    "bytes": 3443384
@@ -1534,18 +2978,6 @@
   "labels_extra/flood/pilot/tc_flag_none.npy": {
    "bytes": 2226692
   },
-  "labels_extra/flood/pilot/terrain_tiles/#_#_#.npy": {
-   "bytes": 378458496,
-   "collapsed": true,
-   "example": "10_208_400.npy",
-   "files": 1443
-  },
-  "labels_extra/flood/pilot/terrain_tiles_z11/#_#_#.npy": {
-   "bytes": 1513833984,
-   "collapsed": true,
-   "example": "11_416_800.npy",
-   "files": 5772
-  },
   "labels_extra/flood/pilot/tile_test.png": {
    "bytes": 40549
   },
@@ -1600,12 +3032,6 @@
   },
   "labels_extra/mesh_test/m.grib2": {
    "bytes": 1028010
-  },
-  "labels_extra/qpe/#.grib#": {
-   "bytes": 1913627777,
-   "collapsed": true,
-   "example": "20210501.grib2",
-   "files": 456
   },
   "labels_extra/rma/colsom_#.zip": {
    "bytes": 115025065,
@@ -1700,6 +3126,231 @@
     "max_mm": "DOUBLE"
    },
    "rows": 51072
+  },
+  "runs/mrms_finetune/ft_mrms_s0/events.out.tfevents.1793653735.Nicks-MacBook-Pro.local.19815.0": {
+   "bytes": 3015700
+  },
+  "runs/mrms_finetune/ft_mrms_s1/events.out.tfevents.1793654116.Nicks-MacBook-Pro.local.20041.0": {
+   "bytes": 3115697
+  },
+  "runs/mrms_finetune/ft_mrms_shuf_s0/events.out.tfevents.1793653817.Nicks-MacBook-Pro.local.19863.0": {
+   "bytes": 3037414
+  },
+  "runs/mrms_finetune/ft_mrms_shuf_s1/events.out.tfevents.1793654192.Nicks-MacBook-Pro.local.20083.0": {
+   "bytes": 3100279
+  },
+  "runs/mrms_finetune/ft_rain_s0/events.out.tfevents.1793653663.Nicks-MacBook-Pro.local.19726.0": {
+   "bytes": 2747827
+  },
+  "runs/mrms_finetune/ft_rain_s1/events.out.tfevents.1793654049.Nicks-MacBook-Pro.local.20007.0": {
+   "bytes": 2811760
+  },
+  "runs/mrms_finetune/scratch_mrms_s0/events.out.tfevents.1793653970.Nicks-MacBook-Pro.local.19966.0": {
+   "bytes": 3049921
+  },
+  "runs/mrms_finetune/scratch_mrms_s1/events.out.tfevents.1793654340.Nicks-MacBook-Pro.local.20196.0": {
+   "bytes": 3075161
+  },
+  "runs/mrms_finetune/scratch_rain_s0/events.out.tfevents.1793653900.Nicks-MacBook-Pro.local.19913.0": {
+   "bytes": 2743640
+  },
+  "runs/mrms_finetune/scratch_rain_s1/events.out.tfevents.1793654272.Nicks-MacBook-Pro.local.20161.0": {
+   "bytes": 2768616
+  },
+  "runs/past/cnn_pooled_train_S0_loso_FL_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.0": {
+   "bytes": 1057
+  },
+  "runs/past/cnn_pooled_train_S0_loso_FL_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.1": {
+   "bytes": 1057
+  },
+  "runs/past/cnn_pooled_train_S0_loso_LA_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.2": {
+   "bytes": 1057
+  },
+  "runs/past/cnn_pooled_train_S0_loso_LA_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.3": {
+   "bytes": 1057
+  },
+  "runs/past/cnn_pooled_train_S0_loso_TX_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.4": {
+   "bytes": 1057
+  },
+  "runs/past/cnn_pooled_train_S0_loso_TX_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.5": {
+   "bytes": 1057
+  },
+  "runs/past/cnn_pooled_train_S0_own_FL_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.6": {
+   "bytes": 1056
+  },
+  "runs/past/cnn_pooled_train_S0_own_FL_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.7": {
+   "bytes": 1056
+  },
+  "runs/past/cnn_pooled_train_S0_own_LA_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.8": {
+   "bytes": 1056
+  },
+  "runs/past/cnn_pooled_train_S0_own_LA_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.9": {
+   "bytes": 1056
+  },
+  "runs/past/cnn_pooled_train_S0_own_TX_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.10": {
+   "bytes": 1056
+  },
+  "runs/past/cnn_pooled_train_S0_own_TX_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.11": {
+   "bytes": 1056
+  },
+  "runs/past/cnn_pooled_train_S0_pool_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.12": {
+   "bytes": 1054
+  },
+  "runs/past/cnn_pooled_train_S0_pool_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.13": {
+   "bytes": 1054
+  },
+  "runs/past/e1_train_025_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.14": {
+   "bytes": 3397
+  },
+  "runs/past/e1_train_025_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.15": {
+   "bytes": 3397
+  },
+  "runs/past/e1_train_025_s2/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.16": {
+   "bytes": 3397
+  },
+  "runs/past/e1_train_025_s3/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.17": {
+   "bytes": 3397
+  },
+  "runs/past/e1_train_025_s4/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.18": {
+   "bytes": 3397
+  },
+  "runs/past/e1_train_4km_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.19": {
+   "bytes": 1513
+  },
+  "runs/past/e1_train_4km_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.20": {
+   "bytes": 1513
+  },
+  "runs/past/e1_train_4km_s2/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.21": {
+   "bytes": 1513
+  },
+  "runs/past/lc25_train_4km_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.22": {
+   "bytes": 1515
+  },
+  "runs/past/lc25_train_4km_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.23": {
+   "bytes": 1515
+  },
+  "runs/past/lc50_train_4km_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.24": {
+   "bytes": 1515
+  },
+  "runs/past/lc50_train_4km_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.25": {
+   "bytes": 1515
+  },
+  "runs/past/multisource_train_fc+expo+geo_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.26": {
+   "bytes": 1059
+  },
+  "runs/past/multisource_train_fc+expo+geo_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.27": {
+   "bytes": 1059
+  },
+  "runs/past/multisource_train_fc+expo_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.28": {
+   "bytes": 1055
+  },
+  "runs/past/multisource_train_fc+expo_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.29": {
+   "bytes": 1055
+  },
+  "runs/past/multisource_train_rain+era5_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.30": {
+   "bytes": 1057
+  },
+  "runs/past/multisource_train_rain+era5_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.31": {
+   "bytes": 1057
+  },
+  "runs/past/multisource_train_rain+expo+fc+era5+geo_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.32": {
+   "bytes": 1070
+  },
+  "runs/past/multisource_train_rain+expo+fc+era5+geo_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.33": {
+   "bytes": 1070
+  },
+  "runs/past/multisource_train_rain+expo_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.34": {
+   "bytes": 1057
+  },
+  "runs/past/multisource_train_rain+expo_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.35": {
+   "bytes": 1057
+  },
+  "runs/past/multisource_train_rain+fc_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.36": {
+   "bytes": 1055
+  },
+  "runs/past/multisource_train_rain+fc_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.37": {
+   "bytes": 1055
+  },
+  "runs/past/multisource_train_rain+geo_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.38": {
+   "bytes": 1056
+  },
+  "runs/past/multisource_train_rain+geo_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.39": {
+   "bytes": 1056
+  },
+  "runs/past/multisource_train_rain_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.40": {
+   "bytes": 1052
+  },
+  "runs/past/multisource_train_rain_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.41": {
+   "bytes": 1052
+  },
+  "runs/past/v_bce_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.42": {
+   "bytes": 1041
+  },
+  "runs/past/v_bce_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.43": {
+   "bytes": 1041
+  },
+  "runs/past/v_coarse_rain_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.44": {
+   "bytes": 1049
+  },
+  "runs/past/v_coarse_rain_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.45": {
+   "bytes": 1049
+  },
+  "runs/past/v_full_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.46": {
+   "bytes": 1042
+  },
+  "runs/past/v_full_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.47": {
+   "bytes": 1042
+  },
+  "runs/past/v_ms_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.48": {
+   "bytes": 1040
+  },
+  "runs/past/v_ms_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.49": {
+   "bytes": 1040
+  },
+  "runs/past/v_nocoord_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.50": {
+   "bytes": 1045
+  },
+  "runs/past/v_nocoord_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.51": {
+   "bytes": 1045
+  },
+  "runs/past/v_nostatic_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.52": {
+   "bytes": 1046
+  },
+  "runs/past/v_nostatic_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.53": {
+   "bytes": 1046
+  },
+  "runs/past/v_shuffle_rain_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.54": {
+   "bytes": 1050
+  },
+  "runs/past/v_shuffle_rain_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.55": {
+   "bytes": 1050
+  },
+  "runs/past/v_single_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.56": {
+   "bytes": 1044
+  },
+  "runs/past/v_single_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.57": {
+   "bytes": 1044
+  },
+  "runs/past/v_single_wide_train_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.58": {
+   "bytes": 1049
+  },
+  "runs/past/v_single_wide_train_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.59": {
+   "bytes": 1049
+  },
+  "runs/past/z1_train_025_c8_2000_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.60": {
+   "bytes": 3405
+  },
+  "runs/past/z1_train_025_c8_2000_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.61": {
+   "bytes": 3405
+  },
+  "runs/past/z1_train_025_c8_2000_s2/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.62": {
+   "bytes": 3405
+  },
+  "runs/past/z1_train_025_c8_2000shuf_s0/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.63": {
+   "bytes": 3409
+  },
+  "runs/past/z1_train_025_c8_2000shuf_s1/events.out.tfevents.1793653660.Nicks-MacBook-Pro.local.19719.64": {
+   "bytes": 3409
   },
   "scale_encoder_full.log": {
    "bytes": 11720
@@ -1949,6 +3600,6 @@
    "rows": 25902
   }
  },
- "n_entries": 264,
+ "n_entries": 751,
  "root": "$WXRISK_DATA"
 }
