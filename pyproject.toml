@@ -41,6 +41,7 @@ dependencies = [
 [project.optional-dependencies]
 torch = ["torch>=2.4,<3"]
 monitor = ["tensorboard>=2.16,<3"]  # live training dashboard (src/wxrisk/tblog.py)
+gee = ["earthengine-api>=1.0,<2"]  # Earth Engine display layer (docs/GEE_PLAN.md)
 
 [dependency-groups]
 dev = [

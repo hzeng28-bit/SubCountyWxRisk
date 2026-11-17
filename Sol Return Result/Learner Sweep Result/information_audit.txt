@@ -1,0 +1,58 @@
+== 1. strata of the stage 8 model (L5 test predictions), within-event AUC
+  dur   1: 0.807 (ep 445, pos 1191)   2: 0.788 (ep 215, pos 655)   3-4: 0.789 (ep 222, pos 784)   >=5: 0.757 (ep 133, pos 1081)
+  nbg   <=20: 0.761 (ep 103, pos 246)   21-60: 0.725 (ep 242, pos 448)   61-150: 0.757 (ep 155, pos 317)   >150: 0.784 (ep 515, pos 2700)
+  rain  Q1 low: 0.701 (ep 62, pos 109)   Q2: 0.683 (ep 101, pos 149)   Q3: 0.722 (ep 209, pos 367)   Q4 high: 0.799 (ep 643, pos 3086)
+  pos   1: 0.703 (ep 582, pos 621)   2-3: 0.768 (ep 247, pos 581)   4-9: 0.768 (ep 112, pos 648)   >=10: 0.798 (ep 74, pos 1861)
+  year  2017: 0.795 (ep 146, pos 473)   2018: 0.738 (ep 198, pos 855)   2019: 0.770 (ep 153, pos 747)   2020: 0.838 (ep 89, pos 223)   2021: 0.777 (ep 223, pos 819)   2022: 0.809 (ep 99, pos 319)   2023: 0.812 (ep 107, pos 275)
+
+== 2. positives ranked last inside their episode
+  positives 3,663; in the bottom quarter of their episode 4.9%, top quarter 61.1%
+  column                bottom-quarter positives   top-quarter positives   (median)
+  bg_f1                         65.50                   103.00
+  cty_f1_max                   165.50                   144.40
+  n_pol                         16.00                    76.00
+  sfha_share                     0.00                     0.24
+  dur                            3.00                     2.00
+  mean_cov                       0.18                     0.21
+  area_km2                       1.28                     2.58
+  positives whose cell rain is below a quarter of the county peak: 3.7%; with cell rain < 10 mm: 2.2%
+  ... among bottom-quarter positives: 3.9% have cell rain < 10 mm, 45.3% have fewer policies than the median block group
+
+== 4. label-randomness ceiling of the stage 8 model (test 2017-2023)
+  observed within-event AUC 0.7839; if the predicted probabilities were true: 0.7909 (10 redraws, sd 0.0045)
+
+== 3. information added to the base model (stage 8 L2 features)
+    fitted base (158 iterations)
+    fitted + hist00 (208 iterations)
+    fitted + prior3 (275 iterations)
+    fitted + hist00 + prior3 (219 iterations)
+    fitted + terrain (251 iterations)
+    fitted + hist + terrain + static (187 iterations)
+    fitted oracle: 5 nearest block groups (168 iterations)
+
+  observed rain, test 2017-2023: test positives 3,711
+  information added            within-event AUC   difference to base [95% interval]
+  base                         0.7857
+  + hist00                     0.8018            +0.0161 [+0.0108, +0.0214]
+  + prior3                     0.8037            +0.0179 [+0.0130, +0.0235]
+  + hist00 + prior3            0.8120            +0.0262 [+0.0198, +0.0325]
+  + terrain                    0.7838            -0.0019 [-0.0104, +0.0068]
+  + hist + terrain + static    0.8102            +0.0245 [+0.0177, +0.0310]
+  oracle: 5 nearest block groups 0.8079            +0.0222 [+0.0151, +0.0285]
+    fitted base (119 iterations)
+    fitted + hist00 (92 iterations)
+    fitted + prior3 (151 iterations)
+    fitted + hist00 + prior3 (106 iterations)
+    fitted + terrain (140 iterations)
+    fitted + hist + terrain + static (186 iterations)
+    fitted oracle: 5 nearest block groups (82 iterations)
+
+  forecast rain (fcmean), test 2017-2019: test positives 2,075
+  information added            within-event AUC   difference to base [95% interval]
+  base                         0.6674
+  + hist00                     0.7046            +0.0372 [+0.0126, +0.0571]
+  + prior3                     0.6974            +0.0300 [+0.0169, +0.0420]
+  + hist00 + prior3            0.7184            +0.0510 [+0.0225, +0.0752]
+  + terrain                    0.6367            -0.0307 [-0.0704, +0.0092]
+  + hist + terrain + static    0.7113            +0.0440 [+0.0180, +0.0666]
+  oracle: 5 nearest block groups 0.7525            +0.0851 [+0.0453, +0.1155]

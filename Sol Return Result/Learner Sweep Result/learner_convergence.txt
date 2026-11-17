@@ -1,0 +1,31 @@
+rows 2,996,576; test positives 3,711
+
+== searched families (rolling-origin validation, same trial budget)
+  logit   validation 0.8123  60 trials, 3 min  {'C': 0.06815219067096034}
+  logit2  validation 0.8112  60 trials, 8 min  {'C': 0.004661681220707688}
+  hgb     validation 0.8136  60 trials, 36 min  {'max_depth': 2, 'min_samples_leaf': 2197, 'learning_rate': 0.04869139954730878, 'l2': 26.081447439691676, 'max_iter': 569, 'max_leaf_nodes': 63}
+  rf      validation 0.8103  60 trials, 14 min  {'min_samples_leaf': 10, 'max_features': 0.10701794838317832, 'max_depth': None}
+  et      validation 0.8090  60 trials, 6 min  {'min_samples_leaf': 5, 'max_features': 0.11969279427123786, 'max_depth': 12}
+  mlp     validation 0.8177  60 trials, 5 min  {'hidden': '32', 'alpha': 0.049791550544594554, 'lr': 0.00982524887598223}
+
+== test 2017-2023, parameters fixed on the validation folds, scored once
+  learner  within-event AUC   overall AUC     AP   vs logit [95% interval]        vs hgb [95% interval]
+  logit    0.8076           0.9256      0.1424                                 -0.0070 [-0.0122, -0.0021]
+  logit2   0.8120           0.9260      0.1308   +0.0044 [-0.0001, +0.0089]    -0.0026 [-0.0074, +0.0020]
+  hgb      0.8146           0.9306      0.1281   +0.0070 [+0.0021, +0.0122]    
+  rf       0.8080           0.9316      0.1374   +0.0004 [-0.0048, +0.0059]    -0.0067 [-0.0105, -0.0020]
+  et       0.8112           0.9299      0.1491   +0.0035 [-0.0021, +0.0091]    -0.0035 [-0.0067, +0.0005]
+  mlp      0.8131           0.9281      0.1393   +0.0055 [-0.0000, +0.0112]    -0.0015 [-0.0053, +0.0029]
+  average  0.8162           0.9313      0.1524   +0.0086 [+0.0050, +0.0123]    +0.0016 [-0.0008, +0.0045]
+
+== learning curve: within-event AUC by share of the training episodes (3 draws, test 2017-2023)
+   10%  logit 0.8022 (sd 0.0043)   hgb 0.8065 (sd 0.0048)
+   25%  logit 0.8060 (sd 0.0011)   hgb 0.8119 (sd 0.0002)
+   50%  logit 0.8074 (sd 0.0009)   hgb 0.8137 (sd 0.0015)
+  100%  logit 0.8075 (sd 0.0000)   hgb 0.8146 (sd 0.0000)
+
+== label-randomness ceiling of the best model
+
+== 4. label-randomness ceiling of the stage 8 model (test 2017-2023)
+  observed within-event AUC 0.8162; if the predicted probabilities were true: 0.8004 (10 redraws, sd 0.0054)
+  (model: average)

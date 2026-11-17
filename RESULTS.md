@@ -2803,3 +2803,45 @@ Question: the data dir had grown to 66 GB; which parts are sparse, which dense, 
 - Ratios come from 100-200 MB slices (middle of the array, summer-heavy for rain), not whole files; the whole-file numbers in the log are the real ones and agree within a factor 1.5.
 - Loaders were switched mechanically (`np.load` -> `zstio.load`) in scripts 48, 76, 77, 80-98 and `flood_pilot.py`; the archived files load and `flood_pilot.load_precip` works, but the training scripts (81, 82, 89, 91, 93) were not rerun end to end. Scripts 25 and 45 still point at the deleted pre-prep inputs. Memory-mapped random access inside epoch loops now works on in-RAM copies: several big arrays at once can exceed 25 GB RAM.
 - zarr / blosc (chunked, would keep partial reads) and pydata `sparse` were not benchmarked.
+
+# Stage 59: streamgage discharge as a fine-grained outcome, river-network conservation (scripts 108, 109, 111; logs `audit/gauge_*.txt`)
+
+Question (mentor): would an outcome such as river discharge at gauges, linked by the river network, be a finer outcome than county-day claims? Conservation idea: water passing an upstream gauge must reach the next gauge downstream unless lost (overbank spill, levee break, diversion, reservoir, karst recharge) or gained (local inflow).
+Data: USGS daily-mean discharge 2010-2023 at 896 Texas gauges (2.4 M gauge-days); NLDI basin polygons for 872 of them (24 have no NLDI record; fetch limited by the 800 requests per hour cap); an upstream gauge = a gauge inside another gauge's basin, immediate upstream = no other gauge between; gridMET rain averaged over each basin (7.6 M basin-days); 15-minute discharge (`get_continuous`) for the 14 largest claim days of 2012-2019 (day -2 to +5, 5.2 M rows).
+
+## A. Mass balance on daily means (178 gauge / immediate-upstream groups with 0.6 to 1.05 drainage-area coverage)
+- 58 groups look natural (median ratio 0.8-1.25, correlation >= 0.85, coverage >= 0.8); the others are mostly reservoir-regulated reaches.
+- In the 58: median downstream/upstream ratio on days when the upstream sum is above its own 99th percentile 0.99; median share of such days below 0.7: 5.9%.
+- With 656 basins the outliers were Trinity R. near Oakwood (71% of flood days below 0.7, median ratio 0.61, wide floodplain), Barton Creek at Austin (46%, karst recharge), Brazos near Rule (31%), Trinity near Crandall / Goodrich (21-25%).
+- Best lag is 0 d for 104 groups, 1 d for 47, 2-3 d for 27.
+
+## B. 15-minute conservation after aligning travel time (1,688 group-events, 164 groups)
+- Lag (15-min cross-correlation, searched to 4 days): median 10.5 h, 12 h in the natural groups.
+- Natural groups with IV (74 groups, 591 group-events): volume ratio downstream / lagged upstream median 1.08, peak ratio 1.01; most reaches conserve or gain (local inflow).
+- Persistent losses: Barton Creek (volume 0.77, peak 0.66, 11 events: karst); USGS 08183500 (0.86, 12 events); 08188800 (0.78, 5); 08104700 / 08102500 / 08167800 (0.04-0.52 on 1, 5, 4 events, probably regulated).
+- Daily loss share vs IV median volume ratio: Spearman -0.175. The daily flag is only weakly related to the lag-aligned loss.
+
+## C. Can basin rain predict a daily discharge surge? (surge = Q(t) >= 3 Q(t-1) and >= the gauge's 95th percentile; train <= 2016, test 2017-2023; interval = gauge bootstrap, 100 draws)
+| Features | AUC |
+|---|---|
+| p1 (basin rain today) alone | 0.601 [0.563, 0.683] |
+| rain today, 2, 3 d, max cell | 0.692 [0.633, 0.781] |
+| + 7 and 30 d rain | 0.744 [0.694, 0.819] |
+| + log drainage area | 0.938 [0.866, 0.975] |
+| + area + Q(t-1) relative | 0.989 [0.983, 0.992] |
+| Q(t-1) relative only | 0.905 [0.843, 0.934] |
+Within-gauge AUC of the rain + antecedent-rain model (no area, no Q): median 0.943, IQR 0.843-0.974, 451 gauges with >= 3 test surges. (With the first 656 basins the pooled numbers were higher, 0.80 / 0.85 / 0.92, and within-gauge 0.966; the pooled AUC depends on the gauge mix.)
+
+## D. Does gauge flow separate claim episodes from non-claim ones? (county x rain episode, 33,456 units in counties with a gauge, 5.9% with any claim)
+AUC of the county's peak gauge-flow percentile 0.817; county rain on the same units 0.791. Test 2017+ (logistic): rain only 0.798, rain + gauge percentile 0.843.
+
+## Conclusions
+- The data supports the suggestion. Daily discharge is learnable from rain within a gauge (median AUC 0.94), and gauge flow carries information about claims beyond rain (+0.045 AUC at county-episode level). It was not done before: stage 18 used only pre-2010 annual peaks as a static prior (null), and the stage-4 surge label was never tested for learnability.
+- Flow conservation: on natural reaches the water that passes an upstream gauge arrives downstream after about half a day, in volume (median ratio 1.08); the network can be modelled as a conserving flow graph with a local-inflow term. A loss term is needed for a few reaches (karst at Barton Creek, floodplain storage at Trinity), and regulated reaches must be excluded.
+- Gauge discharge is an event-intensity check and an independent validation for forecast rain; with 872 gauges it does not replace block-group ranking.
+
+## Caveats
+- C: the jump with drainage area is between-gauge (large basins surge rarely), not event skill. The 0.989 with Q(t-1) is persistence of a surge that is already under way. Rain is observed gridMET, not forecast. The label (3x and p95) is mine and unvalidated.
+- D: county level, any-claim label, 5.9% positive. The county gauge percentile is a maximum over all gauges in the county, so counties with more gauges have higher maxima by construction. No event-clustered interval for the +0.045.
+- A, B: reservoirs are screened by ratio and correlation, not by the National Inventory of Dams; "loss" at Oakwood or Barton Creek is not verified as spill; gauge-in-basin tolerance 0.002 degrees, some groups may be mislinked at confluences. IV covers 14 events (mostly 2015-2016) with an 8-day window and a lag search to 4 days, so boundary effects and the largest lags (up to 95 h) are uncertain.
+- Not tested: forecast-mode rain to discharge, a block-group-level use of the gauge signal, spatial interpolation along the network (kriging along stream distance), peak-stage data.
