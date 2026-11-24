@@ -2845,3 +2845,299 @@ AUC of the county's peak gauge-flow percentile 0.817; county rain on the same un
 - D: county level, any-claim label, 5.9% positive. The county gauge percentile is a maximum over all gauges in the county, so counties with more gauges have higher maxima by construction. No event-clustered interval for the +0.045.
 - A, B: reservoirs are screened by ratio and correlation, not by the National Inventory of Dams; "loss" at Oakwood or Barton Creek is not verified as spill; gauge-in-basin tolerance 0.002 degrees, some groups may be mislinked at confluences. IV covers 14 events (mostly 2015-2016) with an 8-day window and a lag search to 4 days, so boundary effects and the largest lags (up to 95 h) are uncertain.
 - Not tested: forecast-mode rain to discharge, a block-group-level use of the gauge signal, spatial interpolation along the network (kriging along stream distance), peak-stage data.
+
+# Stage 60: small, unregulated streamgages vs NFIP loss inside their basins (script 114; log `audit/small_gauge_loss.txt`)
+
+Question (user): keep only small stations, drop dams and other fixed hydraulic works, and ask whether gauge flow is related to the loss level.
+Selection (565 Texas gauges with daily Q since 2010): drainage area <= 250 mi2 (246) -> record >= 3 yr at 80% coverage (228) -> name is not a structure (dam, weir, spillway, outflow, canal, ditch, diversion, "below lake", ...; 226) -> no name-flagged structure gauge inside its NLDI basin (224) -> Richards-Baker flashiness >= 0.03 (220) -> basin polygon (218) -> basin holds >= 20 policies on average: **148 gauges** (61 at <= 50 mi2). Basin = block groups whose centroid is inside the NLDI polygon (4,633 block groups, 12,686 non-tropical inland claims).
+Panel: gauge x day where the peak daily-Q percentile on d..d+1 >= 0.9 or 3-day basin rain >= 25 mm (132,747 gauge-days); loss = claims with loss date d..d+1 in the basin, paid building loss. Train <= 2016, test 2017-2023, gauge-clustered bootstrap (200).
+
+| Peak Q percentile | gauge-days | any claim | claims per 1000 policy-days | paid per claim |
+|---|---|---|---|---|
+| 0.90-0.95 | 41,467 | 1.0% | 0.009 | $18.7k |
+| 0.95-0.98 | 27,955 | 2.1% | 0.045 | $38.7k |
+| 0.98-0.99 | 10,041 | 4.9% | 0.051 | $18.2k |
+| 0.99-0.999 | 9,803 | 13.5% | 0.376 | $25.3k |
+| > 0.999 | 1,415 | 40.3% | 8.67 | $49.4k |
+
+Any-claim AUC, test 2017-2023 (71,492 gauge-days, 1,288 with a claim): policies only 0.728; policies + basin rain 0.860; policies + flow 0.810; flow alone 0.800; **policies + rain + flow 0.871 (flow adds +0.011 [+0.008, +0.015])**. At <= 50 mi2: 0.835 -> 0.847 (+0.012 [+0.008, +0.017]).
+Among claim days (n = 3,767): Spearman of flow percentile with paid loss +0.34, with claim count +0.34, with paid per claim +0.27; basin rain gives +0.41 / +0.40 / +0.33 (rain is the stronger correlate). Within-gauge Spearman of flow percentile vs claims: median 0.18 over 123 gauges.
+
+## Conclusions
+- **Yes, a relation exists and is monotone**: claims per policy rise about 1000-fold from the 0.90 bin to the > 0.999 bin, and severity per claim doubles in the top bin. Flow at a small natural gauge separates claim days from non-claim days (AUC 0.80 alone).
+- **It is mostly the rain re-expressed**: basin rain alone beats flow (0.86 vs 0.81 with policies) and flow adds only +0.011 AUC on top. Same pattern as stages 18 and 59 D: a small, real but modest increment. As an independent event-intensity check on forecast or observed rain it is useful; as a model feature it is marginal.
+- Restricting to <= 50 mi2 does not change the picture.
+
+## Caveats
+- **Two events carry the result**: April 2016 (Houston) is 41% of all claims in the panel and May 2015 (Memorial Day) 26%; the top 3 months give 71%. The > 0.999 bin is essentially those storms. Tropical-named events (Harvey) are excluded by the pilot's filter, so they are absent.
+- Regulation screening is by gauge name, an upstream name-flagged gauge, and a flashiness threshold (0.03, only 4 gauges dropped); the National Inventory of Dams and the USGS site-type / regulation codes were not used, so unnamed small ponds and diversions can remain. The name regex also dropped 24 of 565 and may hit a few natural reaches.
+- Percentiles are over the full 2010-2023 record of each gauge (not causal), and a gauge-day panel of candidate days is not a random sample; the 0.9 / 25 mm entry rule is mine.
+- Basins are matched to block groups by centroid, so a basin with few block groups has noisy exposure; nested basins reuse the same block groups, so gauge-days are not independent (the bootstrap clusters by gauge, not by event). No event-clustered interval was computed.
+- Gauge Q is daily mean; flash-flood peaks in the smallest basins are muted. Loss is NFIP-insured loss only (stage 8 traps: depth 0, coverage limits).
+
+# Stage 61: daily-max discharge and stage vs claims: space, time, cause (scripts 115, 116; logs `audit/gauge_stage_fetch.log`, `audit/gauge_outcomes_vs_claims.txt`)
+
+Data (script 115): USGS daily max discharge (226 small gauges), daily max and mean gage height (136 / 231 gauges with a record), official site type: **all 421 gauges <= 250 mi2 are "Stream"** (no canal or lake type), so the site type removes nothing beyond the name rule of stage 60. Claims = ground truth of stage 60 (non-tropical inland NFIP, block groups inside each basin). Stage analysis uses the 69 of the 148 gauges with a stage record (50,035 candidate gauge-days, test 2017-2023: 26,176 with 220 claim days).
+
+**A. Which outcome matches claims best (any claim, same day, gauge-clustered bootstrap)**
+| Outcome (within-gauge percentile) | alone | gain over policies + rain (0.862) | Spearman with paid loss on claim days |
+|---|---|---|---|
+| daily mean Q | 0.803 | +0.012 [+0.004, +0.019] | 0.28 |
+| **daily max Q** | **0.836** | **+0.017 [+0.011, +0.022]** | 0.37 |
+| daily mean stage | 0.732 | +0.008 [0.000, +0.016] | 0.24 |
+| daily max stage | 0.813 | +0.016 [+0.008, +0.025] | 0.39 |
+Max beats mean for both Q and stage; max Q and max stage are equivalent; both + rain 0.879. Basin rain alone: 0.841.
+
+**B. Time**: AUC of the outcome at day d+k for claims on day d: max Q 0.50 / 0.48 / 0.55 at k = -3 / -2 / -1, **0.80 at k = 0**, 0.77, 0.69, 0.65 at k = +1..+3 (stage and rain alike). Nothing before the loss date; the signal is simultaneous and then decays with the recession. In 136 gauge-events (>= 10 claims within +-6 d): the day of peak max Q is +0.1 d (IQR -0.1..+0.5) from the claim-weighted loss date, peak stage +0.1 d, peak rain -0.5 d, peak Q - peak rain +1.0 d.
+
+**C. Space**: on high-flow days (max Q >= 0.99 percentile), claims per 1000 policy-days are 1.0 / 1.2 / 0.64 / 0.48 for block groups inside the basin at 0-5 / 5-10 / 10-25 / 25-50 km from the gauge, and 0.90 / 0.96 / 0.78 / 0.55 **outside** the basin at the same distances; against non-event days the ratios are 34-83 inside and 53-73 outside. The footprint of "high flow at this gauge" is the storm (tens of km), not the basin. Any-claim share on high-flow days: 13.5% (<= 25 mi2), 15.2% (25-100), 10.4% (100-250).
+
+**D. Cause (observational)**
+- Mediation: the standardised rain coefficient falls 1.475 -> 1.312 when flow is added (flow 0.896): only ~11% of the rain effect runs through flow as measured.
+- Storm (week) and gauge fixed effects: rain 0.071 vs flow 0.029; within-R2 0.017 -> 0.018. Within a storm, flow adds almost nothing.
+- Placebo: own flow +0.015 AUC over policies + rain, flow of the nearest gauge > 40 km away +0.001. The own-basin flow carries a small, local piece of information; the large between-gauge signal is the shared storm.
+- Lead / lag placebo (flow at d+k added to policies + rain): k = -3 +0.003, -1 -0.000, **0 +0.015**, +1 +0.007, +3 +0.003.
+
+## Conclusions
+- Best gauge outcome: **daily max discharge ~ daily max stage** (stage is not better and exists at only 47% of gauges); means lose 0.005-0.01 AUC.
+- Time: contemporaneous, no lead at daily resolution; peak flow coincides with the loss date and follows peak rain by about one day. A daily gauge is a **confirmation / nowcast** of the loss day, not an earlier warning than rain.
+- Space: claims co-occur with high flow over a radius of tens of km irrespective of the basin boundary; a gauge is a storm-intensity sensor, not a basin-specific loss sensor.
+- Cause: the physical chain is rain -> runoff -> water level -> building damage, and flow/stage are noisy measurements of the middle link. Data support "flow carries a small local increment beyond rain"; they do not support flow as an independent driver of claims.
+
+## Caveats
+- Not a causal identification: no intervention or instrument; storm fixed effects are weekly and shared by all gauges that week; placebo gauge choice (nearest > 40 km) is arbitrary.
+- Stage covers 69 gauges (stage datum shifts and pool control at low flow not handled); percentiles are over each gauge's full record.
+- Candidate-day sampling (max Q pct >= 0.9 or 3-day rain >= 25 mm) and two storms (Apr 2016, May 2015) dominate claims (stage 60 caveat); the interval clusters by gauge, not event.
+- Part C used all 218 gauges with basins (low-exposure ones included); the "outside basin" block groups may lie in neighbouring basins that flooded too. The loss date is the NFIP date of loss (day resolution), so ordering inside a day cannot be resolved; only daily statistics were used, not 15-minute data.
+- Regulation screening is as in stage 60 (site type gave no new information; NID not used).
+
+# Stage 62: collaborative (neighbour) filtering of gauge metrics and losses (script 117; log `audit/gauge_collaborative.txt`)
+
+Question (user): can gauge metrics be predicted and used across space to co-validate losses (robustness) and serve as an extra adaptation product?
+Design: gauge x day matrix of daily-max-Q percentiles and basin x day matrix of claims; a held-out gauge / basin is completed from its own basin rain (HGB on p1, p3, p7, p30, max cell, log area) and / or from other gauges 10-60 km away (inverse-distance mean of up to 5 neighbours; the 10 km floor removes nested basins that share block groups). Spatial 5-fold block CV (k-means on gauge coordinates), train <= 2016 on the other folds, test 2017-2023 on the held-out fold. Wet days (3-day basin rain >= 10 mm): 132,867 gauge-days, 130 gauges, 1,961 claim days; test 72,555 gauge-days.
+
+**T1 predicting a held-out gauge's max-Q percentile**
+| inputs | R2 | Spearman | AUC q >= 0.99 | AUC q >= 0.90 |
+|---|---|---|---|---|
+| own basin rain | 0.19 | 0.51 | 0.869 | 0.760 |
+| neighbour gauges only | 0.34 | 0.65 | 0.893 | 0.828 |
+| both | 0.34 | 0.65 | 0.902 | 0.833 |
+
+**T2/T3 as claim features** (any claim in the basin; AUC, gain over policies + rain 0.849, gauge-clustered bootstrap)
+| added feature | AUC | gain |
+|---|---|---|
+| own observed flow | 0.864 | +0.015 [+0.011, +0.019] |
+| predicted flow, rain only | 0.847 | -0.002 [-0.011, +0.007] |
+| predicted flow, rain + neighbours | 0.861 | +0.012 [+0.004, +0.020] |
+| neighbours' observed flow | 0.862 | +0.013 [+0.006, +0.018] |
+| neighbours' observed claims (10-60 km) | 0.883 | +0.034 [+0.024, +0.042] |
+| neighbour flow + claims | 0.891 | +0.042 [+0.029, +0.053] |
+| own flow + neighbour claims | 0.893 | +0.044 [+0.034, +0.051] |
+
+**T4 verification of rain-based alarms** (top 10% of rain-model scores, 7,257 alarms, claim rate 5.5%): AUC within alarms for own observed flow 0.755 (claim rate 8.9% above its median vs 2.0% below), neighbour flow 0.699 (8.1% vs 2.9%), neighbour claims 0.809, predicted flow 0.666 (8.0% vs 2.9%). Within-week rank correlation across gauges with claim rate, 67 storm weeks: own flow 0.13, predicted flow 0.11, rain 0.13.
+
+## Conclusions
+- **Spatial completion of the gauge metric works**: neighbours roughly double R2 over own rain (0.19 -> 0.34) and lift the extreme-flow AUC from 0.87 to 0.90, so a gauge can be reconstructed where it is missing or regulated and used as an interpolated flow product.
+- **A rain-only predicted gauge product adds nothing to a rain-based loss model** (-0.002): it is a function of the same input. The gain comes only from observed neighbour data (+0.012 / +0.013), i.e. assimilation, not from the forecast model itself.
+- **Co-validation is usable**: in a high-rain alarm set, flow separates 8.9% from 2.0% claim rates, and neighbours' observed flow or claims still separate false from true alarms where a basin has no gauge of its own (AUC 0.70-0.81). Neighbouring losses are the strongest cross-check (+0.034).
+- Robustness view: the loss ranking and the flow product agree in storm intensity but are only weakly aligned among gauges inside one storm (rank correlation 0.13), so a disagreement between them is common and is not by itself evidence of an error.
+
+## Caveats
+- Neighbour flow is observed, neighbour claims are reported with a delay (loss date is known only after filing), so these are verification / nowcast uses, not forecast-mode features. A forecast version needs forecast flow at the neighbours (GEFS rain -> basin flow), not tested: no basin-level GEFS series was built.
+- The neighbour-claims gain is partly shared storm exposure of nearby basins, not independent confirmation; neighbours (10-60 km, up to 5) are fixed by me, with a median of 5 per gauge, and the claim-rate input for the median split in T4 is often zero.
+- Held-out folds are spatial clusters of gauges, but neighbours of a held-out gauge are in other folds; the CF feature therefore uses information that exists operationally only where neighbouring gauges report.
+- Same dominance of the Apr 2016 and May 2015 storms as stage 60; the bootstrap clusters by gauge, not event. Percentiles are over each gauge's full record. 130 of 148 gauges have at least one neighbour in range.
+- Matrix factorisation proper (low-rank completion) was not run; this stage uses neighbour (kNN) filtering, which already shows the signal.
+
+# Stage 63: sub-county completion by interpolation, regression kriging and SVD on block group x storm-day claims (script 118; log `audit/subcounty_completion.txt`)
+
+Question (user): treat block groups as "users" and storm days as "items" of a recommender, link unknown areas to observed neighbours, and ask whether interpolation / SVD can complete limited sub-county information.
+Design: matrix of 10,544 Texas block groups (>= 2 policies in force on average) x 248 storm days (>= 15 non-tropical inland NFIP claims statewide that day), entry z = log1p(1000 x claims / policies), masked where no policy; 30,091 claims, any-claim share of BG-days 0.46%. Fit days 2010-2014 (63: base model and SVD factors), validation 2015-2016 (95: stacking weights), test 2017-2023 (90). Base = gradient boosting on gridMET rain (day, 2-day, 7-day antecedent), log policies, lat, lon (no observed claims; test AUC 0.832). On each test day a part of the block groups is observed, the rest hidden: random reveal of 5 / 20 / 50%, or one of 5 k-means regions hidden. Methods: idw (inverse-distance mean of up to 8 observed neighbours within 50 km), rk = base + idw of the neighbours' residual (regression kriging), svd (rank-k SVD of the matrix, the day's vector folded in by ridge on the observed rows), svdr (base + SVD of the residual matrix), stack (logistic on base, idw residual, SVD fold-in, the block group's mean residual `mu`, log1p of the number of observed claim block groups within 25 km `nn`). Intervals: bootstrap over test weeks (200).
+
+Pooled AUC for 'any claim' on hidden BG-days (base 0.832):
+| Scenario | idw | raw SVD | rk | svdr | base + nn | base + SVD fold-in | base + mu | stack (all) |
+|---|---|---|---|---|---|---|---|---|
+| random 5% observed | 0.682 | 0.576 | 0.737 | 0.808 | **0.876** | 0.816 | 0.785 | 0.823 |
+| random 20% | 0.726 | 0.581 | 0.751 | 0.811 | **0.910** [0.881, 0.936] | 0.815 | 0.784 | 0.885 |
+| random 50% | 0.758 | 0.580 | 0.784 | 0.812 | **0.921** [0.899, 0.939] | 0.815 | 0.785 | 0.906 |
+| region block hidden | 0.500 | 0.564 | 0.830 | 0.797 | 0.832 | 0.830 | 0.786 | 0.786 |
+SVD rank (20% reveal, residual SVD): k = 1 0.817, 2 0.809, 5 0.809, 10 0.806, 20 0.805. Explained variance of rank 5: 38% (matrix), 35% (residual); first three factors 15 / 7 / 6%.
+
+## Conclusions
+- **The recommender-style link between neighbours works through observed neighbouring claims, and only when some block groups of that day are observed**: base + the count of observed claim block groups within 25 km lifts AUC from 0.83 to 0.88 (5% reveal), 0.91 (20%), 0.92 (50%); intervals exclude the base for 20% and 50%.
+- **Plain SVD completion is not usable here**: raw SVD gives 0.58 (it learns block-group means, not the day's storm), the residual SVD fold-in is below the base (0.815 vs 0.832) at every rank, and its stack weight is ~0.02. Rank 1 is the best of the ranks and more factors only lose, which says the day factors do not transfer: with 63 fit storm days and a 0.46% positive rate the matrix has too few "items" and too little signal per column to learn latent structure beyond the block group's mean.
+- Interpolation as such (IDW of the neighbours' rate) is worse than the base because a distance-weighted mean of mostly zeros has no ranking power; the usable information is a local claim count, a point-process feature, not a smoothed field. Regression kriging (rk) also stays below or equal to the base.
+- **No gain when a whole region is hidden** (base 0.832; all neighbour-based methods equal or worse): the completion needs observations within ~25 km on the same day, so it is a local gap-filling and verification tool, not geographic extrapolation.
+- The `mu` input (block group's mean residual from 2010-2014, a claim-history proxy) lowers AUC alone (0.785): the mean over 63 days is noisy and does not transfer to 2017-2023; the stack that includes it (0.885 / 0.906) is below base + nn alone (0.910 / 0.921).
+
+## Caveats
+- `nn` uses same-day observed claims, which exist only after the fact (NFIP loss dates are reported with delay); this is verification / backfill, not a forecast feature. The "observed fraction" is a simulation of sparse reports, not a real reporting process.
+- Rain and exposure are known everywhere, so the base is strong; the completion value is measured over that base, not over a policies-only ranking.
+- One run (seed 0), 90 test days, one SVD fold-in recipe (ridge lambda 1, residual in log-rate); a count / Poisson factorisation, a weighted ALS with side information, or more storm days (lower claim threshold, other states) were not tried. Shared storm exposure between neighbours is the mechanism, not independent confirmation.
+- The 25 km radius and the 8-neighbour IDW are my choices; the region test uses k-means regions of block-group centroids, not county or watershed units. Tropical-named events are excluded by the pilot filter.
+
+# Stage 64: forecast-mode hydrologic verification at small unregulated gauges, GEFSv12 rain -> gauge flow -> claims (script 119; log `audit/forecast_hydro_verification.txt`)
+
+Question (user): verify the forecast-mode chain with hydrologic information: does GEFS-driven predicted gauge flow match the observed flow, add to the claim ranking, and verify alerts?
+Design: issue 00Z of day S-1, valid days S and S+1 (leads 36-84 h, 5 members, script 47 crops, 0.25 degree). Units: 148 gauges (stage 60 selection) x day S, 2010-2019, kept when the ensemble-mean forecast OR the observed 0.25-degree cell rain reaches 10 mm over the two days (misses and false alarms stay in): 92,606 units (train 2010-2016: 59,832; test 2017-2019: 32,774; test flow >= 0.99 percentile on 2,625, claim units 560). Response models (gradient boosting, trained on OBSERVED cell rain so the input scale matches the forecast; inputs: max daily and 2-day sum of cell rain, observed antecedent 7- and 30-day basin rain ending S-2, log area) give the within-gauge percentile of daily-max Q (reg) and P(percentile >= 0.99) (clf); applied member by member and averaged. Gauge-clustered bootstrap (200).
+
+**V1 rain (test)**: forecast vs observed cell 2-day sum Spearman 0.16; mean 18.2 vs 25.7 mm; where observed >= 25 mm the forecast mean is 25.4 against 53.8 mm. AUC of forecast rain for observed >= 25 mm 0.64, >= 50 mm 0.74.
+
+**V2 flow (observed peak percentile on S, S+1)**
+| input | AUC q >= 0.99 | AUC q >= 0.90 | Spearman |
+|---|---|---|---|
+| forecast rain (ensemble mean) | 0.697 | 0.581 | 0.17 |
+| forecast flow percentile (reg) | 0.761 | 0.709 | 0.44 |
+| forecast P(flow >= 0.99) (clf) | 0.758 | 0.672 | 0.37 |
+| observed cell rain | 0.821 | 0.736 | 0.47 |
+| flow from observed cell rain (ceiling) | 0.849 | 0.813 | 0.63 |
+| flow from observed basin rain (finer) | 0.855 | 0.823 | 0.65 |
+Brier skill of the forecast exceedance probability against the train base rate (0.080): +0.123 (observed-rain version +0.278). Reliability is close to the diagonal above 5% (forecast 0.14 / 0.28 / 0.58 vs observed 0.15 / 0.29 / 0.60) and under-forecasts the low bins (0.009 vs 0.030, 0.032 vs 0.060).
+
+**V3 claims (any claim in the basin on S..S+1), forecast arm, AUC**: policies + forecast rain 0.736; + forecast flow (reg) +0.0007 [-0.022, +0.024]; + forecast P(flow >= 0.99) +0.0064 [-0.010, +0.024]; + both + spread +0.005 [-0.017, +0.027]. References: policies + observed rain 0.847 (+0.111), forecast rain + observed flow 0.845, observed rain + observed flow 0.866.
+
+**V4 alert (forecast P >= 0.15) x observed-flow confirmation (test)**
+| alert | observed flow >= 0.99 | units | claim rate | claims per 1000 policies |
+|---|---|---|---|---|
+| no | no | 27,865 | 0.8% | 0.006 |
+| no | yes (miss) | 1,622 | 12.0% | 0.217 |
+| yes | no (false alarm) | 2,284 | 1.3% | 0.010 |
+| yes | yes (hit) | 1,003 | 10.7% | 0.167 |
+Among the 3,287 alerts 30.5% are confirmed; claim rate 10.7% if confirmed vs 1.3% if not; AUC of observed flow for claims within alerts 0.80. The 1,622 unalerted high-flow units hold 35% of all claim units.
+
+## Conclusions
+- The forecast-driven flow product has real but modest skill (AUC 0.76 for the 0.99 percentile against 0.85 when the rain is observed): the loss is almost entirely in the rain forecast (Spearman 0.16, heavy rain under-forecast by half), not in the rain-to-flow step. The exceedance probability is reasonably reliable above 5%.
+- **A forecast flow product adds nothing to the forecast-mode claim ranking** (+0.001 to +0.006, intervals span 0), as in the observed-rain case of stage 62: it is a transform of the same forecast rain. The gap to observed rain (+0.11 AUC) is not closed by hydrologic post-processing.
+- **As verification it is informative**: after the event the observed gauge flow separates alerts that produced claims (10.7%) from false alarms (1.3%), and it flags the missed events (12% claim rate, a third of all claim units). The gauge is therefore a cheap independent check on forecast quality, not a forecast improvement.
+
+## Caveats
+- One lead window (36-84 h), 5 members, 0.25 degree cells (a small basin is about one cell; the cell mean of observed rain, not the basin mean, trains the response model); test = 2017-2019 only (the reforecast ends in 2019), 3 seasons and few storms; tropical-named events are excluded by the claims filter.
+- The sample is "either source >= 10 mm", so the Brier skill and base rates (0.080) belong to that sample; the percentile is over each gauge's full 2010-2023 record (not causal); the alert threshold (0.15) is mine and unvalidated.
+- Response models are gauge-pooled with log area, not gauge-specific; no routing through the river network, no stage output, no upstream-downstream use. Intervals cluster by gauge, not storm.
+- The V4 split reads claims and flow after the fact: it is verification, not a decision rule available at issue time.
+
+# Stage 65: hydrologic information as a verification quantity for claims, and the resolution it needs (script 120; log `audit/hydro_verification_of_claims.txt`)
+
+Decision (user): treat the hydrologic information as a verifier of the claim information (probabilistic consistency, not a forecast feature), and find how fine it has to be.
+Verification model: logistic P(any claim | log policies, basin rain percentile, flow percentile) on candidate gauge-days (flow percentile >= 0.9 or 3-day basin rain >= 25 mm; 108,609 gauge-days at 148 gauges; train <= 2016, test 2017-2023, 669 test claim days). The score of a reported claim record is its logit at the reported date and place.
+
+**V. Detecting displaced records** (1,025 genuine claim gauge-days 2017-2023; a record's date shifted by k days in a random direction, or its place moved to another gauge's basin; AUC of genuine vs displaced)
+| displacement | rain only | daily-max flow | daily-mean flow | 3-day max window | 7-day max window |
+|---|---|---|---|---|---|
+| date +-1 d | 0.577 | 0.588 | 0.584 | 0.558 | 0.551 |
+| date +-2 d | 0.655 | 0.670 | 0.662 | 0.657 | 0.594 |
+| date +-3 d | 0.731 | 0.724 | 0.726 | 0.714 | 0.652 |
+| date +-7 d | 0.748 | 0.739 | 0.746 | 0.732 | 0.734 |
+| date +-14 d | 0.788 | 0.781 | 0.788 | 0.779 | 0.785 |
+| place: gauge 10-60 km away | 0.548 | 0.559 | 0.558 | 0.569 | 0.577 |
+| place: gauge > 100 km away | 0.646 | 0.668 | 0.665 | 0.689 | 0.691 |
+Date +-2 d: rain only 0.664 [0.627, 0.703], daily-max flow 0.663 [0.630, 0.701] (gauge bootstrap).
+
+**C. Calibration**: Brier skill against the train base rate (0.029): rain only -0.009, + daily-max flow +0.004. Predicted vs observed claim frequency by bin: 0.018 vs 0.004, 0.054 vs 0.017, 0.157 vs 0.080, 0.370 vs 0.227; the absolute probability is too high in the test years (more claims in 2015-2016 training storms).
+
+**G. Spatial coherence** (wet days, median over gauge pairs): flow-percentile Spearman 0.62 / 0.48 / 0.41 / 0.31 / 0.17 and basin-rain 0.76 / 0.61 / 0.47 / 0.27 / 0.03 at 10-25 / 25-50 / 50-100 / 100-200 / 200-400 km; claim-indicator correlation 0.29 / 0.14 / 0.00 / 0.00 / 0.00.
+
+**R. Rain resolution for block-group any-claim** (10,544 block groups, 90 test storm days, logistic on log policies + rain; pooled / within-day AUC)
+| rain resolution (window d-1..d) | pooled | within-day |
+|---|---|---|
+| 4 km native | 0.887 | 0.903 |
+| 12 km | 0.886 | 0.902 |
+| 24 km | 0.881 | 0.895 |
+| 48 km | 0.869 | 0.881 |
+| 96 km | 0.847 | 0.855 |
+Accumulation window at 4 km: day d only 0.832 / 0.846; d-1..d 0.887 / 0.903; d-1..d+1 0.887 / 0.899; d-3..d+1 0.880 / 0.895.
+
+## Conclusions
+- **What the hydrologic information can verify**: that a flood-scale event occurred in the region within about +-2-3 days of the reported date (AUC 0.66 at +-2 d, 0.72-0.73 at +-3 d, 0.78 at +-14 d). It cannot verify an exact day (+-1 d: 0.58-0.59) nor a place inside the neighbourhood (a record moved 10-60 km away is almost undetectable, 0.55-0.58; only a > 100 km move reaches 0.65-0.69).
+- **Gauge flow adds almost nothing to rain as a verifier of date and place** (0.67 vs 0.66 at +-2 d, intervals overlapping). Its value is independence: it is an observation, not a model of rain, so it checks the claim record without re-using the same input.
+- **Needed resolution**: space - claim co-occurrence decorrelates at about 25-50 km (indicator correlation 0.29 at 10-25 km, 0.14 at 25-50, 0 beyond 50), so gauges roughly every 25-50 km, and rain fields at 12-24 km lose at most 0.006 AUC against 4 km (48 km loses 0.018, 96 km 0.040). Time - daily values with a two-day accumulation (d-1..d) are the right grain: one day is 0.055 AUC worse, longer windows give nothing, and 7-day windows destroy date verification (0.59 at +-2 d). Sub-daily information cannot be tested against NFIP, whose loss date is a day; it stays unproven (stage 52: hourly radar added nothing to daily gridMET).
+- Flow percentiles stay correlated at 100-200 km (0.31) while claim co-occurrence does not: flow speaks for a storm region, claims for a neighbourhood, so the verification is region-and-days, not block-group-and-hour.
+- Use the score as a ranking (is this record plausible given hydrology) and not as an absolute probability: calibration does not carry across years (stage rule on absolute probabilities).
+
+## Caveats
+- Displacement is synthetic: shifts land on days that are often also wet inside multi-day storms, so the AUCs are lower than for a mis-dated record far from a storm; real data errors (NFIP dates, geocoding to the 12-digit code) were not tested.
+- 148 gauges and 1,025 claim records; gauge-clustered interval for one case only; claim units far from any flow signal (no flow, local drainage, urban ponding) look "implausible" by construction.
+- The rain resolution test uses gridMET (itself an interpolated 4 km product) and a two-feature logistic model, so finer than 4 km and non-rain hydrology (soil, antecedent wetness, imperviousness) were not tested; gauge density was inferred from coherence, not from a thinning experiment.
+- Candidate-day sampling (flow >= 0.9 or rain >= 25 mm) and the dominance of the Apr 2016 and May 2015 storms are as in stage 60.
+
+## Stage 66 — Temporal resolution of the hydrologic verification quantity (script 121)
+
+Question: how fine in time must the flow information be to verify claims? Data: 15-min USGS discharge (UTC, converted to America/Chicago) at 144 small gauges (<= 250 mi2) in the 14 largest claim events; 1,557 gauge-events with a clear wave (peak >= 5 cfs and >= 2x base); log `audit/temporal_resolution.txt`.
+
+**A. Flood-wave time scales by drainage area**
+| area | n | rise h (median / q25) | half-peak width h (median / q25) | peak / daily mean | width < 6 h | width < 24 h |
+|---|---|---|---|---|---|---|
+| <= 25 mi2 | 419 | 2.00 / 0.75 | 3.00 / 1.33 | 5.0 | 72% | 99% |
+| 25-100 | 630 | 5.75 / 2.50 | 10.0 / 4.5 | 2.4 | 32% | 82% |
+| 100-250 | 508 | 7.75 / 3.19 | 11.25 / 6.25 | 1.95 | 24% | 69% |
+All: rise 4.8 h, half-width 7.8 h, peak / daily mean 2.6 (90th pct 9.5).
+
+**B. Day-boundary sensitivity** (gauge-events with >= 10 claims)
+| day starts | n | Spearman daily max vs claims/day | peak day = claim-peak day |
+|---|---|---|---|
+| 00:00 local | 55 | 0.611 | 0.691 |
+| 06:00 | 53 | 0.745 | 0.698 |
+| 12:00 | 54 | 0.715 | 0.519 |
+| 18:00 | 56 | 0.725 | 0.411 |
+Flow peaks at 00-06 local fall on the claim-peak day only 47% of the time (53% the claim peak is the day before); peaks at 06-12 match 100%, 12-18 60%, 18-24 79%; no band has the claim peak after the flow peak (next_day = 0).
+
+**C. Does sub-daily shape add?** (leave-one-event-out, 10,178 gauge-days, 494 with a claim)
+Policies + rain 0.804; + daily-max percentile 0.802; + 1-h rise rate -0.0003 [-0.0025, +0.0017]; + time above half peak +0.0014 [-0.0028, +0.0051]; + peak / daily mean +0.0025 [+0.0004, +0.0044]; all three +0.0013 [-0.0028, +0.0051] (changes relative to the daily-max model).
+
+## Conclusions
+- Small basins are fast: <= 25 mi2 waves peak in ~2 h and last ~3 h, so a daily mean understates the peak 5x and hourly data would be needed to describe the wave. For 100-250 mi2 the wave lasts ~11 h and a daily max is near enough.
+- For claim verification that detail does not pay: no sub-daily shape feature adds beyond the interval on top of daily max (only peak/mean, +0.0025, barely clears zero, below any practical threshold). **Daily max discharge is sufficient**; the 15-min record is needed only to place the day boundary correctly.
+- The day boundary matters more than the sampling interval: a midnight cut splits events whose peak occurs at night (00-06 local peaks: in 53% of cases claims peaked on the previous calendar day, the rain-and-claim day, while the flow peak lands after midnight). A 06:00 local day (or a 24-h window from the peak) raises the daily-max/claims Spearman from 0.61 to 0.75. Practical rule: aggregate flow to daily max with a 06:00 local boundary and compare with claim dates +-1 day, which matches the +-2-3 day verification tolerance of stage 65.
+- Needed temporal resolution: observations hourly or better at gauges <= 25 mi2 if one wants the wave itself; 15-min / hourly archived, daily max with a shifted boundary is the verification product; a forecast product only needs daily accumulation with a 1-day tolerance.
+
+## Caveats
+- NFIP loss dates are daily, so sub-daily timing cannot be validated against claims: B and C test only day-assignment and day-level skill. Whether hourly flow would help with hourly claim timing is untestable here.
+- 14 largest events only (Apr 2016 and May 2015 dominate), 144 gauges; the B subsets are 53-56 gauge-events with no interval; shape features were tested with leave-event-out AUC, intervals event-clustered where shown (nan for the baselines).
+- Loss date can be date of loss as reported, not the flood peak; reporting lag and multi-day events blur the day match. Gauges are not at the claim locations (basin membership or 50 km).
+
+## Stage 67 — GIS map of claims and gauges, and gauge density vs claim area (script 122)
+
+Figure `docs/figures/gis/claims_gauges_map.png`; layers for QGIS in `$WXRISK_DATA/gis/` (`tx_counties_claims_gauges.geojson`, `tx_gauges.geojson`, `tx_bg_claims.geojson`); log `audit/gis_claims_gauges.txt`. 34,989 inland non-tropical claims 2010-2023, 9.48 M policy-years, 565 gauges active in the period (217 small screened, 28 small unscreened, 306 large river, 14 unknown area).
+
+**County level (254 counties), Spearman of gauge density with claim measures**
+| gauge density vs | claims per 1000 km2 | partial, given policy density | claims per 1000 policy-years |
+|---|---|---|---|
+| all gauges | 0.40 [0.28, 0.52] | -0.05 [-0.17, 0.08] | 0.17 [0.04, 0.29] |
+| small gauges | 0.40 [0.28, 0.51] | -0.01 [-0.13, 0.13] | 0.15 |
+| screened small | 0.40 [0.28, 0.51] | -0.01 [-0.14, 0.12] | 0.13 |
+Policy density vs gauge density 0.45. Quintile of claim density: gauges in Q1 45, Q3 78, Q5 241 (of 565); 93% of claims are in the top quintile.
+
+**Distance to the nearest gauge** (block-group centroids): share of claims within 25 km 0.87 vs share of policy-years 0.82 (all gauges); 0.79 vs 0.77 (small); median distance 5.6 vs 7.6 km (all). Claim rate per 1000 policy-years by distance band: <10 km 4.0, 10-25 3.0, 25-50 2.0, 50-100 6.0, >100 3.0 (no monotone pattern).
+
+## Conclusions
+- The visual link is real: gauges concentrate in Houston, Austin-San Antonio, Dallas-Fort Worth and the Rio Grande Valley, where the claims are (county Spearman 0.40).
+- It is exposure, not flood hazard: after controlling for policy density the partial correlation is ~0 (-0.05 to -0.01, intervals include 0), and the claim rate per policy-year does not fall with distance to a gauge. Gauges are placed where people and property are, and claims exist where policies exist.
+- Practical meaning: the network covers claim areas well (87% of claims within 25 km of a gauge), which supports the verification use; but it cannot be read as the network being sited by flood risk, and a gap in coverage mostly matters in the few low-policy counties (50-100 km band holds 5% of claims).
+
+## Caveats
+- County aggregation (254 units) is coarse; gauge counts include large river gauges unless the small / screened rows are read. "Screened" here is the 217 gauges with a drainage area <= 250 mi2 that passed the name filter, not the 148 of stage 60 (no flashiness filter).
+- Claims follow the clean-table block-group crosswalk; claims without a geoid are dropped. Policies are policy-years from the clean table.
+- Counties dissolved from the 2010 block groups (no external boundary file); no basemap. Correlation of density with gauges says nothing about gauge placement history (sites also include stage-only sites excluded by the discharge list).
+
+## Stage 68 — River network overlay and survivorship check (scripts 123, 124)
+
+Data: NHDPlus flowlines, stream order >= 2, from the USGS National Map service (script 123; 98,156 lines, 181,603 km, generalised to ~200 m; the 1:1M "small scale" layer, so small headwater streams are missing). Figure `docs/figures/gis/river_network_survivorship.png`; log `audit/river_survivorship.txt`. "Near a gauge" = within 10 km straight-line distance (not on the same river).
+
+**T1 river length near a gauge** (all 181,603 km): any gauge 15.2% within 10 km (39% within 25 km); small gauge 5.6% (19%). By exposure quintile of the reach (policy-years within ~15 km): Q1-Q3 5.5-6.0% (small 1.1-1.7%), Q4 14.5% (3.8%), Q5 44.3% (20.3%). By order: order 2 12% / 5%, order 5+ 21% / 3%.
+
+**T2 claims vs river length**: within 10 km of any gauge: 15% of river length, 70% of claims, 59% of policy-years; small gauges: 6%, 59%, 52%. 90% of claims lie within 5 km of a mapped stream (policies 86%).
+
+**T3 unclaimed floods** (small-gauge panel, flow percentile >= 0.99): any claim in the basin 3% of days with < 50 policies, 8% (50-200), 16% (200-1000), 30% (>= 1000); 83% of flood-flow gauge-days have no claim; 36% occur in basins with < 200 policies; 39% of the 148 gauges sit in such basins.
+
+**T4 gauge record vs claim density**: record length in 2010-2023 is 14 y in all four claim-density quartiles; share with a full record 0.77-0.81; Spearman 0.006.
+
+## Conclusions
+- The survivorship bias is real and large for *where* gauges are: only 15% of river length (6% for small gauges) is within 10 km of a gauge, against 70% (59%) of claims. The gauged reaches are the exposed ones: 44% of river length in the top exposure quintile vs 6% in the bottom three.
+- It is also a bias in *what* the loss record shows: most flood-scale flow never produces a claim (83%); where policies are few (< 200) a flood has a claim probability under 8%. A model or verification trained on claim days learns "flood where people insure", and hydrology confirms floods only where both gauge and claims exist.
+- It does not reach the gauge records themselves: record length and completeness are unrelated to local claims (T4), so the gauge data are not better where claims are more numerous; the selection is in placement and in which flows become claims.
+- Consequences: (1) verification skill (stages 65-66) applies to the exposed, gauged third of the network and must not be extended to unclaimed rivers; (2) a no-claim day is not evidence of no flood in low-policy basins (use hydrology as a positive-only verifier there, not a negative one); (3) any gauge-based prediction product needs an exposure weighting or a separate treatment for low-policy basins; (4) a thinning experiment must thin within exposure strata.
+
+## Caveats
+- The river layer is 1:1M NHDPlus (stream order >= 2 only); small headwaters and urban storm drains are not present, so the ungauged share is a lower bound for small streams. Distance to a gauge is straight-line, not along the river.
+- T3 uses small-gauge candidate days (flow >= 0.9 or rain >= 25 mm), claims in the basin (or within 50 km as in stage 60), and flow percentile as the definition of flood-scale, which is not damage-causing flood. Low claim counts in low-policy basins reflect both few policies and low NFIP take-up, which cannot be separated here.
+- Claim counts, policies and the 15 km box are on a 5 km grid; the 245 "small" gauges include the 28 unscreened ones.

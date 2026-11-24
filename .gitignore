@@ -21,3 +21,6 @@ wxrisk-probe-*.out
 
 # videos and rendered media are distributed outside git
 docs/media/
+
+# paper repo synced from Overleaf (own git history, pushed to Overleaf)
+Overleaf/
